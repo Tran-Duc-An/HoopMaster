@@ -1,0 +1,61 @@
+{
+  "shooting": {
+    "elbow": {
+      "min": 80,
+      "max": 105,
+      "ideal": 90,
+      "landmarks": { "point1": "shoulder", "point2": "elbow", "point3": "wrist" },
+      "intent": { "tooLow": "up", "tooHigh": "down", "perfect": "focus" }
+    },
+    "knee": {
+      "min": 90,
+      "max": 140,
+      "ideal": 120,
+      "landmarks": { "point1": "hip", "point2": "knee", "point3": "ankle" },
+      "intent": { "tooLow": "up", "tooHigh": "down", "perfect": "focus" }
+    },
+    "shoulder": {
+      "min": 30,
+      "max": 120,
+      "ideal": 90,
+      "landmarks": { "point1": "hip", "point2": "shoulder", "point3": "elbow" },
+      "intent": { "tooLow": "up", "tooHigh": "down", "perfect": "focus" }
+    }
+  },
+  "neck_stretch": {
+    "neck": {
+      "min": 30,
+      "max": 80,
+      "ideal": 45,
+      "landmarks": { "point1": "shoulder", "point2": "ear", "point3": "shoulder" },
+      "intent": { "tooLow": "up", "tooHigh": "down", "perfect": "focus" }
+    }
+  },
+  "shoulder_roll": {
+    "shoulder": {
+      "min": 20,
+      "max": 100,
+      "ideal": 60,
+      "landmarks": { "point1": "spine", "point2": "shoulder", "point3": "elbow" },
+      "intent": { "tooLow": "up", "tooHigh": "down", "perfect": "focus" }
+    }
+  },
+  "push_up": {
+    "elbow": {
+      "min": 70,
+      "max": 120,
+      "ideal": 90,
+      "landmarks": { "point1": "shoulder", "point2": "elbow", "point3": "wrist" },
+      "intent": { "tooLow": "up", "tooHigh": "down", "perfect": "focus" }
+    }
+  },
+  "quad_stretch": {
+    "knee": {
+      "min": 60,
+      "max": 130,
+      "ideal": 90,
+      "landmarks": { "point1": "hip", "point2": "knee", "point3": "ankle" },
+      "intent": { "tooLow": "up", "tooHigh": "down", "perfect": "focus" }
+    }
+  }
+}

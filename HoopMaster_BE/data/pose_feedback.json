@@ -1,0 +1,149 @@
+{
+  "elbow": {
+    "ideal": "80-105°",
+    "feedback": {
+      "low": [
+        "Raise your elbow higher to generate more power.",
+        "Try to lift your elbow a bit more for better shot power.",
+        "Raising your elbow can help you achieve a smoother release.",
+        "Bend your elbows more for a full push up."
+      ],
+      "high": [
+        "Your elbow angle is a bit high. Try to relax your arm and keep your elbow more comfortable. Smoother motion will help you control the shot better.",
+        "Lower your elbow slightly for improved control.",
+        "Relax your arm and keep your elbow at a natural angle.",
+        "Don’t lock your elbows at the top."
+      ],
+      "perfect": [
+        "Perfect push up form!",
+        "Perfect! Elbow angle is ideal."
+      ]
+    }
+  },
+  "knee": {
+    "ideal": "90-140°",
+    "feedback": {
+      "low": [
+        "Your center of gravity is a bit low. Stand up a little straighter and bend your knees just enough to jump. Adjusting your posture will help stabilize your shot.",
+        "Try not to bend your knees too much; a slight bend is enough.",
+        "Stand taller and keep your knees flexible for better balance.",
+        "Pull your heel closer to your glutes."
+      ],
+      "high": [
+        "Lower your center of gravity, bend your knees more to build power.",
+        "Don’t overstretch your quad."
+      ],
+      "perfect": [
+        "Great! Knee position is ideal and ready to jump.",
+        "Good quad stretch!"
+      ]
+    }
+  },
+    "neck": {
+      "feedback": {
+        "low": [
+          "Tilt your head a bit more to feel the stretch."
+        ],
+        "high": [
+          "Don’t overstretch your neck."
+        ],
+        "perfect": [
+          "Great neck stretch!"
+        ]
+      }
+    },
+    "shoulder": {
+      "feedback": {
+        "low": [
+          "Raise your arm higher, your shoulder is too low.",
+          "Roll your shoulders in a bigger circle."
+        ],
+        "high": [
+          "Lower your shoulder, no need to overextend.",
+          "Keep the movement comfortable."
+        ],
+        "perfect": [
+          "Exactly! Shoulder angle is perfect.",
+          "Nice shoulder roll!"
+        ]
+      }
+    },
+  "general": {
+    "good": [
+      "Pretty good shot! Keep maintaining this form and practice regularly. Make sure to keep your elbow and knee angles stable in every shot.",
+      "Nice work! Your form is improving. Stay consistent with your practice.",
+      "Great effort! Keep focusing on your technique for even better results."
+    ],
+    "multi_issue": [
+      "Your form needs improvement in several areas. Work step by step: first stabilize your legs, then adjust your shooting arm. Keep practicing!",
+      "There are a few things to work on. Focus on your legs first, then your arm position.",
+      "Multiple areas need attention. Take it slow and improve one aspect at a time."
+    ]
+  },
+  "back": {
+    "ideal": "170-190°",
+    "feedback": {
+      "not_straight": [
+        "Keep your back straighter for better balance.",
+        "Try not to lean forward or backward during your shot.",
+        "A straight back helps you generate more power and accuracy."
+      ],
+      "good": [
+        "Great posture! Your back is straight and stable.",
+        "Excellent back alignment—keep it up!"
+      ]
+    }
+  },
+  "release": {
+    "motion": {
+      "good": [
+        "Your release motion is smooth and controlled.",
+        "Great wrist snap at release!",
+        "Excellent follow-through on your shot."
+      ],
+      "bad": [
+        "Work on snapping your wrist more at release.",
+        "Try to follow through with your fingers pointing to the basket.",
+        "Focus on a smoother, more controlled release motion."
+      ]
+    },
+    "point": {
+      "optimal": [
+        "Your release point is optimal for your height.",
+        "Excellent release point—keep it up!",
+        "Great job releasing the ball at the right height."
+      ],
+      "low": [
+        "Try to release the ball at a higher point.",
+        "Raise your release for a better arc.",
+        "A higher release point can make your shot harder to block."
+      ],
+      "high": [
+        "Lower your release point slightly for better control.",
+        "Try not to overextend your arms at release.",
+        "A slightly lower release may help with shot consistency."
+      ]
+    }
+  },
+  "instruction": "Give practical advice, focus on 1-2 main points to improve. Use a friendly, encouraging tone.",
+  "session": {
+    "consistency": {
+      "high": [
+        "You shot very consistently! Keep maintaining this form.",
+        "Excellent consistency throughout your session.",
+        "Your shots were stable and repeatable. Great job!"
+      ],
+      "medium": [
+        "Stability is quite good, but there is still room for improvement. Focus on repeating the same motion.",
+        "You're getting more consistent. Keep practicing the same movement.",
+        "Good progress, but try to make your shots even more uniform."
+      ],
+      "low": [
+        "Your form is not stable yet. Slow down and practice slowly so your body can memorize the correct movement.",
+        "Work on making your shots more consistent. Take your time with each attempt.",
+        "Focus on stability and repeat the basics until they become natural."
+      ]
+    },
+    "summary": "The training session with {totalShots} shots is complete. "
+  }
+}

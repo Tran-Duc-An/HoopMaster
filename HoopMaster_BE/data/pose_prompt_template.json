@@ -1,0 +1,3 @@
+{
+  "prompt": "You are a professional basketball coach. Analyze this shot and provide concise feedback (2-3 sentences) in English.\n\n**Shot Data:**\n- Shooting hand: {shootingHand}\n- View: {viewOrientation}\n- Frame count: {frameCount}\n\n**Average Angles:**\n- Elbow angle: {avgElbowAngle} (Ideal: {elbowIdeal})\n- Knee angle: {avgKneeAngle} (Ideal: {kneeIdeal})\n- Shoulder angle: {avgShoulderAngle} (Ideal: {shoulderIdeal})\n\n{issues}\n\n**Instruction:** {instruction}"
+}

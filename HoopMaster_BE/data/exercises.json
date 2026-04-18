@@ -1,0 +1,56 @@
+[
+  {
+    "id": 1,
+    "name": "Neck Stretch",
+    "category": "warmup",
+    "description": "Gently tilt your head to the left and right to stretch your neck muscles.",
+    "steps": [
+      "Stand or sit up straight.",
+      "Slowly tilt your head to the left, hold for 5 seconds.",
+      "Return to center, then tilt to the right, hold for 5 seconds.",
+      "Repeat 3 times each side."
+    ],
+    "count": 3,
+    "pose": "neck_stretch"
+  },
+  {
+    "id": 2,
+    "name": "Shoulder Roll",
+    "category": "warmup",
+    "description": "Roll your shoulders forward and backward to loosen up.",
+    "steps": [
+      "Stand or sit up straight.",
+      "Roll your shoulders forward in a circular motion 5 times.",
+      "Then roll your shoulders backward 5 times."
+    ],
+    "count": 5,
+    "pose": "shoulder_roll"
+  },
+  {
+    "id": 3,
+    "name": "Push Up",
+    "category": "strength",
+    "description": "A basic upper body strength exercise.",
+    "steps": [
+      "Start in a plank position with hands under shoulders.",
+      "Lower your body until your chest nearly touches the floor.",
+      "Push back up to the starting position.",
+      "Repeat for the desired number of reps."
+    ],
+    "count": 10,
+    "pose": "push_up"
+  },
+  {
+    "id": 4,
+    "name": "Standing Quad Stretch",
+    "category": "stretching",
+    "description": "Stretch the front of your thigh.",
+    "steps": [
+      "Stand upright and hold onto a wall for balance if needed.",
+      "Grab your right ankle with your right hand and pull your heel toward your buttock.",
+      "Hold for 20 seconds, then switch sides."
+    ],
+    "count": 2,
+    "pose": "quad_stretch"
+  }
+]
