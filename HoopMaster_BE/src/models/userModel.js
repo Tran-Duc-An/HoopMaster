@@ -7,7 +7,8 @@ const userSchema = new mongoose.Schema({
   name: { type: String },
   avatar: { type: String },
   createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  updatedAt: { type: Date, default: Date.now },
+  tone: { type: String, enum: ['strict', 'cheerful', 'neutral'], default: 'neutral' }
 });
 
 module.exports = mongoose.model('User', userSchema);

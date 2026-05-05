@@ -25,8 +25,37 @@ function textToSSML(text, intent = 'neutral', lang = 'en-US') {
   const intentConfig = TTS_INTENTS[intent] || TTS_INTENTS.neutral;
   const { pitch, rate, volume } = intentConfig.ssmlModifiers;
 
-  // Escape XML special characters
-  const escapedText = escapeXML(text);
+  // Từ khóa nhấn mạnh và mức pitch riêng
+  const highlightKeywords = [
+    { word: /cao hơn|vươn cao|higher/gi, pitch: '+12%' },
+    { word: /thấp hơn|hạ thấp|lower/gi, pitch: '-12%' },
+    { word: /nhanh|nhanh lên|tăng tốc|faster|fast|nhanh chóng/gi, pitch: '+10%' },
+    { word: /chậm|chậm lại|giảm tốc|slower|slow|từ từ/gi, pitch: '-10%' },
+    { word: /mạnh|mạnh hơn|mạnh mẽ|power|strong|stronger/gi, pitch: '+8%' },
+    { word: /nhẹ|nhẹ nhàng|nhẹ hơn|soft|softer/gi, pitch: '-8%' },
+    { word: /focus|tập trung/gi, pitch: '+6%' },
+    { word: /relax|thả lỏng/gi, pitch: '-6%' }
+  ];
+
+  let processedText = text;
+  if (intent === 'strict' || intent === 'cheerful') {
+    // Chỉ nhấn mạnh khi strict hoặc cheerful
+    highlightKeywords.forEach(({ word, pitch }) => {
+      processedText = processedText.replace(word, (match) => `<prosody pitch="${pitch}">${escapeXML(match)}</prosody>`);
+    });
+  }
+
+  // Escape XML special characters ngoài các thẻ prosody
+  // Để không escape các thẻ vừa thêm, tách từng phần
+  function escapeExceptProsody(str) {
+    return str.replace(/(<prosody[^>]*>.*?<\/prosody>)/gi, (m) => `@@@${Buffer.from(m).toString('base64')}@@@`)
+      .split('@@@').map(part => {
+        if (!part) return '';
+        if (/^[A-Za-z0-9+/=]+$/.test(part)) return Buffer.from(part, 'base64').toString();
+        return escapeXML(part);
+      }).join('');
+  }
+  const escapedText = escapeExceptProsody(processedText);
 
   // Create SSML with prosody tags
   const ssml = `

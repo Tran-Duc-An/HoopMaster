@@ -1,12 +1,13 @@
+const express = require('express');
+const router = express.Router();
 /**
  * Main Router
  * Gộp tất cả routes vào một file
  */
-
-const express = require('express');
-const router = express.Router();
+const planChatRoutes = require('./planChatRoutes');
+router.use('/api/users', planChatRoutes);
 // const sessionRoutes = require('./sessionRoutes');
-// const userRoutes = require('./userRoutes');
+const userRoutes = require('./userRoutes');
 // const exerciseRoutes = require('./exerciseRoutes');
 const { validateConfig: validateTTS } = require('../services/ttsService');
 const { validateConfig: validateLLM } = require('../services/llmService');
@@ -57,9 +58,17 @@ router.get('/health', (req, res) => {
  * Mount session routes (DISABLED FOR NO-MONGO MODE)
  */
 // router.use('/api/sessions', sessionRoutes);
-// router.use('/api/users', userRoutes);
+router.use('/api/users', userRoutes);
 // Only exercise routes are enabled
+
 const exerciseRoutes = require('./exerciseRoutes');
 router.use('/api/exercises', exerciseRoutes);
+
+
+const feedbackRoutes = require('./feedbackRoutes');
+router.use('/api/feedback', feedbackRoutes);
+
+const personalizeRoutes = require('./personalizeRoutes');
+router.use('/api/users', personalizeRoutes);
 
 module.exports = router;

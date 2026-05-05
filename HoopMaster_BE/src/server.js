@@ -13,6 +13,7 @@ const cors = require('cors');
 const routes = require('./routes');
 const { setupSocketHandlers } = require('./sockets/socketHandlers');
 const { cleanupExpiredSessions, getAllSessions } = require('./controllers/poseController');
+const connectDB = require('./models/connectDB');
 
 // Configuration
 const PORT = process.env.PORT || 3000;
@@ -24,8 +25,8 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
 const app = express();
 const server = http.createServer(app);
 
-// Connect to MongoDB (DISABLED FOR NO-MONGO MODE)
-// connectDB();
+// Connect to MongoDB
+connectDB();
 
 // Middleware
 app.use(cors({

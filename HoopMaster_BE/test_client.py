@@ -5,6 +5,7 @@ Interactive Basketball Coach Test Client
 - Cho phép đổi tư thế on-the-fly để test logic AI nhận diện sự thay đổi (Angle Change Threshold)
 """
 
+
 import tkinter as tk
 from tkinter import ttk, scrolledtext
 import socketio
@@ -13,6 +14,7 @@ import io
 import threading
 import time
 from datetime import datetime
+import requests
 
 try:
     import pygame
@@ -76,39 +78,43 @@ def get_current_pose(pose_type):
         return generate_pose(90, 170, 90) # Knee > 140 (Too High/Straight)
     return generate_pose(90, 120, 90)
 
+
 class BasketballCoachClient:
     def __init__(self, root):
         self.root = root
         self.root.title("🏀 Test Client (Simulate Real-time Camera)")
-        self.root.geometry("850x650")
-        
+        self.root.geometry("950x750")
+
         self.sio = socketio.Client()
         self.connected = False
         self.is_streaming = False
         self.frame_count = 0
-        
+
         self.setup_ui()
         self.setup_socket_events()
         
+
     def setup_ui(self):
-        conn_frame = ttk.Frame(self.root, padding="10")
+        self.tab_control = ttk.Notebook(self.root)
+
+        # --- WebSocket Tab ---
+        ws_tab = ttk.Frame(self.tab_control)
+        self.tab_control.add(ws_tab, text="WebSocket Demo")
+
+        conn_frame = ttk.Frame(ws_tab, padding="10")
         conn_frame.pack(fill=tk.X)
-        
         ttk.Label(conn_frame, text="Server URL:").pack(side=tk.LEFT, padx=5)
         self.url_entry = ttk.Entry(conn_frame, width=40)
         self.url_entry.insert(0, "http://localhost:3000")
         self.url_entry.pack(side=tk.LEFT, padx=5)
-        
         self.connect_btn = ttk.Button(conn_frame, text="Connect", command=self.toggle_connection)
         self.connect_btn.pack(side=tk.LEFT, padx=5)
-        
         self.status_label = ttk.Label(conn_frame, text="⚫ Disconnected", foreground="red")
         self.status_label.pack(side=tk.LEFT, padx=10)
-        
-        control_frame = ttk.LabelFrame(self.root, text="Real-time Pose Modifier (Change on the fly)", padding="10")
+
+        control_frame = ttk.LabelFrame(ws_tab, text="Real-time Pose Modifier (Change on the fly)", padding="10")
         control_frame.pack(fill=tk.X, padx=10, pady=5)
-        
-        self.pose_var = tk.StringVar(value="low_elbow") 
+        self.pose_var = tk.StringVar(value="low_elbow")
         poses = [
             ("🔴 Bad: Low Elbow (<80°)", "low_elbow"),
             ("🔴 Bad: Straight Legs (>140°)", "straight_legs"),
@@ -116,35 +122,176 @@ class BasketballCoachClient:
         ]
         for text, val in poses:
             ttk.Radiobutton(control_frame, text=text, variable=self.pose_var, value=val).pack(side=tk.LEFT, padx=10)
-        
-        btn_frame = ttk.Frame(self.root, padding="10")
+
+        btn_frame = ttk.Frame(ws_tab, padding="10")
         btn_frame.pack(fill=tk.X)
-        
-        # ĐỔI TEXT Ở ĐÂY (1fps)
-        self.stream_btn = ttk.Button(btn_frame, text="▶️ Start Auto Stream (1fps)", 
-                                     command=self.toggle_stream, state=tk.DISABLED, width=25)
+        self.stream_btn = ttk.Button(btn_frame, text="▶️ Start Auto Stream (1fps)", command=self.toggle_stream, state=tk.DISABLED, width=25)
         self.stream_btn.pack(side=tk.LEFT, padx=5)
-        
-        self.next_btn = ttk.Button(btn_frame, text="Step 1 Frame", 
-                                   command=self.send_single_frame, state=tk.DISABLED)
+        self.next_btn = ttk.Button(btn_frame, text="Step 1 Frame", command=self.send_single_frame, state=tk.DISABLED)
         self.next_btn.pack(side=tk.LEFT, padx=5)
-        
-        self.shot_btn = ttk.Button(btn_frame, text="🎯 Release Shot (Trigger LLM)", 
-                                   command=self.release_shot, state=tk.DISABLED)
+        self.shot_btn = ttk.Button(btn_frame, text="🎯 Release Shot (Trigger LLM)", command=self.release_shot, state=tk.DISABLED)
         self.shot_btn.pack(side=tk.LEFT, padx=5)
-        
-        self.reset_btn = ttk.Button(btn_frame, text="🔄 Reset Session", 
-                                    command=self.reset_session, state=tk.DISABLED)
+        self.reset_btn = ttk.Button(btn_frame, text="🔄 Reset Session", command=self.reset_session, state=tk.DISABLED)
         self.reset_btn.pack(side=tk.LEFT, padx=5)
-        
         self.progress_label = ttk.Label(btn_frame, text="Frames sent: 0")
         self.progress_label.pack(side=tk.LEFT, padx=20)
-        
-        log_frame = ttk.LabelFrame(self.root, text="Server Responses", padding="10")
+
+        log_frame = ttk.LabelFrame(ws_tab, text="Server Responses", padding="10")
         log_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
-        
         self.log_text = scrolledtext.ScrolledText(log_frame, height=15, state=tk.DISABLED, bg="#f4f4f4")
         self.log_text.pack(fill=tk.BOTH, expand=True)
+
+        # --- REST API Test Tab ---
+        api_tab = ttk.Frame(self.tab_control)
+        self.tab_control.add(api_tab, text="Backend API Test")
+
+        api_frame = ttk.LabelFrame(api_tab, text="Test Backend REST Endpoints", padding="10")
+        api_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        # User
+        ttk.Label(api_frame, text="User Signup/Login/Profile").grid(row=0, column=0, sticky="w")
+        self.api_user_id = tk.StringVar()
+        ttk.Button(api_frame, text="Signup", command=self.api_signup).grid(row=0, column=1)
+        ttk.Button(api_frame, text="Login", command=self.api_login).grid(row=0, column=2)
+        ttk.Button(api_frame, text="Update Profile", command=self.api_update_profile).grid(row=0, column=3)
+        ttk.Button(api_frame, text="Set Tone (cheerful)", command=lambda: self.api_set_tone('cheerful')).grid(row=0, column=4)
+        ttk.Entry(api_frame, textvariable=self.api_user_id, width=10).grid(row=0, column=5)
+        ttk.Label(api_frame, text="UserID").grid(row=0, column=6)
+
+        # Plan Chat
+        ttk.Label(api_frame, text="Plan Chat").grid(row=1, column=0, sticky="w")
+        self.api_plan_text = tk.StringVar(value="I want a shooting plan")
+        ttk.Entry(api_frame, textvariable=self.api_plan_text, width=30).grid(row=1, column=1, columnspan=2)
+        ttk.Button(api_frame, text="Send Plan Chat", command=self.api_plan_chat).grid(row=1, column=3)
+
+        # Personalized Plan
+        ttk.Label(api_frame, text="Get User Plans").grid(row=2, column=0, sticky="w")
+        ttk.Button(api_frame, text="Get Plans", command=self.api_get_plans).grid(row=2, column=1)
+
+        # Feedback
+        ttk.Label(api_frame, text="Shot Feedback").grid(row=3, column=0, sticky="w")
+        ttk.Button(api_frame, text="Send Shot Feedback", command=self.api_shot_feedback).grid(row=3, column=1)
+
+        # Exercises
+        ttk.Label(api_frame, text="Exercises").grid(row=4, column=0, sticky="w")
+        ttk.Button(api_frame, text="All", command=self.api_get_exercises).grid(row=4, column=1)
+        ttk.Button(api_frame, text="By Category", command=self.api_get_exercises_by_category).grid(row=4, column=2)
+        ttk.Button(api_frame, text="By ID", command=self.api_get_exercise_by_id).grid(row=4, column=3)
+
+        # Sessions
+        ttk.Label(api_frame, text="Sessions").grid(row=5, column=0, sticky="w")
+        ttk.Button(api_frame, text="All Sessions", command=self.api_get_sessions).grid(row=5, column=1)
+
+        self.tab_control.pack(expand=1, fill="both")
+            # --- REST API Test Methods ---
+            def api_base(self):
+                return self.url_entry.get().rstrip('/')
+
+            def api_signup(self):
+                url = self.api_base() + "/api/users/signup"
+                data = {"username": "testuser", "password": "testpass"}
+                try:
+                    r = requests.post(url, json=data)
+                    self.log(f"[API] Signup: {r.status_code} {r.text}")
+                    if r.ok:
+                        self.api_user_id.set(r.json().get('user', {}).get('_id', ''))
+                except Exception as e:
+                    self.log(f"[API] Signup error: {e}")
+
+            def api_login(self):
+                url = self.api_base() + "/api/users/login"
+                data = {"username": "testuser", "password": "testpass"}
+                try:
+                    r = requests.post(url, json=data)
+                    self.log(f"[API] Login: {r.status_code} {r.text}")
+                except Exception as e:
+                    self.log(f"[API] Login error: {e}")
+
+            def api_update_profile(self):
+                user_id = self.api_user_id.get()
+                if not user_id:
+                    self.log("[API] No user id for update profile")
+                    return
+                url = self.api_base() + f"/api/users/profile/{user_id}"
+                data = {"bio": "Updated from test client"}
+                try:
+                    r = requests.put(url, json=data)
+                    self.log(f"[API] Update Profile: {r.status_code} {r.text}")
+                except Exception as e:
+                    self.log(f"[API] Update Profile error: {e}")
+
+            def api_set_tone(self, tone):
+                user_id = self.api_user_id.get()
+                if not user_id:
+                    self.log("[API] No user id for set tone")
+                    return
+                url = self.api_base() + f"/api/users/profile/{user_id}/tone"
+                data = {"tone": tone}
+                try:
+                    r = requests.put(url, json=data)
+                    self.log(f"[API] Set Tone: {r.status_code} {r.text}")
+                except Exception as e:
+                    self.log(f"[API] Set Tone error: {e}")
+
+            def api_plan_chat(self):
+                user_id = self.api_user_id.get() or "demo_user"
+                url = self.api_base() + f"/api/users/{user_id}/plan-chat"
+                data = {"text": self.api_plan_text.get()}
+                try:
+                    r = requests.post(url, json=data)
+                    self.log(f"[API] Plan Chat: {r.status_code} {r.text}")
+                except Exception as e:
+                    self.log(f"[API] Plan Chat error: {e}")
+
+            def api_get_plans(self):
+                user_id = self.api_user_id.get() or "demo_user"
+                url = self.api_base() + f"/api/users/{user_id}/plans"
+                try:
+                    r = requests.get(url)
+                    self.log(f"[API] Get Plans: {r.status_code} {r.text}")
+                except Exception as e:
+                    self.log(f"[API] Get Plans error: {e}")
+
+            def api_shot_feedback(self):
+                url = self.api_base() + "/api/feedback/shot"
+                data = {"elbowAngle": 70, "kneeAngle": 150, "shoulderAngle": 90, "tone": "strict"}
+                try:
+                    r = requests.post(url, json=data)
+                    self.log(f"[API] Shot Feedback: {r.status_code} {r.text}")
+                except Exception as e:
+                    self.log(f"[API] Shot Feedback error: {e}")
+
+            def api_get_exercises(self):
+                url = self.api_base() + "/api/exercises"
+                try:
+                    r = requests.get(url)
+                    self.log(f"[API] Get Exercises: {r.status_code} {r.text}")
+                except Exception as e:
+                    self.log(f"[API] Get Exercises error: {e}")
+
+            def api_get_exercises_by_category(self):
+                url = self.api_base() + "/api/exercises/category/shooting"
+                try:
+                    r = requests.get(url)
+                    self.log(f"[API] Get Exercises By Category: {r.status_code} {r.text}")
+                except Exception as e:
+                    self.log(f"[API] Get Exercises By Category error: {e}")
+
+            def api_get_exercise_by_id(self):
+                url = self.api_base() + "/api/exercises/1"
+                try:
+                    r = requests.get(url)
+                    self.log(f"[API] Get Exercise By ID: {r.status_code} {r.text}")
+                except Exception as e:
+                    self.log(f"[API] Get Exercise By ID error: {e}")
+
+            def api_get_sessions(self):
+                url = self.api_base() + "/api/sessions"
+                try:
+                    r = requests.get(url)
+                    self.log(f"[API] Get Sessions: {r.status_code} {r.text}")
+                except Exception as e:
+                    self.log(f"[API] Get Sessions error: {e}")
         
     def log(self, message, color="black"):
         timestamp = datetime.now().strftime("%H:%M:%S")

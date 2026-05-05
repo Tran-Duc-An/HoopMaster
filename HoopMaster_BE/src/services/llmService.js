@@ -27,8 +27,17 @@ function buildPrompt(shotData) {
     frameCount,
     shootingHand,
     viewOrientation,
-    issues = []
+    issues = [],
+    tone = 'neutral'
   } = shotData;
+
+  // Lấy instruction theo tone
+  let instruction = feedbackData.instruction;
+  if (typeof instruction === 'object' && instruction[tone]) {
+    instruction = instruction[tone];
+  } else if (typeof instruction === 'object') {
+    instruction = instruction['neutral'];
+  }
 
   // Prepare values for template
   const values = {
@@ -41,8 +50,9 @@ function buildPrompt(shotData) {
     elbowIdeal: feedbackData.elbow.ideal,
     kneeIdeal: feedbackData.knee.ideal,
     shoulderIdeal: '30-120°',
-    instruction: feedbackData.instruction,
-    issues: issues.length > 0 ? `**Detected Issues:**\n${issues.map((issue, i) => `${i + 1}. ${issue}`).join('\n')}` : ''
+    instruction: instruction,
+    issues: issues.length > 0 ? `**Detected Issues:**\n${issues.map((issue, i) => `${i + 1}. ${issue}`).join('\n')}` : '',
+    tone: tone
   };
 
   // Replace placeholders in template
@@ -50,6 +60,8 @@ function buildPrompt(shotData) {
   for (const key in values) {
     prompt = prompt.replace(new RegExp(`{${key}}`, 'g'), values[key]);
   }
+  // Optionally, append tone instruction for LLM
+  prompt += `\nCoach tone: ${tone}`;
   return prompt;
 }
 
@@ -101,19 +113,30 @@ function generateFallbackFeedback(shotData) {
     avgBackAngle,
     releaseMotion,
     releasePoint,
-    issues = []
+    issues = [],
+    tone = 'neutral'
   } = shotData;
+
+  // fallback to neutral if invalid
+  const validTones = ['strict', 'cheerful', 'neutral'];
+  const selectedTone = validTones.includes(tone) ? tone : 'neutral';
 
   let feedbacks = [];
   // Elbow
   if (avgElbowAngle && avgElbowAngle < 80) {
-    feedbacks.push(pickRandom(feedbackData.elbow.feedback.low));
+    feedbacks.push(pickRandom(feedbackData.elbow.feedback.low[selectedTone]));
   } else if (avgElbowAngle && avgElbowAngle > 105) {
-    feedbacks.push(pickRandom(feedbackData.elbow.feedback.high));
+    feedbacks.push(pickRandom(feedbackData.elbow.feedback.high[selectedTone]));
+  } else if (avgElbowAngle && avgElbowAngle >= 80 && avgElbowAngle <= 105) {
+    feedbacks.push(pickRandom(feedbackData.elbow.feedback.perfect[selectedTone]));
   }
   // Knee
   if (avgKneeAngle && avgKneeAngle < 90) {
-    feedbacks.push(pickRandom(feedbackData.knee.feedback.low));
+    feedbacks.push(pickRandom(feedbackData.knee.feedback.low[selectedTone]));
+  } else if (avgKneeAngle && avgKneeAngle > 140) {
+    feedbacks.push(pickRandom(feedbackData.knee.feedback.high[selectedTone]));
+  } else if (avgKneeAngle && avgKneeAngle >= 90 && avgKneeAngle <= 140) {
+    feedbacks.push(pickRandom(feedbackData.knee.feedback.perfect[selectedTone]));
   }
   // Back
   if (avgBackAngle && (avgBackAngle < 170 || avgBackAngle > 190)) {
@@ -137,9 +160,9 @@ function generateFallbackFeedback(shotData) {
   }
   // General issues
   if (issues.length > 2) {
-    feedbacks.push(pickRandom(feedbackData.general.multi_issue));
+    feedbacks.push(pickRandom(feedbackData.general.multi_issue[selectedTone]));
   } else if (feedbacks.length === 0) {
-    feedbacks.push(pickRandom(feedbackData.general.good));
+    feedbacks.push(pickRandom(feedbackData.general.good[selectedTone]));
   }
 
   // Gộp feedback thành 1 đoạn

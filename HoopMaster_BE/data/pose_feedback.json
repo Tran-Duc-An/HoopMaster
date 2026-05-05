@@ -2,41 +2,91 @@
   "elbow": {
     "ideal": "80-105°",
     "feedback": {
-      "low": [
-        "Raise your elbow higher to generate more power.",
-        "Try to lift your elbow a bit more for better shot power.",
-        "Raising your elbow can help you achieve a smoother release.",
-        "Bend your elbows more for a full push up."
-      ],
-      "high": [
-        "Your elbow angle is a bit high. Try to relax your arm and keep your elbow more comfortable. Smoother motion will help you control the shot better.",
-        "Lower your elbow slightly for improved control.",
-        "Relax your arm and keep your elbow at a natural angle.",
-        "Don’t lock your elbows at the top."
-      ],
-      "perfect": [
-        "Perfect push up form!",
-        "Perfect! Elbow angle is ideal."
-      ]
+      "low": {
+        "strict": [
+          "Your elbow is too low. Raise it immediately if you want to improve!",
+          "This is not acceptable. Lift your elbow higher and focus!"
+        ],
+        "cheerful": [
+          "Hey, try raising your elbow a bit more! You can do it!",
+          "Just a little higher with your elbow and you'll nail it!"
+        ],
+        "neutral": [
+          "Raise your elbow higher to generate more power.",
+          "Try to lift your elbow a bit more for better shot power."
+        ]
+      },
+      "high": {
+        "strict": [
+          "Your elbow is too high. Lower it and control your form!",
+          "This is not the right technique. Keep your elbow at a proper angle."
+        ],
+        "cheerful": [
+          "Lower your elbow just a bit for even better control! Great effort!",
+          "Almost there! Relax your arm and keep your elbow comfy."
+        ],
+        "neutral": [
+          "Your elbow angle is a bit high. Try to relax your arm and keep your elbow more comfortable. Smoother motion will help you control the shot better.",
+          "Lower your elbow slightly for improved control."
+        ]
+      },
+      "perfect": {
+        "strict": [
+          "Good. This is the form I expect. Maintain it!"
+        ],
+        "cheerful": [
+          "Awesome! Perfect push up form! Keep it up!"
+        ],
+        "neutral": [
+          "Perfect push up form!",
+          "Perfect! Elbow angle is ideal."
+        ]
+      }
     }
   },
   "knee": {
     "ideal": "90-140°",
     "feedback": {
-      "low": [
-        "Your center of gravity is a bit low. Stand up a little straighter and bend your knees just enough to jump. Adjusting your posture will help stabilize your shot.",
-        "Try not to bend your knees too much; a slight bend is enough.",
-        "Stand taller and keep your knees flexible for better balance.",
-        "Pull your heel closer to your glutes."
-      ],
-      "high": [
-        "Lower your center of gravity, bend your knees more to build power.",
-        "Don’t overstretch your quad."
-      ],
-      "perfect": [
-        "Great! Knee position is ideal and ready to jump.",
-        "Good quad stretch!"
-      ]
+      "low": {
+        "strict": [
+          "You are bending your knees too much. Stand up straighter and focus!",
+          "This is not the right posture. Fix your knees if you want to improve."
+        ],
+        "cheerful": [
+          "Try not to bend your knees too much, just a little is enough! Keep going!",
+          "Stand taller and keep your knees flexible, you're doing great!"
+        ],
+        "neutral": [
+          "Your center of gravity is a bit low. Stand up a little straighter and bend your knees just enough to jump. Adjusting your posture will help stabilize your shot.",
+          "Try not to bend your knees too much; a slight bend is enough."
+        ]
+      },
+      "high": {
+        "strict": [
+          "You are not bending your knees enough. Lower your center of gravity!",
+          "Bend your knees more to build power. No excuses!"
+        ],
+        "cheerful": [
+          "Bend your knees a bit more to get more power! You got this!",
+          "Lower your center of gravity, and you'll jump even higher!"
+        ],
+        "neutral": [
+          "Lower your center of gravity, bend your knees more to build power.",
+          "Don’t overstretch your quad."
+        ]
+      },
+      "perfect": {
+        "strict": [
+          "Good. Knee position is correct. Maintain this standard."
+        ],
+        "cheerful": [
+          "Great! Knee position is ideal and ready to jump! Keep it up!"
+        ],
+        "neutral": [
+          "Great! Knee position is ideal and ready to jump.",
+          "Good quad stretch!"
+        ]
+      }
     }
   },
     "neck": {
@@ -69,16 +119,34 @@
       }
     },
   "general": {
-    "good": [
-      "Pretty good shot! Keep maintaining this form and practice regularly. Make sure to keep your elbow and knee angles stable in every shot.",
-      "Nice work! Your form is improving. Stay consistent with your practice.",
-      "Great effort! Keep focusing on your technique for even better results."
-    ],
-    "multi_issue": [
-      "Your form needs improvement in several areas. Work step by step: first stabilize your legs, then adjust your shooting arm. Keep practicing!",
-      "There are a few things to work on. Focus on your legs first, then your arm position.",
-      "Multiple areas need attention. Take it slow and improve one aspect at a time."
-    ]
+    "good": {
+      "strict": [
+        "This is acceptable. Keep practicing and do not lose focus.",
+        "You did well, but I expect you to maintain this level every time."
+      ],
+      "cheerful": [
+        "Nice work! Your form is improving. Keep it up!",
+        "Great effort! You're getting better every day!"
+      ],
+      "neutral": [
+        "Pretty good shot! Keep maintaining this form and practice regularly. Make sure to keep your elbow and knee angles stable in every shot.",
+        "Nice work! Your form is improving. Stay consistent with your practice."
+      ]
+    },
+    "multi_issue": {
+      "strict": [
+        "There are too many mistakes. Focus and fix your form step by step!",
+        "Unacceptable. You must improve in several areas. Work harder!"
+      ],
+      "cheerful": [
+        "There are a few things to work on, but don't worry! Step by step, you'll get there!",
+        "Multiple areas need attention, but you can do it! Keep practicing!"
+      ],
+      "neutral": [
+        "Your form needs improvement in several areas. Work step by step: first stabilize your legs, then adjust your shooting arm. Keep practicing!",
+        "There are a few things to work on. Focus on your legs first, then your arm position."
+      ]
+    }
   },
   "back": {
     "ideal": "170-190°",
@@ -125,7 +193,11 @@
       ]
     }
   },
-  "instruction": "Give practical advice, focus on 1-2 main points to improve. Use a friendly, encouraging tone.",
+  "instruction": {
+    "strict": "Be direct and brief. Focus only on the most important mistake. No unnecessary words.",
+    "cheerful": "Give detailed, friendly, and encouraging advice. Motivate the user and highlight their effort!",
+    "neutral": "Give practical advice, focus on 1-2 main points to improve. Use a friendly, encouraging tone."
+  },
   "session": {
     "consistency": {
       "high": [

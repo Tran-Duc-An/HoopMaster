@@ -31,6 +31,30 @@ const ANGLE_TOLERANCE = parseInt(process.env.ANGLE_TOLERANCE) || 5;
  * Mỗi intent sẽ điều chỉnh pitch, rate, volume khác nhau
  */
 const TTS_INTENTS = {
+    strict: {
+      description: 'Strict, concise, serious',
+      ssmlModifiers: {
+        pitch: '-8%',    // Giọng thấp, nghiêm túc
+        rate: '1.05',    // Nhanh hơn một chút
+        volume: 'medium'
+      }
+    },
+    cheerful: {
+      description: 'Cheerful, friendly, motivating',
+      ssmlModifiers: {
+        pitch: '+8%',    // Giọng cao, vui vẻ
+        rate: '1.15',   // Nhanh, sôi động
+        volume: 'loud'
+      }
+    },
+    neutral: {
+      description: 'Neutral, balanced',
+      ssmlModifiers: {
+        pitch: '0%',
+        rate: '1.0',
+        volume: 'medium'
+      }
+    },
   up: {
     description: 'Encouraging, positive tone',
     ssmlModifiers: {
