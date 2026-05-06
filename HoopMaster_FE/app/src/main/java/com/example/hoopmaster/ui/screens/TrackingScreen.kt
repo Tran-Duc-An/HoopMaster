@@ -51,6 +51,7 @@ fun TrackingScreen(
     // Trạng thái hiển thị
     var lensFacing by remember { mutableIntStateOf(CameraSelector.LENS_FACING_BACK) }
     var showSkeleton by remember { mutableStateOf(true) }
+    var poseInitError by remember { mutableStateOf<String?>(null) }
 
     // Quản lý quyền Camera
     var hasCameraPermission by remember {
@@ -85,12 +86,19 @@ fun TrackingScreen(
                 .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
                 .build()
                 .also {
-                    it.setAnalyzer(executor, PoseAnalyzer(context) { result, _, _ ->
-                        viewModel.poseResult.value = result
-                        if (result != null) {
-                            viewModel.streamPoseToServer(result)
+                    it.setAnalyzer(executor, PoseAnalyzer(
+                        context,
+                        onPoseDetected = { result, _, _ ->
+                            viewModel.poseResult.value = result
+                            if (result != null) {
+                                viewModel.streamPoseToServer(result)
+                            }
+                        },
+                        onError = { message ->
+                            poseInitError = message
                         }
-                    })
+                    ))
+
                 }
 
             val cameraSelector = CameraSelector.Builder()
@@ -117,7 +125,7 @@ fun TrackingScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(Color.Black)
+                .background(MaterialTheme.colorScheme.background)
         ) {
             // --- PHẦN 1: CAMERA & SKELETON OVERLAY ---
             Box(
@@ -136,6 +144,8 @@ fun TrackingScreen(
                     // 1.2 Layer vẽ Khung xương
                     val poseResult = viewModel.poseResult.value
                     if (showSkeleton && poseResult != null && poseResult.landmarks().isNotEmpty()) {
+                        val skeletonLineColor = MaterialTheme.colorScheme.tertiary
+                        val skeletonPointColor = MaterialTheme.colorScheme.secondaryContainer
                         Canvas(modifier = Modifier.fillMaxSize()) {
                             val landmarks = poseResult.landmarks()[0]
                             val connections = listOf(
@@ -149,12 +159,21 @@ fun TrackingScreen(
                                 val startPoint = landmarks[start]
                                 val endPoint = landmarks[end]
                                 if (startPoint.visibility().orElse(0f) > 0.5f && endPoint.visibility().orElse(0f) > 0.5f) {
-                                    drawLine(color = Color.Cyan, start = Offset(startPoint.x() * size.width, startPoint.y() * size.height), end = Offset(endPoint.x() * size.width, endPoint.y() * size.height), strokeWidth = 5f)
+                                    drawLine(
+                                        color = skeletonLineColor,
+                                        start = Offset(startPoint.x() * size.width, startPoint.y() * size.height),
+                                        end = Offset(endPoint.x() * size.width, endPoint.y() * size.height),
+                                        strokeWidth = 5f
+                                    )
                                 }
                             }
                             landmarks.forEach { landmark ->
                                 if (landmark.visibility().orElse(0f) > 0.5f) {
-                                    drawCircle(color = Color.Red, radius = 8f, center = Offset(landmark.x() * size.width, landmark.y() * size.height))
+                                    drawCircle(
+                                        color = skeletonPointColor,
+                                        radius = 8f,
+                                        center = Offset(landmark.x() * size.width, landmark.y() * size.height)
+                                    )
                                 }
                             }
                         }
@@ -177,7 +196,10 @@ fun TrackingScreen(
                                 }
                             },
                             modifier = Modifier
-                                .background(Color.Black.copy(alpha = 0.5f), shape = CircleShape)
+                                .background(
+                                    MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                                    shape = CircleShape
+                                )
                         ) {
                             Icon(Icons.Default.FlipCameraAndroid, contentDescription = "Lật Camera", tint = Color.White)
                         }
@@ -189,8 +211,8 @@ fun TrackingScreen(
                             onClick = { showSkeleton = !showSkeleton },
                             modifier = Modifier
                                 .background(
-                                    if (showSkeleton) Color(0xFF4CAF50).copy(alpha = 0.6f)
-                                    else Color(0xFFF44336).copy(alpha = 0.6f),
+                                    if (showSkeleton) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
+                                    else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f),
                                     shape = CircleShape
                                 )
                         ) {
@@ -201,8 +223,28 @@ fun TrackingScreen(
                             )
                         }
                     }
+
+                    if (poseInitError != null) {
+                        Surface(
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(12.dp),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = poseInitError ?: "",
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(12.dp),
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
                 } else {
-                    Text("Vui lòng cấp quyền Camera", color = Color.White)
+                    Text(
+                        "Vui lòng cấp quyền Camera",
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                 }
 
                 // 1.4 Floating AI Feedback
@@ -210,12 +252,12 @@ fun TrackingScreen(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(bottom = 24.dp, start = 16.dp, end = 16.dp),
-                    color = Color.Black.copy(alpha = 0.7f),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(
                         text = viewModel.feedbackText.value,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.padding(16.dp),
                         fontWeight = FontWeight.Medium
                     )
@@ -226,7 +268,7 @@ fun TrackingScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(
                     modifier = Modifier
@@ -234,7 +276,11 @@ fun TrackingScreen(
                         .fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("AI COACH TONE", style = MaterialTheme.typography.labelLarge, color = Color.Gray)
+                    Text(
+                        "AI COACH TONE",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -256,9 +302,12 @@ fun TrackingScreen(
                             .fillMaxWidth()
                             .height(56.dp),
                         shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F))
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        )
                     ) {
-                        Text("END SESSION", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                        Text("END SESSION", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }
                 }
             }
