@@ -37,16 +37,57 @@ function textToSSML(text, intent = 'neutral', lang = 'en-US') {
     { word: /relax|thả lỏng/gi, pitch: '-6%' }
   ];
 
-  let processedText = text;
-  if (intent === 'strict' || intent === 'cheerful') {
-    // Chỉ nhấn mạnh khi strict hoặc cheerful
+  // --- New logic: split text by keywords and map pitch to semitone ---
+  function splitTextByKeywords(text) {
+    if (!text || typeof text !== 'string') return [];
+    let result = [{ text, pitch: null }];
     highlightKeywords.forEach(({ word, pitch }) => {
-      processedText = processedText.replace(word, (match) => `<prosody pitch="${pitch}">${escapeXML(match)}</prosody>`);
+      let newResult = [];
+      result.forEach(segment => {
+        if (segment.pitch !== null) {
+          newResult.push(segment);
+        } else {
+          let lastIndex = 0;
+          let match;
+          word.lastIndex = 0;
+          while ((match = word.exec(segment.text)) !== null) {
+            if (match.index > lastIndex) {
+              newResult.push({ text: segment.text.slice(lastIndex, match.index), pitch: null });
+            }
+            newResult.push({ text: match[0], pitch });
+            lastIndex = match.index + match[0].length;
+          }
+          if (lastIndex < segment.text.length) {
+            newResult.push({ text: segment.text.slice(lastIndex), pitch: null });
+          }
+        }
+      });
+      result = newResult;
     });
+    return result.filter(seg => seg.text && seg.text.trim() !== '');
   }
 
-  // Escape XML special characters ngoài các thẻ prosody
-  // Để không escape các thẻ vừa thêm, tách từng phần
+  function mapPitchPercentToSemitone(pitchStr) {
+    if (!pitchStr || typeof pitchStr !== 'string') return 0;
+    const match = pitchStr.match(/([+-]?\d+)%/);
+    if (!match) return 0;
+    // 12% ~ 2 semitone, 6% ~ 1 semitone
+    const percent = parseInt(match[1], 10);
+    return percent / 6;
+  }
+
+  if (process.env.TTS_PROVIDER === 'local') {
+    // Return array of segments for local TTS
+    return splitTextByKeywords(text);
+  }
+
+  // --- Fallback to old SSML logic for other providers ---
+  let processedText = text;
+  if (intent === 'strict' || intent === 'cheerful') {
+    highlightKeywords.forEach(({ word, pitch }) => {
+      processedText = processedText.replace(word, (match) => `<prosody pitch=\"${pitch}\">${escapeXML(match)}</prosody>`);
+    });
+  }
   function escapeExceptProsody(str) {
     return str.replace(/(<prosody[^>]*>.*?<\/prosody>)/gi, (m) => `@@@${Buffer.from(m).toString('base64')}@@@`)
       .split('@@@').map(part => {
@@ -56,15 +97,8 @@ function textToSSML(text, intent = 'neutral', lang = 'en-US') {
       }).join('');
   }
   const escapedText = escapeExceptProsody(processedText);
-
-  // Create SSML with prosody tags
   const ssml = `
-<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="${lang}">
-  <prosody pitch="${pitch}" rate="${rate}" volume="${volume}">
-    ${escapedText}
-  </prosody>
-</speak>`.trim();
-
+<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"${lang}\">\n  <prosody pitch=\"${pitch}\" rate=\"${rate}\" volume=\"${volume}\">\n    ${escapedText}\n  </prosody>\n</speak>`.trim();
   return ssml;
 }
 
@@ -90,15 +124,32 @@ function escapeXML(text) {
  * @param {string} provider - 'mock' | 'google' | 'elevenlabs'
  * @returns {Promise<string>} Base64 encoded audio data
  */
-async function _generateAudioBase64(ssml, provider = process.env.TTS_PROVIDER || 'mock') {
+/**
+ * Generate Base64 Audio from TTS provider
+ * @param {object|string} input - {text, intent, ssml} hoặc ssml (backward compatible)
+ * @param {string} provider
+ * @returns {Promise<string>}
+ */
+async function _generateAudioBase64(input, provider = process.env.TTS_PROVIDER || 'mock') {
   try {
+    // Backward compatible: nếu input là string thì coi là ssml
+    let text, intent, ssml;
+    if (typeof input === 'string') {
+      ssml = input;
+    } else if (typeof input === 'object' && input !== null) {
+      text = input.text;
+      intent = input.intent;
+      ssml = input.ssml;
+    }
     switch (provider) {
       case 'google':
         return await generateGoogleTTS(ssml);
-      
       case 'elevenlabs':
         return await generateElevenLabsTTS(ssml);
-      
+      case 'local':
+        return await generateLocalTTS(ssml);
+      case 'kokoro':
+        return await generateKokoroTTS(text, intent);
       case 'mock':
       default:
         return generateMockAudioBase64(ssml);
@@ -108,7 +159,55 @@ async function _generateAudioBase64(ssml, provider = process.env.TTS_PROVIDER ||
     // Fallback to mock if API fails
     return generateMockAudioBase64(ssml);
   }
+}
+
+/**
+ * Gọi TTS nội bộ kiểu kokoro (http://localhost:8000/tts)
+ * @param {string} text
+ * @param {string} intent
+ * @returns {Promise<string>} Base64 encoded audio data
+ */
+async function generateKokoroTTS(text, intent) {
+  const axios = require('axios');
+  try {
+    const response = await axios.post('http://localhost:8000/tts', { text, intent }, {
+      timeout: 10000,
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (response.data && response.data.audioBase64) {
+      return response.data.audioBase64;
+    } else {
+      throw new Error('Kokoro TTS: No audioBase64 in response');
+    }
+  } catch (error) {
+    console.error('[TTS] Kokoro API error:', error.response?.data || error.message);
+    throw error;
   }
+}
+
+/**
+ * Local TTS API (http://localhost:8000/tts)
+ * @param {string} ssml
+ * @returns {Promise<string>} Base64 encoded audio data
+ */
+async function generateLocalTTS(ssml) {
+  const axios = require('axios');
+  try {
+    const response = await axios.post('http://localhost:8000/tts', { ssml }, {
+      timeout: 10000,
+      headers: { 'Content-Type': 'application/json' }
+    });
+    // Expecting { audioBase64: 'data:audio/wav;base64,...' }
+    if (response.data && response.data.audioBase64) {
+      return response.data.audioBase64;
+    } else {
+      throw new Error('Local TTS: No audioBase64 in response');
+    }
+  } catch (error) {
+    console.error('[TTS] Local API error:', error.response?.data || error.message);
+    throw error;
+  }
+}
 
   // Limit 1 request/second to ElevenLabs (or real provider)
   const Bottleneck = require('bottleneck');
@@ -252,11 +351,16 @@ async function synthesizeSpeech(text, intent = 'neutral') {
   const startTime = Date.now();
 
   try {
-    // Step 1: Convert text to SSML
-    const ssml = textToSSML(text, intent);
-
-    // Step 2: Generate audio from SSML
-    const audioBase64 = await generateAudioBase64(ssml);
+    // Step 1: Chuẩn bị input cho provider
+    let input;
+    if (process.env.TTS_PROVIDER === 'kokoro') {
+      input = { text, intent };
+    } else {
+      const ssml = textToSSML(text, intent);
+      input = ssml;
+    }
+    // Step 2: Generate audio
+    const audioBase64 = await generateAudioBase64(input);
 
     const duration = Date.now() - startTime;
 

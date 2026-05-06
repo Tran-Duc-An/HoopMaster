@@ -5,17 +5,46 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="25fa8014-45b5-4e62-bb33-d95d509268e2" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/HoopMaster_BE/data/pose_feedback.json" beforeDir="false" afterPath="$PROJECT_DIR$/HoopMaster_BE/data/pose_feedback.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HoopMaster_BE/output.wav" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/HoopMaster_BE/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/HoopMaster_BE/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HoopMaster_BE/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/HoopMaster_BE/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HoopMaster_BE/src/models/connectDB.js" beforeDir="false" afterPath="$PROJECT_DIR$/HoopMaster_BE/src/models/connectDB.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HoopMaster_BE/src/models/userModel.js" beforeDir="false" afterPath="$PROJECT_DIR$/HoopMaster_BE/src/models/userModel.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HoopMaster_BE/src/routes/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/HoopMaster_BE/src/routes/index.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HoopMaster_BE/src/routes/userRoutes.js" beforeDir="false" afterPath="$PROJECT_DIR$/HoopMaster_BE/src/routes/userRoutes.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HoopMaster_BE/src/server.js" beforeDir="false" afterPath="$PROJECT_DIR$/HoopMaster_BE/src/server.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HoopMaster_BE/src/services/llmService.js" beforeDir="false" afterPath="$PROJECT_DIR$/HoopMaster_BE/src/services/llmService.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HoopMaster_BE/test_client.py" beforeDir="false" afterPath="$PROJECT_DIR$/HoopMaster_BE/test_client.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/build.gradle.kts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/proguard-rules.pro" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/src/androidTest/java/com/example/hoopmaster/ExampleInstrumentedTest.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/src/main/AndroidManifest.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/src/main/java/com/example/hoopmaster/MainActivity.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/src/main/java/com/example/hoopmaster/ui/theme/Color.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/src/main/java/com/example/hoopmaster/ui/theme/Theme.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/src/main/java/com/example/hoopmaster/ui/theme/Type.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/src/main/res/drawable/ic_launcher_background.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/src/main/res/drawable/ic_launcher_foreground.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/src/main/res/mipmap-hdpi/ic_launcher.webp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/src/main/res/mipmap-hdpi/ic_launcher_round.webp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/src/main/res/mipmap-mdpi/ic_launcher.webp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/src/main/res/mipmap-mdpi/ic_launcher_round.webp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/src/main/res/mipmap-xhdpi/ic_launcher.webp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/src/main/res/mipmap-xhdpi/ic_launcher_round.webp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/src/main/res/mipmap-xxhdpi/ic_launcher.webp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.webp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.webp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/src/main/res/values/colors.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/src/main/res/values/strings.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/src/main/res/values/themes.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/src/main/res/xml/backup_rules.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/src/main/res/xml/data_extraction_rules.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/app/src/test/java/com/example/hoopmaster/ExampleUnitTest.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/build.gradle.kts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/gradle.properties" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/gradle/libs.versions.toml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/gradle/wrapper/gradle-wrapper.jar" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/gradle/wrapper/gradle-wrapper.properties" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/gradlew" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/gradlew.bat" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HoopMaster_FE/settings.gradle.kts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/gradle.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/gradle.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -28,25 +57,39 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "customColor": "",
-  "associatedIndex": 2
-}]]></component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;Tran-Duc-An&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/Tran-Duc-An/HoopMaster&quot;,
+    &quot;accountId&quot;: &quot;69492107-5bbd-4026-aa5b-15f1647d4721&quot;
+  }
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;customColor&quot;: &quot;&quot;,
+  &quot;associatedIndex&quot;: 2
+}</component>
   <component name="ProjectId" id="3Cy59ZYK87XGdjndpgJ3NEIZBjP" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.cidr.known.project.marker": "true",
-    "RunOnceActivity.readMode.enableVisualFormatting": "true",
-    "cf.first.check.clang-format": "false",
-    "cidr.known.project.marker": "true",
-    "git-widget-placeholder": "main"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
+    &quot;android.gradle.sync.needed&quot;: &quot;true&quot;,
+    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
+    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;
   }
-}]]></component>
+}</component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
