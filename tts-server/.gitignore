@@ -41,6 +41,10 @@ output*.wav
 output*.mp3
 stream*.wav
 
+# Model and cache data
+models/
+cache/
+
 # Logs
 *.log
 

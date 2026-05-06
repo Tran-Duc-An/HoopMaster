@@ -1,0 +1,27 @@
+defaults:
+  voice: en_coach_male
+  voice_by_language:
+    en: en_coach_male
+    vi: vi_coach_male
+
+voices:
+  en_coach_male:
+    engine: piper
+    language: en
+    locale: en_US
+    gender: male
+    style: coach
+    piper:
+      voice: en_US-ryan-high
+      model_url: https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/ryan/high/en_US-ryan-high.onnx?download=true
+      config_url: https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/en/en_US/ryan/high/en_US-ryan-high.onnx.json?download=true
+  vi_coach_male:
+    engine: piper
+    language: vi
+    locale: vi_VN
+    gender: male
+    style: coach
+    piper:
+      voice: vi_VN-vais1000-medium
+      model_url: https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/vi/vi_VN/vais1000/medium/vi_VN-vais1000-medium.onnx?download=true
+      config_url: https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/vi/vi_VN/vais1000/medium/vi_VN-vais1000-medium.onnx.json?download=true
