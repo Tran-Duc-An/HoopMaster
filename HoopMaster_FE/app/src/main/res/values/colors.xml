@@ -1,10 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="purple_200">#FFBB86FC</color>
-    <color name="purple_500">#FF6200EE</color>
-    <color name="purple_700">#FF3700B3</color>
-    <color name="teal_200">#FF03DAC5</color>
-    <color name="teal_700">#FF018786</color>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+    <color name="midnight_background">#131314</color>
+    <color name="surface">#131314</color>
+    <color name="surface_bright">#3A393A</color>
+    <color name="surface_container_lowest">#0E0E0F</color>
+    <color name="surface_container_low">#1C1B1C</color>
+    <color name="surface_container">#201F20</color>
+    <color name="surface_container_high">#2A2A2B</color>
+    <color name="surface_container_highest">#353436</color>
+    <color name="on_surface">#E5E2E3</color>
+    <color name="on_surface_variant">#E4BFB1</color>
+    <color name="inverse_surface">#E5E2E3</color>
+    <color name="inverse_on_surface">#313031</color>
+    <color name="outline">#AB8A7D</color>
+    <color name="outline_variant">#5B4137</color>
+    <color name="surface_tint">#FFB599</color>
+
+    <color name="primary">#FFB599</color>
+    <color name="on_primary">#5A1C00</color>
+    <color name="primary_container">#FF5F00</color>
+    <color name="on_primary_container">#531A00</color>
+    <color name="inverse_primary">#A63B00</color>
+
+    <color name="secondary">#D7FFC5</color>
+    <color name="on_secondary">#053900</color>
+    <color name="secondary_container">#2FF801</color>
+    <color name="on_secondary_container">#0F6D00</color>
+
+    <color name="tertiary">#00DAF8</color>
+    <color name="on_tertiary">#00363F</color>
+    <color name="tertiary_container">#00A2B9</color>
+    <color name="on_tertiary_container">#00323A</color>
+
+    <color name="error">#FFB4AB</color>
+    <color name="on_error">#690005</color>
+    <color name="error_container">#93000A</color>
+    <color name="on_error_container">#FFDAD6</color>
 </resources>

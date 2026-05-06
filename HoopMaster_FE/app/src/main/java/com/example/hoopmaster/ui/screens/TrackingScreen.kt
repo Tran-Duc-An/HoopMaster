@@ -12,22 +12,60 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FlipCameraAndroid
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.outlined.Architecture
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material3.Divider
+import androidx.compose.material3.DividerDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -44,13 +82,14 @@ fun TrackingScreen(
     viewModel: TrackingViewModel = viewModel()
 ) {
     val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     val executor = remember { Executors.newSingleThreadExecutor() }
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
 
     // Trạng thái hiển thị
     var lensFacing by remember { mutableIntStateOf(CameraSelector.LENS_FACING_BACK) }
     var showSkeleton by remember { mutableStateOf(true) }
+    var poseInitError by remember { mutableStateOf<String?>(null) }
 
     // Quản lý quyền Camera
     var hasCameraPermission by remember {
@@ -85,12 +124,17 @@ fun TrackingScreen(
                 .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
                 .build()
                 .also {
-                    it.setAnalyzer(executor, PoseAnalyzer(context) { result, _, _ ->
-                        viewModel.poseResult.value = result
-                        if (result != null) {
+                    it.setAnalyzer(executor, PoseAnalyzer(
+                        context,
+                        onPoseDetected = { result, _, _ ->
+                            viewModel.poseResult.value = result
                             viewModel.streamPoseToServer(result)
+                        },
+                        onError = { message ->
+                            poseInitError = message
                         }
-                    })
+                    ))
+
                 }
 
             val cameraSelector = CameraSelector.Builder()
@@ -112,156 +156,494 @@ fun TrackingScreen(
         }
     }
 
-    Scaffold { padding ->
-        Column(
+    val accuracyValue = 0.78f
+    val releaseValue = ".65s"
+    val arcValue = "45°"
+    val madeShots = 12
+    val totalShots = 15
+    val streakValue = 3
+    val analysisTitle = "Last Shot Analysis"
+    val analysisMessage = if (viewModel.feedbackText.value.isNotBlank()) {
+        viewModel.feedbackText.value
+    } else {
+        "Perfect Arc!"
+    }
+
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background
+    ) { padding ->
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(Color.Black)
+                .background(MaterialTheme.colorScheme.background)
         ) {
-            // --- PHẦN 1: CAMERA & SKELETON OVERLAY ---
+            if (hasCameraPermission) {
+                AndroidView(
+                    modifier = Modifier.fillMaxSize(),
+                    factory = { previewView }
+                )
+            } else {
+                CameraFallbackBackground()
+            }
+
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                if (hasCameraPermission) {
-                    // 1.1 Layer Camera Preview (Rất gọn gàng vì logic đã đưa lên trên)
-                    AndroidView(
-                        modifier = Modifier.fillMaxSize(),
-                        factory = { previewView }
-                    )
+                    .matchParentSize()
+                    .background(Color.Black.copy(alpha = 0.35f))
+            )
 
-                    // 1.2 Layer vẽ Khung xương
-                    val poseResult = viewModel.poseResult.value
-                    if (showSkeleton && poseResult != null && poseResult.landmarks().isNotEmpty()) {
-                        Canvas(modifier = Modifier.fillMaxSize()) {
-                            val landmarks = poseResult.landmarks()[0]
-                            val connections = listOf(
-                                Pair(11, 12), Pair(11, 13), Pair(13, 15),
-                                Pair(12, 14), Pair(14, 16),
-                                Pair(11, 23), Pair(12, 24), Pair(23, 24),
-                                Pair(23, 25), Pair(25, 27),
-                                Pair(24, 26), Pair(26, 28)
-                            )
-                            connections.forEach { (start, end) ->
-                                val startPoint = landmarks[start]
-                                val endPoint = landmarks[end]
-                                if (startPoint.visibility().orElse(0f) > 0.5f && endPoint.visibility().orElse(0f) > 0.5f) {
-                                    drawLine(color = Color.Cyan, start = Offset(startPoint.x() * size.width, startPoint.y() * size.height), end = Offset(endPoint.x() * size.width, endPoint.y() * size.height), strokeWidth = 5f)
-                                }
-                            }
-                            landmarks.forEach { landmark ->
-                                if (landmark.visibility().orElse(0f) > 0.5f) {
-                                    drawCircle(color = Color.Red, radius = 8f, center = Offset(landmark.x() * size.width, landmark.y() * size.height))
-                                }
-                            }
-                        }
-                    }
-
-                    // 1.3 Nút Điều Khiển
-                    Column(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        // Nút Lật Camera
-                        IconButton(
-                            onClick = {
-                                lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK) {
-                                    CameraSelector.LENS_FACING_FRONT
-                                } else {
-                                    CameraSelector.LENS_FACING_BACK
-                                }
-                            },
-                            modifier = Modifier
-                                .background(Color.Black.copy(alpha = 0.5f), shape = CircleShape)
-                        ) {
-                            Icon(Icons.Default.FlipCameraAndroid, contentDescription = "Lật Camera", tint = Color.White)
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Nút Bật/Tắt Khung Xương
-                        IconButton(
-                            onClick = { showSkeleton = !showSkeleton },
-                            modifier = Modifier
-                                .background(
-                                    if (showSkeleton) Color(0xFF4CAF50).copy(alpha = 0.6f)
-                                    else Color(0xFFF44336).copy(alpha = 0.6f),
-                                    shape = CircleShape
+            if (hasCameraPermission) {
+                val poseResult = viewModel.poseResult.value
+                if (showSkeleton && poseResult != null && poseResult.landmarks().isNotEmpty()) {
+                    val skeletonLineColor = MaterialTheme.colorScheme.tertiary
+                    val skeletonPointColor = MaterialTheme.colorScheme.tertiary
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        val landmarks = poseResult.landmarks()[0]
+                        val connections = listOf(
+                            Pair(11, 12), Pair(11, 13), Pair(13, 15),
+                            Pair(12, 14), Pair(14, 16),
+                            Pair(11, 23), Pair(12, 24), Pair(23, 24),
+                            Pair(23, 25), Pair(25, 27),
+                            Pair(24, 26), Pair(26, 28)
+                        )
+                        connections.forEach { (start, end) ->
+                            val startPoint = landmarks[start]
+                            val endPoint = landmarks[end]
+                            if (startPoint.visibility().orElse(0f) > 0.5f && endPoint.visibility().orElse(0f) > 0.5f) {
+                                drawLine(
+                                    color = skeletonLineColor,
+                                    start = Offset(startPoint.x() * size.width, startPoint.y() * size.height),
+                                    end = Offset(endPoint.x() * size.width, endPoint.y() * size.height),
+                                    strokeWidth = 4f
                                 )
-                        ) {
-                            Icon(
-                                imageVector = if (showSkeleton) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                contentDescription = "Bật tắt khung xương",
-                                tint = Color.White
-                            )
+                            }
+                        }
+                        landmarks.forEach { landmark ->
+                            if (landmark.visibility().orElse(0f) > 0.5f) {
+                                drawCircle(
+                                    color = skeletonPointColor,
+                                    radius = 7f,
+                                    center = Offset(landmark.x() * size.width, landmark.y() * size.height)
+                                )
+                            }
                         }
                     }
-                } else {
-                    Text("Vui lòng cấp quyền Camera", color = Color.White)
-                }
-
-                // 1.4 Floating AI Feedback
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 24.dp, start = 16.dp, end = 16.dp),
-                    color = Color.Black.copy(alpha = 0.7f),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text(
-                        text = viewModel.feedbackText.value,
-                        color = Color.White,
-                        modifier = Modifier.padding(16.dp),
-                        fontWeight = FontWeight.Medium
-                    )
                 }
             }
 
-            // --- PHẦN 2: BẢNG ĐIỀU KHIỂN (CONTROL PANEL) ---
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+            TopTrackingBar(
+                onClose = onEndSession,
+                onFlipCamera = {
+                    lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK) {
+                        CameraSelector.LENS_FACING_FRONT
+                    } else {
+                        CameraSelector.LENS_FACING_BACK
+                    }
+                },
+                timerText = "00:59"
+            )
+
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 96.dp, end = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(
+                GlassIconButton(
+                    onClick = { showSkeleton = !showSkeleton },
+                    icon = if (showSkeleton) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                    contentDescription = "Toggle skeleton",
+                    containerColor = if (showSkeleton) {
+                        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                    } else {
+                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                    }
+                )
+            }
+
+            AccuracyMeter(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 20.dp),
+                progress = accuracyValue,
+                label = "Accuracy"
+            )
+
+            Column(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                QuickStatCard(
+                    icon = Icons.Outlined.Speed,
+                    iconTint = MaterialTheme.colorScheme.tertiary,
+                    value = releaseValue,
+                    label = "Release"
+                )
+                QuickStatCard(
+                    icon = Icons.Outlined.Architecture,
+                    iconTint = MaterialTheme.colorScheme.primaryContainer,
+                    value = arcValue,
+                    label = "Arc"
+                )
+            }
+
+            LastShotAnalysisCard(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 20.dp, vertical = 24.dp),
+                title = analysisTitle,
+                message = analysisMessage,
+                made = madeShots,
+                total = totalShots,
+                streak = streakValue
+            )
+
+            if (poseInitError != null) {
+                Surface(
                     modifier = Modifier
-                        .padding(24.dp)
-                        .fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .align(Alignment.TopCenter)
+                        .padding(top = 88.dp)
+                        .padding(horizontal = 16.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                    shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text("AI COACH TONE", style = MaterialTheme.typography.labelLarge, color = Color.Gray)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        val tones = listOf("neutral", "strict", "cheerful")
-                        tones.forEach { tone ->
-                            FilterChip(
-                                selected = viewModel.selectedTone.value == tone,
-                                onClick = { viewModel.updateTone(tone) },
-                                label = { Text(tone.replaceFirstChar { it.uppercase() }) }
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Button(
-                        onClick = onEndSession,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F))
-                    ) {
-                        Text("END SESSION", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
-                    }
+                    Text(
+                        text = poseInitError ?: "",
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(12.dp),
+                        fontSize = 12.sp
+                    )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun TopTrackingBar(
+    onClose: () -> Unit,
+    onFlipCamera: () -> Unit,
+    timerText: String
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        GlassIconButton(
+            onClick = onClose,
+            icon = Icons.Outlined.Close,
+            contentDescription = "Close session"
+        )
+
+        RecordingPill(timerText = timerText)
+
+        GlassIconButton(
+            onClick = onFlipCamera,
+            icon = Icons.Default.FlipCameraAndroid,
+            contentDescription = "Flip camera"
+        )
+    }
+}
+
+@Composable
+private fun RecordingPill(timerText: String) {
+    val pillShape = RoundedCornerShape(999.dp)
+    Row(
+        modifier = Modifier
+            .clip(pillShape)
+            .background(Color.White.copy(alpha = 0.08f))
+            .border(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.35f), pillShape)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.error)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = "REC",
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.error,
+            letterSpacing = 2.sp
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = timerText,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+@Composable
+private fun GlassIconButton(
+    onClick: () -> Unit,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    containerColor: Color = Color.White.copy(alpha = 0.08f),
+    size: Dp = 48.dp
+) {
+    Surface(
+        shape = CircleShape,
+        color = containerColor,
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
+    ) {
+        IconButton(
+            onClick = onClick,
+            modifier = Modifier.size(size)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+@Composable
+private fun AccuracyMeter(
+    modifier: Modifier,
+    progress: Float,
+    label: String
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .height(220.dp)
+                .width(44.dp)
+                .clip(RoundedCornerShape(999.dp))
+                .background(Color.White.copy(alpha = 0.08f))
+                .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(999.dp))
+                .padding(6.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(progress)
+                    .align(Alignment.BottomCenter)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(MaterialTheme.colorScheme.secondaryContainer)
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(2.dp)
+                    .align(Alignment.TopCenter)
+                    .offset(y = 38.dp)
+                    .background(Color.White.copy(alpha = 0.8f))
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "${(progress * 100).toInt()}%",
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.secondaryContainer
+        )
+        Text(
+            text = label.uppercase(),
+            fontSize = 10.sp,
+            letterSpacing = 1.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun QuickStatCard(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconTint: Color,
+    value: String,
+    label: String
+) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White.copy(alpha = 0.08f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = iconTint,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = label.uppercase(),
+                fontSize = 10.sp,
+                letterSpacing = 1.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun LastShotAnalysisCard(
+    modifier: Modifier,
+    title: String,
+    message: String,
+    made: Int,
+    total: Int,
+    streak: Int
+) {
+    Surface(
+        modifier = modifier
+            .navigationBarsPadding(),
+        shape = RoundedCornerShape(20.dp),
+        color = Color.White.copy(alpha = 0.08f),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = title.uppercase(),
+                        fontSize = 12.sp,
+                        letterSpacing = 1.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = message,
+                        fontSize = 28.sp,
+                        fontStyle = FontStyle.Italic,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primaryContainer
+                    )
+                }
+                Surface(
+                    shape = CircleShape,
+                    color = Color.White.copy(alpha = 0.08f),
+                    border = androidx.compose.foundation.BorderStroke(
+                        3.dp,
+                        MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Check,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.secondaryContainer,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            HorizontalDivider(
+                Modifier,
+                DividerDefaults.Thickness,
+                color = Color.White.copy(alpha = 0.12f)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                StatColumn(label = "Made", value = made.toString())
+                StatColumn(label = "Total", value = total.toString())
+                StatColumn(
+                    label = "Streak",
+                    value = streak.toString(),
+                    valueColor = MaterialTheme.colorScheme.tertiary,
+                    alignEnd = true
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatColumn(
+    label: String,
+    value: String,
+    valueColor: Color = MaterialTheme.colorScheme.onSurface,
+    alignEnd: Boolean = false
+) {
+    Column(
+        horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start
+    ) {
+        Text(
+            text = label.uppercase(),
+            fontSize = 10.sp,
+            letterSpacing = 1.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = if (alignEnd) TextAlign.End else TextAlign.Start
+        )
+        Text(
+            text = value,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = valueColor
+        )
+    }
+}
+
+@Composable
+private fun CameraFallbackBackground() {
+    val context = LocalContext.current
+    val logoId = remember(context) {
+        context.resources.getIdentifier("hoopmaster_logo", "drawable", context.packageName)
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        if (logoId != 0) {
+            androidx.compose.foundation.Image(
+                painter = painterResource(id = logoId),
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(48.dp),
+                alpha = 0.18f
+            )
+        }
+        Text(
+            text = "Camera permission needed",
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.align(Alignment.Center),
+            fontWeight = FontWeight.Medium
+        )
     }
 }

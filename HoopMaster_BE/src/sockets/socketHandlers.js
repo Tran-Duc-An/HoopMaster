@@ -11,6 +11,12 @@ const {
 
 const sessionService = require('../services/sessionService');
 const ttsService = require('../services/ttsService');
+const {
+  createExerciseRuntime,
+  processExerciseFrame
+} = require('../services/exerciseCounterService');
+
+const EXERCISE_CUE_COOLDOWN_MS = parseInt(process.env.EXERCISE_CUE_COOLDOWN_MS, 10) || 1200;
 
 /**
  * Setup tất cả socket event handlers
@@ -78,6 +84,24 @@ function setupSocketHandlers(io) {
         data
       });
       try {
+        const session = sessionService.getSession(socket.id);
+        if (session.exerciseRuntime && !session.exerciseRuntime.completed) {
+          const result = processExerciseFrame(session.exerciseRuntime, data?.landmarks, Date.now());
+          sessionService.updateSession(socket.id, { exerciseRuntime: result.runtime });
+
+          socket.emit('exercise_progress', result.progress);
+
+          if (result.runtime?.completed) {
+            sessionService.incrementStats(socket.id, 'exercisesCompleted');
+          }
+
+          if (result.runtime?.nextCue) {
+            await emitExerciseAudioCue(socket, result.runtime);
+          }
+
+          return;
+        }
+
         await handleRealtimePoseAnalysis(
           socket.id,
           data,
@@ -99,6 +123,49 @@ function setupSocketHandlers(io) {
           code: 'SERVER_ERROR'
         });
       }
+    });
+
+    // Event: start_exercise
+    // Payload: { exerciseId, sets?, reps?, restSeconds? }
+    socket.on('start_exercise', async (payload = {}) => {
+      try {
+        const runtime = createExerciseRuntime(payload.exerciseId, payload);
+        sessionService.updateSession(socket.id, {
+          exerciseRuntime: runtime,
+          frameBuffer: [],
+          previousLandmarks: null
+        });
+
+        socket.emit('exercise_started', {
+          exerciseId: runtime.exerciseId,
+          name: runtime.exercise.name,
+          category: runtime.exercise.category,
+          targetSets: runtime.targetSets,
+          targetReps: runtime.targetReps,
+          restSeconds: runtime.restSeconds,
+          counting: runtime.exercise.counting,
+          tracking: runtime.exercise.tracking
+        });
+
+        await emitExerciseAudioCue(socket, runtime, true);
+      } catch (error) {
+        console.error('[Socket] Error starting exercise:', error);
+        socket.emit('error', {
+          message: error.message || 'Failed to start exercise',
+          code: 'START_EXERCISE_ERROR'
+        });
+      }
+    });
+
+    // Event: stop_exercise
+    socket.on('stop_exercise', () => {
+      const session = sessionService.getSession(socket.id);
+      const exerciseId = session.exerciseRuntime?.exerciseId;
+      sessionService.updateSession(socket.id, { exerciseRuntime: null });
+      socket.emit('exercise_stopped', {
+        success: true,
+        exerciseId
+      });
     });
 
     // Event: shot_released
@@ -155,6 +222,33 @@ function setupSocketHandlers(io) {
       console.error(`[Socket] Client error from ${socket.id}:`, error);
     });
   });
+}
+
+async function emitExerciseAudioCue(socket, runtime, force = false) {
+  const cue = runtime.nextCue;
+  if (!cue?.text) return;
+
+  const now = Date.now();
+  const cueKey = `${cue.type}:${cue.metadata?.set || 0}:${cue.metadata?.rep || 0}:${cue.text}`;
+  if (!force && runtime.lastCueKey === cueKey) return;
+  if (!force && runtime.lastCueAt && now - runtime.lastCueAt < EXERCISE_CUE_COOLDOWN_MS) return;
+
+  const ttsResult = await ttsService.synthesizeSpeech(cue.text, cue.type === 'complete' ? 'cheerful' : 'focus');
+  const payload = {
+    type: `exercise_${cue.type}`,
+    text: cue.text,
+    audioBase64: ttsResult.audioBase64,
+    exerciseId: runtime.exerciseId,
+    metadata: cue.metadata,
+    timestamp: new Date().toISOString()
+  };
+
+  socket.emit('audio_feedback', payload);
+
+  runtime.lastCueKey = cueKey;
+  runtime.lastCueAt = now;
+  runtime.nextCue = null;
+  sessionService.updateSession(socket.id, { exerciseRuntime: runtime });
 }
 
 module.exports = { setupSocketHandlers };

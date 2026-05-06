@@ -1,18 +1,3 @@
-// Đánh giá pose tổng quát cho mọi bài tập
-const { evaluatePose } = require('./shootingFormService');
-
-// Đảm bảo export là async function và không ghi đè các hàm khác
-module.exports = {
-  calculateAngle3D,
-  calculateAngle2D,
-  calculateDistance,
-  detectViewOrientation,
-  isValidPoint,
-  normalizeLandmarks,
-  isPoseStable,
-  calculateMultipleAngles,
-  evaluatePose: async (...args) => evaluatePose(...args)
-};
 /**
  * Pose Analysis Service
  * Xử lý các phép tính toán học liên quan đến pose detection:

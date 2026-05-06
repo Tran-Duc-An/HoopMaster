@@ -23,10 +23,12 @@ function createSession(socketId) {
     frameBuffer: [],
     previousLandmarks: null,
     shotInProgress: false,
+    exerciseRuntime: null,
     sessionStats: {
       totalFrames: 0,
       feedbackCount: 0,
-      shotsCompleted: 0
+      shotsCompleted: 0,
+      exercisesCompleted: 0
     }
   };
 
@@ -86,7 +88,18 @@ function getSessionInfo(socketId) {
     uptime: Date.now() - session.createdAt,
     lastActivity: session.lastActivity,
     stats: session.sessionStats,
-    bufferSize: session.frameBuffer.length
+    bufferSize: session.frameBuffer.length,
+    exercise: session.exerciseRuntime ? {
+      exerciseId: session.exerciseRuntime.exerciseId,
+      name: session.exerciseRuntime.exercise?.name,
+      set: session.exerciseRuntime.currentSet,
+      reps: session.exerciseRuntime.currentRep,
+      targetSets: session.exerciseRuntime.targetSets,
+      targetReps: session.exerciseRuntime.targetReps,
+      phase: session.exerciseRuntime.phase,
+      active: session.exerciseRuntime.active,
+      completed: session.exerciseRuntime.completed
+    } : null
   };
 }
 
@@ -131,11 +144,13 @@ function resetSession(socketId) {
   session.frameBuffer = [];
   session.previousLandmarks = null;
   session.shotInProgress = false;
+  session.exerciseRuntime = null;
   session.lastFeedbackTime = 0;
   session.sessionStats = {
     totalFrames: 0,
     feedbackCount: 0,
-    shotsCompleted: 0
+    shotsCompleted: 0,
+    exercisesCompleted: 0
   };
   activeSessions.set(socketId, session);
   return session;

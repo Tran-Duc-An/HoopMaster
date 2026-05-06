@@ -1,27 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const exerciseService = require('../services/exerciseService');
+const exerciseController = require('../controllers/exerciseController');
 
-// Lấy tất cả bài tập
-router.get('/', (req, res) => {
-  res.json(exerciseService.getAllExercises());
-});
-
-// Lấy bài tập theo category
-router.get('/category/:category', (req, res) => {
-  const { category } = req.params;
-  res.json(exerciseService.getExercisesByCategory(category));
-});
-
-// Lấy bài tập theo id
-router.get('/:id', (req, res) => {
-  const { id } = req.params;
-  const exercise = exerciseService.getExerciseById(Number(id));
-  if (exercise) {
-    res.json(exercise);
-  } else {
-    res.status(404).json({ error: 'Exercise not found' });
-  }
-});
+router.get('/', exerciseController.getAllExercises);
+router.get('/default', exerciseController.getDefaultPlan);
+router.get('/categories', exerciseController.getCategories);
+router.get('/category/:category', exerciseController.getExercisesByCategory);
+router.post('/:id/simulate-counter', exerciseController.simulateCounter);
+router.get('/:id/voice-script', exerciseController.getExerciseVoiceScript);
+router.get('/:id', exerciseController.getExerciseById);
 
 module.exports = router;

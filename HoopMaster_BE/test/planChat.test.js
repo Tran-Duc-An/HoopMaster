@@ -1,106 +1,86 @@
-// DÙNG CÁCH GỌI ENV GIỐNG HỆT BÀI TRƯỚC ĐÃ THÀNH CÔNG
-require('dotenv').config({ override: true });
-
-const request = require('supertest');
-const express = require('express');
-
-// 1. MOCK DATABASE & TTS
-jest.mock('../src/services/conversationService', () => ({
-  getOrCreateConversation: jest.fn(),
-  addMessage: jest.fn(),
-  getHistory: jest.fn(() => [
-    { role: 'assistant', content: 'Hello! I am your AI Basketball Coach. What are your training goals today?' }
-  ])
-}));
-
-jest.mock('../src/services/trainingPlanService', () => ({
-  createPlan: jest.fn()
-}));
-
-jest.mock('../src/services/ttsService', () => ({
-  synthesizeSpeech: jest.fn(() => ({ audioBase64: 'fake_audio_base64_string' }))
-}));
-
-// Import service thật
-const { planChat } = require('../src/services/planChatAgent');
+const { planningChat } = require('../src/services/planningAgent');
+const User = require('../src/models/userModel');
 const trainingPlanService = require('../src/services/trainingPlanService');
 
-// 2. KHỞI TẠO EXPRESS APP ẢO VÀ TỰ TẠO ROUTE
-const app = express();
-app.use(express.json());
+jest.mock('../src/models/userModel');
+jest.mock('../src/services/conversationService', () => ({
+  addMessage: jest.fn(),
+  getHistory: jest.fn(() => [])
+}));
+jest.mock('../src/services/ttsService', () => ({
+  synthesizeSpeech: jest.fn(() => ({ audioBase64: 'fake_audio_base64' }))
+}));
+jest.mock('../src/services/trainingPlanService', () => ({
+  createPlan: jest.fn(),
+  getLatestDraftPlan: jest.fn(),
+  activatePlan: jest.fn()
+}));
 
-app.post('/api/chat/plan', async (req, res) => {
-  try {
-    const fakeUserId = '60d5ecb8b392d700153ef123'; 
-    const result = await planChat(fakeUserId, req.body);
-    res.json({ success: true, ...result });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+function mockUser(profile = {}) {
+  return {
+    _id: 'user123',
+    tone: 'neutral',
+    trainingProfile: profile,
+    save: jest.fn().mockResolvedValue(true)
+  };
+}
 
-describe('Kiểm thử Tích hợp Chat Lên Lịch (Real AI Mistral + Mock DB)', () => {
-  
-  beforeAll(() => {
-    jest.setTimeout(30000); 
-    console.log('🔑 MISTRAL_API_KEY trong PlanChat:', process.env.MISTRAL_API_KEY ? 'Đã tìm thấy!' : 'VẪN CHƯA THẤY');
-  });
-
-  afterEach(() => {
+describe('planningAgent', () => {
+  beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('CHT_01 (Real AI): Giao tiếp cơ bản - AI hỏi thêm thông tin', async () => {
-    console.log('⏳ Đang nhắn tin cho HLV AI...');
-    const payload = { text: "I want to improve my 3-point shooting accuracy." };
-    const response = await request(app).post('/api/chat/plan').send(payload);
+  it('asks a follow-up question when required planning fields are missing', async () => {
+    User.findById.mockResolvedValue(mockUser());
 
-    console.log('\n💬 --- [CHT_01] PHẢN HỒI TỪ AI COACH --- 💬');
-    console.log(JSON.stringify(response.body, null, 2));
+    const result = await planningChat('user123', {
+      text: 'I want to improve shooting.'
+    });
 
-    expect(response.statusCode).toBe(200);
-    expect(response.body.success).toBe(true);
-    expect(response.body).toHaveProperty('reply');
-    expect(response.body.audioBase64).toBe('fake_audio_base64_string');
-    
+    expect(result.type).toBe('question');
+    expect(result.missingFields).toContain('injuries');
     expect(trainingPlanService.createPlan).not.toHaveBeenCalled();
   });
 
-  it('CHT_02 (Real AI): Ép AI sinh ra JSON Training Plan khi đã đủ thông tin', async () => {
-    const { getHistory } = require('../src/services/conversationService');
-    getHistory.mockResolvedValueOnce([
-      { role: 'user', content: 'I am a beginner, I want to improve 3-point shooting.' },
-      { role: 'assistant', content: 'Great. Do you have any injuries? How many days a week can you train?' },
-      { role: 'user', content: 'No injuries. I can train 3 days a week. Give me the training plan now.' }
-    ]);
+  it('creates a structured draft plan when enough profile information is present', async () => {
+    User.findById.mockResolvedValue(mockUser());
+    trainingPlanService.createPlan.mockResolvedValue({
+      _id: 'draft1',
+      status: 'draft',
+      exercises: []
+    });
 
-    console.log('⏳ Đang ép HLV AI xuất giáo án (JSON)...');
-    const payload = { text: "Generate the plan please." };
-    const response = await request(app).post('/api/chat/plan').send(payload);
+    const result = await planningChat('user123', {
+      text: 'I am a beginner, no injuries, I want shooting accuracy and strength, 3 days per week, 30 minutes.'
+    });
 
-    console.log('\n📋 --- [CHT_02] GIÁO ÁN TỪ AI COACH --- 📋');
-    console.log(JSON.stringify(response.body, null, 2));
-
-    expect(response.statusCode).toBe(200);
-    
-    // Đảm bảo AI trả về câu JSON hợp lệ
-    if (response.body.reply && response.body.reply.trim().startsWith('[')) {
-      expect(trainingPlanService.createPlan).toHaveBeenCalled();
-      console.log('✅ Hệ thống ĐÃ BẮT ĐƯỢC JSON và gọi hàm lưu giáo án!');
-    } else {
-      console.log('⚠️ AI chưa trả về định dạng JSON mảng "[ ... ]".');
-    }
+    expect(result.type).toBe('plan_draft');
+    expect(result.missingFields).toEqual([]);
+    expect(trainingPlanService.createPlan).toHaveBeenCalledWith(
+      'user123',
+      expect.objectContaining({
+        source: 'personalized',
+        status: 'draft',
+        goal: 'shooting_accuracy'
+      })
+    );
   });
 
-  it('CHT_03: Báo lỗi khi gửi dữ liệu rỗng', async () => {
-    const payload = {}; 
-    const response = await request(app).post('/api/chat/plan').send(payload);
-    
-    console.log('\n⚠️ --- [CHT_03] LỖI TIN NHẮN RỖNG --- ⚠️');
-    console.log(JSON.stringify(response.body, null, 2));
+  it('activates latest draft when user confirms by text', async () => {
+    User.findById.mockResolvedValue(mockUser());
+    trainingPlanService.getLatestDraftPlan.mockResolvedValue({ _id: 'draft1' });
+    trainingPlanService.activatePlan.mockResolvedValue({
+      _id: 'draft1',
+      status: 'active'
+    });
 
-    expect(response.statusCode).toBe(500);
-    expect(response.body.error).toContain('No input text');
+    const result = await planningChat('user123', { text: 'save it' });
+
+    expect(result.type).toBe('saved_plan');
+    expect(trainingPlanService.activatePlan).toHaveBeenCalledWith('user123', 'draft1');
   });
 
+  it('throws when text and audio are both missing', async () => {
+    await expect(planningChat('user123', {})).rejects.toThrow('No input text or audio');
+  });
 });

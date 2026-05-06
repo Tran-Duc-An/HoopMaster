@@ -1,56 +1,284 @@
 [
   {
     "id": 1,
-    "name": "Neck Stretch",
+    "name": "Neck Tilt Count",
     "category": "warmup",
-    "description": "Gently tilt your head to the left and right to stretch your neck muscles.",
+    "description": "A guided neck mobility drill with slow left-right counting.",
     "steps": [
-      "Stand or sit up straight.",
-      "Slowly tilt your head to the left, hold for 5 seconds.",
-      "Return to center, then tilt to the right, hold for 5 seconds.",
-      "Repeat 3 times each side."
+      "Stand tall and relax your shoulders.",
+      "Tilt your head to the left and hold.",
+      "Return to center.",
+      "Tilt your head to the right and hold.",
+      "Return to center and count one rep."
     ],
-    "count": 3,
-    "pose": "neck_stretch"
+    "count": 6,
+    "pose": "neck_stretch",
+    "target": {
+      "sets": 1,
+      "reps": 6,
+      "restSeconds": 20
+    },
+    "counting": {
+      "mode": "rep",
+      "countOnPhase": "center_after_right",
+      "secondsPerRep": 8,
+      "phases": [
+        { "key": "left", "cue": "Tilt left", "durationMs": 2000 },
+        { "key": "center_after_left", "cue": "Back to center", "durationMs": 1000 },
+        { "key": "right", "cue": "Tilt right", "durationMs": 2000 },
+        { "key": "center_after_right", "cue": "Back to center", "durationMs": 1000, "countRep": true }
+      ]
+    },
+    "voiceCues": {
+      "intro": "Neck tilt. Keep your shoulders relaxed and move slowly.",
+      "setup": "Stand tall. Eyes forward. We start in three, two, one.",
+      "repTemplate": "Tilt left. Center. Tilt right. Center. Rep {rep}.",
+      "setComplete": "Set complete. Relax your neck and shoulders.",
+      "complete": "Neck tilt finished.",
+      "warnings": [
+        "Do not force the stretch.",
+        "Stop if you feel sharp pain."
+      ]
+    },
+    "tracking": {
+      "type": "timed_cadence",
+      "primaryJoints": ["neck", "shoulder"]
+    }
   },
   {
     "id": 2,
-    "name": "Shoulder Roll",
+    "name": "Shoulder Roll Count",
     "category": "warmup",
-    "description": "Roll your shoulders forward and backward to loosen up.",
+    "description": "A guided shoulder roll drill for warming up the upper body.",
     "steps": [
-      "Stand or sit up straight.",
-      "Roll your shoulders forward in a circular motion 5 times.",
-      "Then roll your shoulders backward 5 times."
+      "Stand tall with arms relaxed.",
+      "Roll both shoulders forward in a full circle.",
+      "Count one rep each time the shoulders return to the top.",
+      "After the target reps, repeat backward if needed."
     ],
-    "count": 5,
-    "pose": "shoulder_roll"
+    "count": 10,
+    "pose": "shoulder_roll",
+    "target": {
+      "sets": 1,
+      "reps": 10,
+      "restSeconds": 20
+    },
+    "counting": {
+      "mode": "rep",
+      "countOnPhase": "top",
+      "secondsPerRep": 3,
+      "phases": [
+        { "key": "up", "cue": "Lift shoulders", "durationMs": 700 },
+        { "key": "back", "cue": "Roll back", "durationMs": 800 },
+        { "key": "down", "cue": "Drop down", "durationMs": 700 },
+        { "key": "top", "cue": "Return and count", "durationMs": 800, "countRep": true }
+      ]
+    },
+    "voiceCues": {
+      "intro": "Shoulder rolls. Make smooth circles and keep your neck relaxed.",
+      "setup": "Arms loose. Start rolling in three, two, one.",
+      "repTemplate": "Roll. Rep {rep}.",
+      "setComplete": "Set complete. Shake your arms out.",
+      "complete": "Shoulder roll finished.",
+      "warnings": [
+        "Keep the movement smooth.",
+        "Do not shrug aggressively."
+      ]
+    },
+    "tracking": {
+      "type": "timed_cadence",
+      "primaryJoints": ["shoulder"]
+    }
   },
   {
     "id": 3,
-    "name": "Push Up",
+    "name": "Bodyweight Squat Count",
     "category": "strength",
-    "description": "A basic upper body strength exercise.",
+    "description": "A guided squat drill to build lower-body strength for jumping and shooting balance.",
     "steps": [
-      "Start in a plank position with hands under shoulders.",
-      "Lower your body until your chest nearly touches the floor.",
-      "Push back up to the starting position.",
-      "Repeat for the desired number of reps."
+      "Stand with feet about shoulder-width apart.",
+      "Lower your hips while keeping knees aligned with toes.",
+      "Hold briefly at the bottom.",
+      "Stand tall and count one rep."
     ],
     "count": 10,
-    "pose": "push_up"
+    "pose": "squat",
+    "target": {
+      "sets": 3,
+      "reps": 10,
+      "restSeconds": 45
+    },
+    "counting": {
+      "mode": "rep",
+      "countOnPhase": "stand",
+      "secondsPerRep": 4,
+      "phases": [
+        { "key": "down", "cue": "Lower down", "durationMs": 1200 },
+        { "key": "hold", "cue": "Hold", "durationMs": 600 },
+        { "key": "stand", "cue": "Stand tall", "durationMs": 1200, "countRep": true }
+      ]
+    },
+    "voiceCues": {
+      "intro": "Bodyweight squats. Control the movement and keep your knees tracking over your toes.",
+      "setup": "Feet shoulder width. Chest up. Start in three, two, one.",
+      "repTemplate": "Down. Hold. Up. Rep {rep}.",
+      "setComplete": "Set complete. Rest and breathe.",
+      "complete": "Squat drill finished.",
+      "warnings": [
+        "Keep your heels on the floor.",
+        "Do not let your knees collapse inward.",
+        "Reduce depth if your knees hurt."
+      ]
+    },
+    "tracking": {
+      "type": "pose_counter",
+      "primaryJoints": ["hip", "knee", "ankle"],
+      "counter": {
+        "joint": "knee",
+        "downThreshold": 115,
+        "upThreshold": 160
+      }
+    }
   },
   {
     "id": 4,
-    "name": "Standing Quad Stretch",
-    "category": "stretching",
-    "description": "Stretch the front of your thigh.",
+    "name": "Push Up Count",
+    "category": "strength",
+    "description": "A guided push-up drill for upper-body strength and shooting stability.",
     "steps": [
-      "Stand upright and hold onto a wall for balance if needed.",
-      "Grab your right ankle with your right hand and pull your heel toward your buttock.",
-      "Hold for 20 seconds, then switch sides."
+      "Start in a plank with hands under shoulders.",
+      "Lower your chest with control.",
+      "Push back to the top.",
+      "Count one rep at full extension."
     ],
-    "count": 2,
-    "pose": "quad_stretch"
+    "count": 8,
+    "pose": "push_up",
+    "target": {
+      "sets": 3,
+      "reps": 8,
+      "restSeconds": 60
+    },
+    "counting": {
+      "mode": "rep",
+      "countOnPhase": "top",
+      "secondsPerRep": 4,
+      "phases": [
+        { "key": "down", "cue": "Lower", "durationMs": 1300 },
+        { "key": "hold", "cue": "Hold", "durationMs": 400 },
+        { "key": "top", "cue": "Push up", "durationMs": 1300, "countRep": true }
+      ]
+    },
+    "voiceCues": {
+      "intro": "Push ups. Keep your body straight from shoulders to ankles.",
+      "setup": "Hands under shoulders. Brace your core. Start in three, two, one.",
+      "repTemplate": "Lower. Hold. Push. Rep {rep}.",
+      "setComplete": "Set complete. Rest your arms.",
+      "complete": "Push up drill finished.",
+      "warnings": [
+        "Keep your core tight.",
+        "Do not let your hips sag.",
+        "Use knee push ups if your wrist or shoulder hurts."
+      ]
+    },
+    "tracking": {
+      "type": "pose_counter",
+      "primaryJoints": ["shoulder", "elbow", "wrist"],
+      "counter": {
+        "joint": "elbow",
+        "downThreshold": 95,
+        "upThreshold": 155
+      }
+    }
+  },
+  {
+    "id": 5,
+    "name": "Lateral Lunge Count",
+    "category": "mobility",
+    "description": "A side-to-side mobility drill for hips, knees, and defensive basketball stance.",
+    "steps": [
+      "Stand wide with toes forward.",
+      "Shift your weight to the left and bend the left knee.",
+      "Return to center.",
+      "Shift to the right and bend the right knee.",
+      "Return to center and count one rep."
+    ],
+    "count": 8,
+    "pose": "lateral_lunge",
+    "target": {
+      "sets": 2,
+      "reps": 8,
+      "restSeconds": 40
+    },
+    "counting": {
+      "mode": "rep",
+      "countOnPhase": "center_after_right",
+      "secondsPerRep": 6,
+      "phases": [
+        { "key": "left", "cue": "Shift left", "durationMs": 1400 },
+        { "key": "center_after_left", "cue": "Center", "durationMs": 700 },
+        { "key": "right", "cue": "Shift right", "durationMs": 1400 },
+        { "key": "center_after_right", "cue": "Center", "durationMs": 700, "countRep": true }
+      ]
+    },
+    "voiceCues": {
+      "intro": "Lateral lunges. Move side to side with control.",
+      "setup": "Wide stance. Chest up. Start in three, two, one.",
+      "repTemplate": "Left. Center. Right. Center. Rep {rep}.",
+      "setComplete": "Set complete. Stand tall and rest.",
+      "complete": "Lateral lunge finished.",
+      "warnings": [
+        "Keep the bent knee aligned with the toes.",
+        "Do not rush the side shift.",
+        "Reduce range if your knee or groin hurts."
+      ]
+    },
+    "tracking": {
+      "type": "timed_cadence",
+      "primaryJoints": ["hip", "knee", "ankle"]
+    }
+  },
+  {
+    "id": 6,
+    "name": "Calf Raise Count",
+    "category": "strength",
+    "description": "A guided calf raise drill for ankle strength and jump preparation.",
+    "steps": [
+      "Stand tall with feet hip-width apart.",
+      "Rise onto the balls of your feet.",
+      "Hold briefly at the top.",
+      "Lower with control and count one rep."
+    ],
+    "count": 12,
+    "pose": "calf_raise",
+    "target": {
+      "sets": 2,
+      "reps": 12,
+      "restSeconds": 40
+    },
+    "counting": {
+      "mode": "rep",
+      "countOnPhase": "down",
+      "secondsPerRep": 3,
+      "phases": [
+        { "key": "up", "cue": "Rise up", "durationMs": 900 },
+        { "key": "hold", "cue": "Hold", "durationMs": 500 },
+        { "key": "down", "cue": "Lower", "durationMs": 900, "countRep": true }
+      ]
+    },
+    "voiceCues": {
+      "intro": "Calf raises. Stay tall and control every rep.",
+      "setup": "Feet hip width. Hands on hips or a wall for balance. Start in three, two, one.",
+      "repTemplate": "Rise. Hold. Lower. Rep {rep}.",
+      "setComplete": "Set complete. Shake out your legs.",
+      "complete": "Calf raise finished.",
+      "warnings": [
+        "Do not bounce at the bottom.",
+        "Keep your ankles controlled."
+      ]
+    },
+    "tracking": {
+      "type": "timed_cadence",
+      "primaryJoints": ["ankle", "knee"]
+    }
   }
 ]
