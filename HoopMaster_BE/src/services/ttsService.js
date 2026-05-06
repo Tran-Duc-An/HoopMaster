@@ -76,30 +76,9 @@ function textToSSML(text, intent = 'neutral', lang = 'en-US') {
     return percent / 6;
   }
 
-  if (process.env.TTS_PROVIDER === 'local') {
-    // Return array of segments for local TTS
-    return splitTextByKeywords(text);
-  }
-
-  // --- Fallback to old SSML logic for other providers ---
-  let processedText = text;
-  if (intent === 'strict' || intent === 'cheerful') {
-    highlightKeywords.forEach(({ word, pitch }) => {
-      processedText = processedText.replace(word, (match) => `<prosody pitch=\"${pitch}\">${escapeXML(match)}</prosody>`);
-    });
-  }
-  function escapeExceptProsody(str) {
-    return str.replace(/(<prosody[^>]*>.*?<\/prosody>)/gi, (m) => `@@@${Buffer.from(m).toString('base64')}@@@`)
-      .split('@@@').map(part => {
-        if (!part) return '';
-        if (/^[A-Za-z0-9+/=]+$/.test(part)) return Buffer.from(part, 'base64').toString();
-        return escapeXML(part);
-      }).join('');
-  }
-  const escapedText = escapeExceptProsody(processedText);
-  const ssml = `
-<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"${lang}\">\n  <prosody pitch=\"${pitch}\" rate=\"${rate}\" volume=\"${volume}\">\n    ${escapedText}\n  </prosody>\n</speak>`.trim();
-  return ssml;
+// ...existing code...
+  // ElevenLabs không hỗ trợ SSML, chỉ trả về text thuần
+  return text;
 }
 
 /**
@@ -132,32 +111,18 @@ function escapeXML(text) {
  */
 async function _generateAudioBase64(input, provider = process.env.TTS_PROVIDER || 'mock') {
   try {
-    // Backward compatible: nếu input là string thì coi là ssml
-    let text, intent, ssml;
+    // ElevenLabs chỉ nhận text, không nhận SSML
+    let text;
     if (typeof input === 'string') {
-      ssml = input;
+      text = input;
     } else if (typeof input === 'object' && input !== null) {
       text = input.text;
-      intent = input.intent;
-      ssml = input.ssml;
     }
-    switch (provider) {
-      case 'google':
-        return await generateGoogleTTS(ssml);
-      case 'elevenlabs':
-        return await generateElevenLabsTTS(ssml);
-      case 'local':
-        return await generateLocalTTS(ssml);
-      case 'kokoro':
-        return await generateKokoroTTS(text, intent);
-      case 'mock':
-      default:
-        return generateMockAudioBase64(ssml);
-    }
+    return await generateElevenLabsTTS(text);
   } catch (error) {
     console.error('[TTS] Error generating audio:', error.message);
     // Fallback to mock if API fails
-    return generateMockAudioBase64(ssml);
+    return generateMockAudioBase64(text);
   }
 }
 
@@ -351,39 +316,28 @@ async function synthesizeSpeech(text, intent = 'neutral') {
   const startTime = Date.now();
 
   try {
-    // Step 1: Chuẩn bị input cho provider
-    let input;
-    if (process.env.TTS_PROVIDER === 'kokoro') {
-      input = { text, intent };
-    } else {
-      const ssml = textToSSML(text, intent);
-      input = ssml;
-    }
-    // Step 2: Generate audio
+    // ElevenLabs chỉ nhận text, không nhận SSML
+    const input = textToSSML(text, intent);
     const audioBase64 = await generateAudioBase64(input);
-
     const duration = Date.now() - startTime;
-
     return {
       success: true,
       audioBase64,
-      ssml,
+      ssml: input,
       metadata: {
         text,
         intent,
-        provider: process.env.TTS_PROVIDER || 'mock',
+        provider: 'elevenlabs',
         generationTime: duration,
         timestamp: new Date().toISOString()
       }
     };
   } catch (error) {
     console.error('[TTS] Synthesis failed:', error.message);
-    
-    // Return mock audio if error
     return {
       success: false,
-      audioBase64: generateMockAudioBase64(textToSSML(text, intent)),
-      ssml: textToSSML(text, intent),
+      audioBase64: generateMockAudioBase64(text),
+      ssml: text,
       metadata: {
         text,
         intent,

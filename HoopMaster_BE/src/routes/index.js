@@ -6,9 +6,8 @@ const router = express.Router();
  */
 const planChatRoutes = require('./planChatRoutes');
 router.use('/api/users', planChatRoutes);
-// const sessionRoutes = require('./sessionRoutes');
+const sessionRoutes = require('./sessionRoutes');
 const userRoutes = require('./userRoutes');
-// const exerciseRoutes = require('./exerciseRoutes');
 const { validateConfig: validateTTS } = require('../services/ttsService');
 const { validateConfig: validateLLM } = require('../services/llmService');
 const { getAllSessions } = require('../controllers/poseController');
@@ -54,12 +53,8 @@ router.get('/health', (req, res) => {
   }
 });
 
-/**
- * Mount session routes (DISABLED FOR NO-MONGO MODE)
- */
-// router.use('/api/sessions', sessionRoutes);
+router.use('/api/sessions', sessionRoutes);
 router.use('/api/users', userRoutes);
-// Only exercise routes are enabled
 
 const exerciseRoutes = require('./exerciseRoutes');
 router.use('/api/exercises', exerciseRoutes);

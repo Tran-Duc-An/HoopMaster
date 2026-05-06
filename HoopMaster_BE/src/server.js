@@ -12,7 +12,7 @@ const cors = require('cors');
 
 const routes = require('./routes');
 const { setupSocketHandlers } = require('./sockets/socketHandlers');
-const { cleanupExpiredSessions, getAllSessions } = require('./controllers/poseController');
+const { getAllSessions } = require('./controllers/poseController');
 const connectDB = require('./models/connectDB');
 
 // Configuration

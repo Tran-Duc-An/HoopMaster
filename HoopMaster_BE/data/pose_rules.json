@@ -49,6 +49,33 @@
       "intent": { "tooLow": "up", "tooHigh": "down", "perfect": "focus" }
     }
   },
+  "squat": {
+    "knee": {
+      "min": 85,
+      "max": 165,
+      "ideal": 115,
+      "landmarks": { "point1": "hip", "point2": "knee", "point3": "ankle" },
+      "intent": { "tooLow": "up", "tooHigh": "down", "perfect": "focus" }
+    }
+  },
+  "lateral_lunge": {
+    "knee": {
+      "min": 80,
+      "max": 165,
+      "ideal": 115,
+      "landmarks": { "point1": "hip", "point2": "knee", "point3": "ankle" },
+      "intent": { "tooLow": "up", "tooHigh": "down", "perfect": "focus" }
+    }
+  },
+  "calf_raise": {
+    "knee": {
+      "min": 160,
+      "max": 180,
+      "ideal": 175,
+      "landmarks": { "point1": "hip", "point2": "knee", "point3": "ankle" },
+      "intent": { "tooLow": "up", "tooHigh": "down", "perfect": "focus" }
+    }
+  },
   "quad_stretch": {
     "knee": {
       "min": 60,
