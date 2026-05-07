@@ -95,7 +95,21 @@ function getRandomToneFeedback(group, tone = 'neutral') {
 }
 
 function isActionableIssue(status) {
-  return status === 'tooLow' || status === 'tooHigh';
+  return ['tooLow', 'tooHigh', 'acceptable_low', 'acceptable_high'].includes(status);
+}
+
+function getFormReadyFeedback(tone = 'neutral') {
+  const selectedTone = normalizeCoachTone(tone);
+  const preferred = poseFeedback.shoulder?.feedback?.perfect?.[selectedTone]
+    || poseFeedback.shoulder?.feedback?.perfect?.neutral
+    || poseFeedback.knee?.feedback?.perfect?.[selectedTone]
+    || poseFeedback.elbow?.feedback?.perfect?.[selectedTone];
+
+  if (Array.isArray(preferred) && preferred.length > 0) {
+    return preferred[0];
+  }
+
+  return 'Good form. Hold it and shoot when ready.';
 }
 
 /**
@@ -296,9 +310,9 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
         }
         message = baseMsg;
       } else {
-        // Nếu không tìm thấy lỗi nào (tất cả đều perfect)
+        // Form is set and all tracked joints are perfect. This is not post-shot praise.
         if (shouldAllowPositiveRealtimeFeedback(shotState, evalResult, now)) {
-          message = getRandomToneFeedback(poseFeedback.general?.good, coachTone);
+          message = getFormReadyFeedback(coachTone);
         }
       }
 
@@ -307,7 +321,7 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
         const estimatedAudioDuration = (message.length * 80) + 1500; 
         const cooldownToUse = Math.max(CONFIG.MIN_FEEDBACK_INTERVAL, estimatedAudioDuration);
         await enqueueAudioInstruction(socketId, {
-          type: primaryIssue ? 'form_correction' : 'positive_feedback',
+          type: primaryIssue ? 'form_correction' : 'form_ready',
           text: message,
           tone: coachTone,
           angles: evalResult,
@@ -319,8 +333,12 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
             shotPhase: shotState.phase
           }
         }, emitCallback);
+        const shotStateUpdate = primaryIssue
+          ? shotState
+          : { ...shotState, lastFormReadyAt: now };
         // Cập nhật session sau khi đã phát Voice
         sessionService.updateSession(socketId, {
+          shotState: shotStateUpdate,
           lastFeedback: { 
             angles: evalResult, 
             time: now, 
@@ -391,10 +409,14 @@ async function handlePostShotAnalysis(socketId, emitCallback) {
     sessionService.clearFrameBuffer(socketId);
     sessionService.updateSession(socketId, {
       shotInProgress: false,
+      lastFeedback: null,
+      previousLandmarks: null,
       shotState: {
         ...session.shotState,
         phase: 'not_ready',
         enteredPhaseAt: now,
+        lastReleaseAt: null,
+        lastFormReadyAt: null,
         reason: 'post_shot_complete'
       }
     });

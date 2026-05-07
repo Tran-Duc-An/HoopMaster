@@ -40,7 +40,7 @@ function updateShotState(previousState = createShotState(), landmarks, timestamp
   let reason = 'not_in_shooting_pose';
   let lastReleaseAt = previousState.lastReleaseAt || null;
 
-  if (release.released && ['preparing', 'set', 'released'].includes(previousPhase)) {
+  if (release.released && previousPhase === 'set') {
     phase = 'released';
     reason = release.reason;
     lastReleaseAt = timestamp;
@@ -62,6 +62,7 @@ function updateShotState(previousState = createShotState(), landmarks, timestamp
     phase,
     enteredPhaseAt,
     lastReleaseAt,
+    lastFormReadyAt: previousState.lastFormReadyAt || null,
     metrics: {
       ...inPose.metrics,
       ...release.metrics
@@ -132,8 +133,9 @@ function detectReleaseMotion(previousLandmarks, currentLandmarks, options = {}) 
 function shouldAllowPositiveRealtimeFeedback(shotState, evalResult, timestamp = Date.now(), options = {}) {
   const config = { ...DEFAULTS, ...options };
   if (!allPerfect(evalResult)) return false;
-  if (shotState?.phase !== 'released' || !shotState.lastReleaseAt) return false;
-  return timestamp - shotState.lastReleaseAt <= config.releaseRecentMs;
+  if (shotState?.phase !== 'set') return false;
+  if (shotState?.lastFormReadyAt && timestamp - shotState.lastFormReadyAt < config.releaseRecentMs) return false;
+  return true;
 }
 
 function shouldRunPostShotAnalysis(session, timestamp = Date.now(), options = {}) {
@@ -206,7 +208,7 @@ function distance(a, b) {
 function allPerfect(evalResult = {}) {
   return ['elbowEval', 'kneeEval', 'shoulderEval'].every((key) => {
     const status = evalResult[key]?.status || 'perfect';
-    return status === 'perfect' || status === 'acceptable_low' || status === 'acceptable_high';
+    return status === 'perfect';
   });
 }
 

@@ -58,7 +58,7 @@ describe('shotReadinessService', () => {
     expect(detectReleaseMotion(previous, current).released).toBe(true);
   });
 
-  it('blocks positive realtime feedback before release', () => {
+  it('allows good-form feedback only after stable set form', () => {
     const evalResult = {
       elbowEval: { status: 'perfect' },
       kneeEval: { status: 'perfect' },
@@ -66,7 +66,21 @@ describe('shotReadinessService', () => {
     };
 
     expect(shouldAllowPositiveRealtimeFeedback({ phase: 'preparing' }, evalResult, 1000)).toBe(false);
-    expect(shouldAllowPositiveRealtimeFeedback({ phase: 'released', lastReleaseAt: 900 }, evalResult, 1000)).toBe(true);
+    expect(shouldAllowPositiveRealtimeFeedback({ phase: 'set' }, evalResult, 1000)).toBe(true);
+    expect(shouldAllowPositiveRealtimeFeedback({
+      phase: 'set',
+      lastFormReadyAt: 900
+    }, evalResult, 1000, { releaseRecentMs: 3500 })).toBe(false);
+  });
+
+  it('does not treat moving into position as a shot release', () => {
+    let state = createShotState({ setHoldMs: 500 });
+    state = updateShotState(state, makeReadyLandmarks({ 15: { y: 0.34 }, 16: { y: 0.34 } }), 1000);
+
+    const movedUp = makeReadyLandmarks({ 15: { y: 0.25 }, 16: { y: 0.25 } });
+    state = updateShotState(state, movedUp, 1100);
+
+    expect(state.phase).toBe('preparing');
   });
 
   it('allows post-shot analysis only after set or recent release', () => {
