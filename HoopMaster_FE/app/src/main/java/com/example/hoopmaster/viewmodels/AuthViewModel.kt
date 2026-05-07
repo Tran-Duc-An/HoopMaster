@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hoopmaster.core.di.AppContainer
-import com.example.hoopmaster.data.repository.AuthRepository
+import com.example.hoopmaster.data.repository.AuthDataSource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,7 +30,7 @@ sealed interface AuthAction {
 
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val container = AppContainer(application)
-    private val authRepository: AuthRepository = container.authRepository
+    private val authRepository: AuthDataSource = container.authRepository
 
     private val _uiState = MutableStateFlow(
         AuthUiState(currentUserId = container.sessionStore.getUserId())

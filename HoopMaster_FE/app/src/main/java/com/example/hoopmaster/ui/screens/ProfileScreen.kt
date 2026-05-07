@@ -26,7 +26,6 @@ import com.example.hoopmaster.ui.components.HoopStatus
 import com.example.hoopmaster.ui.components.HoopStatusPanel
 import com.example.hoopmaster.ui.components.HoopSecondaryButton
 import com.example.hoopmaster.viewmodels.ProfileAction
-import com.example.hoopmaster.viewmodels.ProfileUiState
 import com.example.hoopmaster.viewmodels.ProfileViewModel
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -34,16 +33,12 @@ import com.example.hoopmaster.viewmodels.ProfileViewModel
 fun ProfileScreen(
     onBack: () -> Unit,
     onLogout: () -> Unit,
-    demoState: ProfileUiState? = null,
     viewModel: ProfileViewModel = viewModel()
 ) {
-    val liveState by viewModel.uiState.collectAsState()
-    val uiState = demoState ?: liveState
+    val uiState by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(demoState) {
-        if (demoState == null) {
-            viewModel.loadProfile(null)
-        }
+    LaunchedEffect(Unit) {
+        viewModel.loadProfile(null)
     }
 
     HoopScreenScaffold(
@@ -55,9 +50,7 @@ fun ProfileScreen(
                     text = "Logout",
                     icon = Icons.AutoMirrored.Outlined.Logout,
                     onClick = {
-                        if (demoState == null) {
-                            viewModel.logout()
-                        }
+                        viewModel.logout()
                         onLogout()
                     },
                     modifier = Modifier.fillMaxWidth()
@@ -92,12 +85,8 @@ fun ProfileScreen(
                         HoopFilterChip(
                             label = tone.replaceFirstChar { it.uppercase() },
                             selected = uiState.tone == tone,
-                            onClick = {
-                                if (demoState == null) {
-                                    viewModel.onAction(ProfileAction.ToneChanged(tone))
-                                }
-                            },
-                            enabled = demoState == null
+                            onClick = { viewModel.onAction(ProfileAction.ToneChanged(tone)) },
+                            enabled = true
                         )
                     }
                 }

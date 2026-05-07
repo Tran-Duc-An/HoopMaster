@@ -4,17 +4,20 @@ import com.example.hoopmaster.data.api.HoopMasterApi
 import com.example.hoopmaster.data.model.ExerciseDto
 import com.example.hoopmaster.data.model.ExerciseVoiceScriptDto
 
-class ExerciseRepository(private val api: HoopMasterApi) {
+class ExerciseRepository(private val api: HoopMasterApi) : ExerciseDataSource {
+    override
     suspend fun getExercises(): Result<List<ExerciseDto>> = runCatching {
         val response = api.getExercises()
         response.bodyOrThrow("load exercises")
     }.mapError("load exercises")
 
+    override
     suspend fun getExercise(id: Int): Result<ExerciseDto> = runCatching {
         val response = api.getExercise(id)
         response.bodyOrThrow("load exercise")
     }.mapError("load exercise")
 
+    override
     suspend fun getVoiceScript(
         id: Int,
         sets: Int?,

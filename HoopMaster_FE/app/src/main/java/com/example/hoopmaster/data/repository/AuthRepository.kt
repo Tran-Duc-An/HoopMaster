@@ -13,7 +13,8 @@ import com.example.hoopmaster.data.model.UserResponseDto
 class AuthRepository(
     private val api: HoopMasterApi,
     private val sessionStore: SessionStore
-) {
+) : AuthDataSource {
+    override
     suspend fun login(usernameOrEmail: String, password: String): Result<UserDto> =
         runCatching {
             val response = api.login(LoginRequest(usernameOrEmail = usernameOrEmail, password = password))
@@ -23,6 +24,7 @@ class AuthRepository(
             user
         }.mapError("login")
 
+    override
     suspend fun signup(
         username: String,
         email: String,
@@ -43,6 +45,7 @@ class AuthRepository(
         user
     }.mapError("signup")
 
+    override
     suspend fun updateTone(userId: String, tone: CoachTone): Result<UserDto> = runCatching {
         val response = api.updateTone(userId, UpdateToneRequest(tone = tone.backendValue()))
         val body = response.bodyOrThrow("update tone")
@@ -52,6 +55,7 @@ class AuthRepository(
         user
     }.mapError("update tone")
 
+    override
     fun logout() {
         sessionStore.clear()
     }

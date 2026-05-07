@@ -25,30 +25,25 @@ import com.example.hoopmaster.ui.components.HoopStatus
 import com.example.hoopmaster.ui.components.HoopStatusPanel
 import com.example.hoopmaster.ui.theme.ActiveOrange
 import com.example.hoopmaster.viewmodels.SessionSummaryAction
-import com.example.hoopmaster.viewmodels.SessionSummaryUiState
 import com.example.hoopmaster.viewmodels.SessionSummaryViewModel
 
 @Composable
 fun SessionSummaryScreen(
     onBackHome: () -> Unit,
-    demoState: SessionSummaryUiState? = null,
     viewModel: SessionSummaryViewModel = viewModel()
 ) {
-    val liveState by viewModel.uiState.collectAsState()
-    val uiState = demoState ?: liveState
+    val uiState by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(demoState) {
-        if (demoState == null) {
-            viewModel.onAction(
-                SessionSummaryAction.LoadSummary(
-                    sessionId = null,
-                    totalShots = 15,
-                    madeShots = 12,
-                    durationSeconds = 60,
-                    lastFeedback = "Last shot looked clean."
-                )
+    LaunchedEffect(Unit) {
+        viewModel.onAction(
+            SessionSummaryAction.LoadSummary(
+                sessionId = null,
+                totalShots = 15,
+                madeShots = 12,
+                durationSeconds = 60,
+                lastFeedback = "Last shot looked clean."
             )
-        }
+        )
     }
 
     HoopScreenScaffold(

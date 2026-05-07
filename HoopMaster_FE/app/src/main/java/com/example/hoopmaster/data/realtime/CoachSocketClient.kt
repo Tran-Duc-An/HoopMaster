@@ -17,14 +17,14 @@ import org.json.JSONObject
 
 class CoachSocketClient(
     private val socketUrl: String
-) {
+) : CoachSocket {
     private val _events = MutableSharedFlow<CoachSocketEvent>(extraBufferCapacity = 64)
-    val events: SharedFlow<CoachSocketEvent> = _events.asSharedFlow()
+    override val events: SharedFlow<CoachSocketEvent> = _events.asSharedFlow()
 
     private var socket: Socket? = null
     private var currentUserId: String? = null
 
-    fun connect(userId: String?) {
+    override fun connect(userId: String?) {
         if (socket?.connected() == true && currentUserId == userId) return
 
         if (socket != null && currentUserId != userId) {
@@ -40,18 +40,18 @@ class CoachSocketClient(
         socket?.connect()
     }
 
-    fun disconnect() {
+    override fun disconnect() {
         socket?.off()
         socket?.disconnect()
         socket = null
         currentUserId = null
     }
 
-    fun sendPoseData(payload: JSONObject) {
+    override fun sendPoseData(payload: JSONObject) {
         socket?.emit("pose_data", payload)
     }
 
-    fun startExercise(exerciseId: Int, sets: Int?, reps: Int?, restSeconds: Int?) {
+    override fun startExercise(exerciseId: Int, sets: Int?, reps: Int?, restSeconds: Int?) {
         val payload = JSONObject().apply {
             put("exerciseId", exerciseId)
             sets?.let { put("sets", it) }
@@ -61,15 +61,15 @@ class CoachSocketClient(
         socket?.emit("start_exercise", payload)
     }
 
-    fun stopExercise() {
+    override fun stopExercise() {
         socket?.emit("stop_exercise")
     }
 
-    fun sendShotReleased() {
+    override fun sendShotReleased() {
         socket?.emit("shot_released")
     }
 
-    fun requestSessionInfo() {
+    override fun requestSessionInfo() {
         socket?.emit("request_session_info")
     }
 

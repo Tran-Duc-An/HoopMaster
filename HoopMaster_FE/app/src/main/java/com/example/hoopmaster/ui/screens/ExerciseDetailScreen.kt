@@ -27,8 +27,8 @@ import com.example.hoopmaster.ui.components.HoopScreenScaffold
 import com.example.hoopmaster.ui.components.HoopStatus
 import com.example.hoopmaster.ui.components.HoopStatusPanel
 import com.example.hoopmaster.ui.theme.ActiveOrange
-import com.example.hoopmaster.viewmodels.ExerciseDetailUiState
 import com.example.hoopmaster.viewmodels.ExerciseDetailAction
+import com.example.hoopmaster.viewmodels.ExerciseDetailUiState
 import com.example.hoopmaster.viewmodels.ExerciseDetailViewModel
 
 @Composable
@@ -36,16 +36,12 @@ fun ExerciseDetailScreen(
     exerciseId: Int,
     onBack: () -> Unit,
     onStartTracking: () -> Unit,
-    demoState: ExerciseDetailUiState? = null,
     viewModel: ExerciseDetailViewModel = viewModel()
 ) {
-    val liveState by viewModel.uiState.collectAsState()
-    val uiState = demoState ?: liveState
+    val uiState by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(exerciseId, demoState) {
-        if (demoState == null) {
-            viewModel.loadExercise(exerciseId)
-        }
+    LaunchedEffect(exerciseId) {
+        viewModel.loadExercise(exerciseId)
     }
 
     HoopScreenScaffold(
@@ -57,9 +53,7 @@ fun ExerciseDetailScreen(
                     text = "Start tracking",
                     icon = Icons.Outlined.PlayArrow,
                     onClick = {
-                        if (demoState == null) {
-                            viewModel.onAction(ExerciseDetailAction.StartExercise)
-                        }
+                        viewModel.onAction(ExerciseDetailAction.StartExercise)
                         onStartTracking()
                     },
                     modifier = Modifier.fillMaxWidth()

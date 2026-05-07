@@ -51,7 +51,6 @@ import com.example.hoopmaster.ui.components.HoopStatusBadge
 import com.example.hoopmaster.ui.theme.ActiveOrange
 import com.example.hoopmaster.ui.theme.HoopSpacing
 import com.example.hoopmaster.ui.theme.NavyShadow
-import com.example.hoopmaster.viewmodels.HomeUiState
 import com.example.hoopmaster.viewmodels.HomeViewModel
 
 @Composable
@@ -60,16 +59,12 @@ fun HomeScreen(
     onStartShooting: () -> Unit,
     onOpenExercise: (Int) -> Unit,
     onOpenProfile: () -> Unit,
-    demoState: HomeUiState? = null,
     viewModel: HomeViewModel = viewModel()
 ) {
-    val liveState by viewModel.uiState.collectAsState()
-    val uiState = demoState ?: liveState
+    val uiState by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(demoState) {
-        if (demoState == null) {
-            viewModel.loadHome()
-        }
+    LaunchedEffect(Unit) {
+        viewModel.loadHome()
     }
 
     Scaffold(

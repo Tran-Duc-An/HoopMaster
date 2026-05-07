@@ -13,7 +13,7 @@ import com.example.hoopmaster.data.model.ExerciseProgressEvent
 import com.example.hoopmaster.data.model.PostShotFeedbackEvent
 import com.example.hoopmaster.data.model.SocketErrorEvent
 import com.example.hoopmaster.media.AudioPlayer
-import com.example.hoopmaster.data.realtime.CoachSocketClient
+import com.example.hoopmaster.data.realtime.CoachSocket
 import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarkerResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,7 +44,7 @@ sealed interface TrackingAction {
 
 class TrackingViewModel(application: Application) : AndroidViewModel(application) {
     private val container = AppContainer(application)
-    private val socketClient: CoachSocketClient = container.createSocketClient()
+    private val socketClient: CoachSocket = container.createSocketClient()
 
     val poseResult = mutableStateOf<PoseLandmarkerResult?>(null)
     val feedbackText = mutableStateOf("Đang kết nối Server...")

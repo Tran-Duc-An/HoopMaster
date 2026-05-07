@@ -6,17 +6,20 @@ import com.example.hoopmaster.data.model.PlanningChatResponseDto
 import com.example.hoopmaster.data.model.PlanningHistoryResponseDto
 import com.example.hoopmaster.data.model.PlanningMessageRequest
 
-class PlanningRepository(private val api: HoopMasterApi) {
+class PlanningRepository(private val api: HoopMasterApi) : PlanningDataSource {
+    override
     suspend fun sendMessage(userId: String, text: String): Result<PlanningChatResponseDto> = runCatching {
         val response = api.sendPlanningMessage(userId, PlanningMessageRequest(text = text))
         response.bodyOrThrow("send planning message")
     }.mapError("send planning message")
 
+    override
     suspend fun confirmPlan(userId: String, planId: String): Result<PlanningChatResponseDto> = runCatching {
         val response = api.confirmPlan(userId, ConfirmPlanRequest(planId = planId))
         response.bodyOrThrow("confirm plan")
     }.mapError("confirm plan")
 
+    override
     suspend fun getHistory(userId: String): Result<PlanningHistoryResponseDto> = runCatching {
         val response = api.getPlanningHistory(userId)
         response.bodyOrThrow("load planning history")

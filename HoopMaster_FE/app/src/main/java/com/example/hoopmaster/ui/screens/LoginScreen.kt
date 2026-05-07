@@ -40,25 +40,19 @@ import com.example.hoopmaster.ui.components.HoopErrorBanner
 import com.example.hoopmaster.ui.components.HoopPrimaryButton
 import com.example.hoopmaster.ui.components.HoopOutlinedTextField
 import com.example.hoopmaster.ui.theme.HoopSpacing
-import com.example.hoopmaster.viewmodels.AuthUiState
 import com.example.hoopmaster.viewmodels.AuthViewModel
 
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
-    demoState: AuthUiState? = null,
-    demoSignupMode: Boolean? = null,
     viewModel: AuthViewModel = viewModel()
 ) {
-    val isDemo = demoState != null
-    var isSignupMode by rememberSaveable { mutableStateOf(demoSignupMode ?: false) }
-    var demoEmail by rememberSaveable { mutableStateOf(demoState?.email ?: "") }
-    var demoPassword by rememberSaveable { mutableStateOf(demoState?.password ?: "") }
+    var isSignupMode by rememberSaveable { mutableStateOf(false) }
     val logoId = R.drawable.hoopmaster_logo
-    val emailValue = if (isDemo) demoEmail else viewModel.email.value
-    val passwordValue = if (isDemo) demoPassword else viewModel.password.value
-    val loadingValue = if (isDemo) demoState?.isLoading == true else viewModel.isLoading.value
-    val errorValue = if (isDemo) demoState?.errorMessage else viewModel.errorMessage.value
+    val emailValue = viewModel.email.value
+    val passwordValue = viewModel.password.value
+    val loadingValue = viewModel.isLoading.value
+    val errorValue = viewModel.errorMessage.value
 
     Box(
         modifier = Modifier
@@ -146,13 +140,7 @@ fun LoginScreen(
                 ) {
                     HoopOutlinedTextField(
                         value = emailValue,
-                        onValueChange = {
-                            if (isDemo) {
-                                demoEmail = it
-                            } else {
-                                viewModel.email.value = it
-                            }
-                        },
+                        onValueChange = { viewModel.email.value = it },
                         label = "Email",
                         placeholder = "name@school.com",
                         modifier = Modifier.fillMaxWidth()
@@ -160,13 +148,7 @@ fun LoginScreen(
 
                     HoopOutlinedTextField(
                         value = passwordValue,
-                        onValueChange = {
-                            if (isDemo) {
-                                demoPassword = it
-                            } else {
-                                viewModel.password.value = it
-                            }
-                        },
+                        onValueChange = { viewModel.password.value = it },
                         label = "Password",
                         placeholder = "Enter password",
                         visualTransformation = PasswordVisualTransformation(),
@@ -186,9 +168,7 @@ fun LoginScreen(
                 HoopPrimaryButton(
                     text = if (isSignupMode) "Sign up" else "Log in",
                     onClick = {
-                        if (isDemo) {
-                            onLoginSuccess()
-                        } else if (isSignupMode) {
+                        if (isSignupMode) {
                             viewModel.signup(onSuccess = onLoginSuccess)
                         } else {
                             viewModel.login(onSuccess = onLoginSuccess)

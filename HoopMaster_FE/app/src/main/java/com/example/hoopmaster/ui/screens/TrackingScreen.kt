@@ -84,7 +84,6 @@ import com.example.hoopmaster.ui.theme.ActiveOrange
 import com.example.hoopmaster.ui.theme.HoopRadius
 import com.example.hoopmaster.ui.theme.HoopSpacing
 import com.example.hoopmaster.ui.theme.NavyShadow
-import com.example.hoopmaster.viewmodels.TrackingUiState
 import com.example.hoopmaster.viewmodels.TrackingViewModel
 import java.util.concurrent.Executors
 
@@ -92,37 +91,21 @@ import java.util.concurrent.Executors
 @Composable
 fun TrackingScreen(
     onEndSession: () -> Unit,
-    demoState: TrackingUiState? = null,
-    demoHasCameraPermission: Boolean = true,
-    viewModel: TrackingViewModel? = null
+    viewModel: TrackingViewModel = viewModel()
 ) {
-    val isDemo = demoState != null
-    val liveViewModel = viewModel ?: if (!isDemo) viewModel<TrackingViewModel>() else null
     val context = LocalContext.current
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     val executor = remember { Executors.newSingleThreadExecutor() }
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
-    val liveUiState = if (isDemo) {
-        null
-    } else {
-        requireNotNull(liveViewModel).uiState.collectAsState()
-    }
-    val uiStateValue = demoState ?: requireNotNull(liveUiState).value
+    val uiStateValue by viewModel.uiState.collectAsState()
 
     // Trạng thái hiển thị
     var lensFacing by remember { mutableIntStateOf(CameraSelector.LENS_FACING_BACK) }
     var showSkeleton by remember { mutableStateOf(true) }
     var poseInitError by remember { mutableStateOf<String?>(null) }
-    var demoTone by remember(demoState?.selectedTone) { mutableStateOf(demoState?.selectedTone ?: "neutral") }
-
-    // Quản lý quyền Camera
     var hasCameraPermission by remember {
         mutableStateOf(
-            if (isDemo) {
-                demoHasCameraPermission
-            } else {
-                ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
-            }
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
         )
     }
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -130,7 +113,7 @@ fun TrackingScreen(
         onResult = { isGranted -> hasCameraPermission = isGranted }
     )
     LaunchedEffect(Unit) {
-        if (!isDemo && !hasCameraPermission) {
+        if (!hasCameraPermission) {
             permissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
@@ -140,7 +123,7 @@ fun TrackingScreen(
 
     // 👉 CHÌA KHÓA SỬA LỖI: Dùng LaunchedEffect theo dõi sự thay đổi của lensFacing
     LaunchedEffect(lensFacing, hasCameraPermission) {
-        if (!isDemo && hasCameraPermission) {
+        if (hasCameraPermission) {
             val cameraProvider = cameraProviderFuture.get()
 
             val preview = Preview.Builder().build().also {
@@ -155,8 +138,8 @@ fun TrackingScreen(
                     it.setAnalyzer(executor, PoseAnalyzer(
                         context,
                         onPoseDetected = { result, _, _ ->
-                            requireNotNull(liveViewModel).poseResult.value = result
-                            requireNotNull(liveViewModel).streamPoseToServer(result)
+                            viewModel.poseResult.value = result
+                            viewModel.streamPoseToServer(result)
                         },
                         onError = { message ->
                             poseInitError = message
@@ -222,7 +205,7 @@ fun TrackingScreen(
             )
 
             if (hasCameraPermission) {
-                val poseResult = liveViewModel?.poseResult?.value
+                val poseResult = viewModel.poseResult.value
                 if (showSkeleton && poseResult != null && poseResult.landmarks().isNotEmpty()) {
                     val skeletonLineColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.92f)
                     val skeletonPointColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.96f)
@@ -339,13 +322,9 @@ fun TrackingScreen(
                     Row(horizontalArrangement = Arrangement.spacedBy(HoopSpacing.Sm)) {
                         listOf("strict", "neutral", "cheerful").forEach { tone ->
                             FilterChip(
-                                selected = if (isDemo) demoTone == tone else liveViewModel?.selectedTone?.value == tone,
+                                selected = viewModel.selectedTone.value == tone,
                                 onClick = {
-                                    if (isDemo) {
-                                        demoTone = tone
-                                    } else {
-                                        requireNotNull(liveViewModel).updateTone(tone)
-                                    }
+                                    viewModel.updateTone(tone)
                                 },
                                 label = { Text(tone.replaceFirstChar { it.uppercase() }) },
                                 colors = FilterChipDefaults.filterChipColors(
@@ -362,9 +341,7 @@ fun TrackingScreen(
                     }
                     Button(
                         onClick = {
-                            if (!isDemo) {
-                                requireNotNull(liveViewModel).onShotReleased()
-                            }
+                            viewModel.onShotReleased()
                         },
                         modifier = Modifier
                             .fillMaxWidth()

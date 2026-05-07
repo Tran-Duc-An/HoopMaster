@@ -19,11 +19,6 @@ import com.example.hoopmaster.ui.screens.TrackingScreen
 
 @Composable
 fun AppNavigation() {
-    if (DemoModeConfig.enabled) {
-        DemoModeScreen(onExit = {})
-        return
-    }
-
     val context = LocalContext.current
     val container = remember(context) {
         AppContainer(context.applicationContext)

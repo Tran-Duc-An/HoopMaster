@@ -49,25 +49,19 @@ import com.example.hoopmaster.ui.theme.HoopRadius
 import com.example.hoopmaster.ui.theme.NavyShadow
 import com.example.hoopmaster.viewmodels.PlanningChatAction
 import com.example.hoopmaster.viewmodels.PlanningChatEntry
-import com.example.hoopmaster.viewmodels.PlanningChatUiState
 import com.example.hoopmaster.viewmodels.PlanningChatViewModel
 
 @Composable
 fun PlanningChatScreen(
     onBack: () -> Unit,
-    demoState: PlanningChatUiState? = null,
     viewModel: PlanningChatViewModel = viewModel()
 ) {
-    val liveState by viewModel.uiState.collectAsState()
-    val uiState = demoState ?: liveState
-    val isInteractive = demoState == null
-    val canSend = isInteractive && !uiState.isLoading && uiState.input.isNotBlank()
-    val canConfirm = isInteractive && !uiState.isLoading && uiState.draftPlan != null
+    val uiState by viewModel.uiState.collectAsState()
+    val canSend = !uiState.isLoading && uiState.input.isNotBlank()
+    val canConfirm = !uiState.isLoading && uiState.draftPlan != null
 
-    LaunchedEffect(demoState) {
-        if (demoState == null) {
-            viewModel.loadHistory()
-        }
+    LaunchedEffect(Unit) {
+        viewModel.loadHistory()
     }
 
     HoopScreenScaffold(
@@ -76,15 +70,11 @@ fun PlanningChatScreen(
         bottomBar = {
             PlanningChatBottomBar(
                 input = uiState.input,
-                isInteractive = isInteractive,
+                isInteractive = true,
                 isLoading = uiState.isLoading,
                 canSend = canSend,
                 canConfirm = canConfirm,
-                onInputChange = {
-                    if (isInteractive) {
-                        viewModel.onAction(PlanningChatAction.InputChanged(it))
-                    }
-                },
+                onInputChange = { viewModel.onAction(PlanningChatAction.InputChanged(it)) },
                 onSend = {
                     if (canSend) {
                         viewModel.sendMessage()
@@ -149,9 +139,10 @@ fun PlanningChatScreen(
                 }
             }
 
-            if (uiState.draftPlan != null && uiState.messages.none { it.planDraft?.id == uiState.draftPlan.id }) {
+            val draftPlan = uiState.draftPlan
+            if (draftPlan != null && uiState.messages.none { it.planDraft?.id == draftPlan.id }) {
                 item {
-                    DraftPlanCard(plan = uiState.draftPlan!!)
+                    DraftPlanCard(plan = draftPlan)
                 }
             }
         }
