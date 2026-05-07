@@ -2,18 +2,27 @@ from __future__ import annotations
 
 import math
 import os
+import shutil
 from pathlib import Path
 from io import BytesIO
 from typing import Iterator
 
 import numpy as np
 import soundfile as sf
+
+_ffmpeg_binary = os.getenv("FFMPEG_BINARY") or shutil.which("ffmpeg")
+if _ffmpeg_binary:
+    os.environ.setdefault("FFMPEG_BINARY", _ffmpeg_binary)
+
 from pydub import AudioSegment
 
 
-_ffmpeg_binary = os.getenv("FFMPEG_BINARY")
+_ffmpeg_binary = os.getenv("FFMPEG_BINARY") or shutil.which("ffmpeg")
 if _ffmpeg_binary and Path(_ffmpeg_binary).exists():
     AudioSegment.converter = _ffmpeg_binary
+    _ffprobe_binary = shutil.which("ffprobe")
+    if _ffprobe_binary and Path(_ffprobe_binary).exists():
+        AudioSegment.ffprobe = _ffprobe_binary
 
 
 def numpy_to_wav_bytes(samples: np.ndarray, sample_rate: int) -> bytes:

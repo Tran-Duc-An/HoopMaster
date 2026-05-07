@@ -78,4 +78,25 @@ def _split_by_emphasis(
             continue
         is_emphasis = part.strip().lower() in emphasis_set
         segments.append((part, is_emphasis))
-    return segments
+    return _merge_punctuation_segments(segments)
+
+
+def _merge_punctuation_segments(
+    segments: list[tuple[str, bool]],
+) -> list[tuple[str, bool]]:
+    merged: list[tuple[str, bool]] = []
+    for text, is_emphasis in segments:
+        if not text.strip():
+            if merged:
+                prev_text, prev_emphasis = merged[-1]
+                merged[-1] = (prev_text + text, prev_emphasis)
+            continue
+        if re.search(r"\w", text) is None:
+            if merged:
+                prev_text, prev_emphasis = merged[-1]
+                merged[-1] = (prev_text + text, prev_emphasis)
+            else:
+                merged.append((text, is_emphasis))
+            continue
+        merged.append((text, is_emphasis))
+    return merged

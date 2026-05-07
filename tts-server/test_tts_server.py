@@ -24,11 +24,20 @@ def test_tts(text, intent, audio_format="wav", emphasis_words=None):
                 response.headers.get("Content-Type"),
             )
         else:
-            print("Error:", response.status_code, response.text)
+            error_body = response.read()
+            print(
+                "Error:",
+                response.status_code,
+                error_body.decode("utf-8", "replace"),
+            )
 
 
 if __name__ == "__main__":
-    test_tts("Lower your stance and focus.", "strict", emphasis_words=["lower", "focus"])
+    test_tts(
+        "Lower your stance and focus.",
+        "strict",
+        emphasis_words=["lower", "focus"],
+    )
     test_tts(
         "Great effort! Raise your elbow higher and keep going.",
         "cheerful",
