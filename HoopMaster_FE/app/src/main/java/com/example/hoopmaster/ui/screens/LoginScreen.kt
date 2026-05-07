@@ -7,7 +7,6 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -22,16 +21,8 @@ fun LoginScreen(
     onLoginSuccess: () -> Unit,
     viewModel: AuthViewModel = viewModel()
 ) {
-    val context = LocalContext.current
     var isSignupMode by rememberSaveable { mutableStateOf(false) }
-    val logoId = remember(context) {
-        val drawableId = context.resources.getIdentifier("hoopmaster_logo", "drawable", context.packageName)
-        if (drawableId != 0) {
-            drawableId
-        } else {
-            context.resources.getIdentifier("hoopmaster_logo_foreground", "mipmap", context.packageName)
-        }
-    }
+    val logoId = R.drawable.hoopmaster_logo
 
     Column(
         modifier = Modifier
@@ -40,14 +31,12 @@ fun LoginScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        if (logoId != 0) {
-            Image(
-                painter = painterResource(id = logoId),
-                contentDescription = "HoopMaster logo",
-                modifier = Modifier.size(120.dp)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-        }
+        Image(
+            painter = painterResource(id = logoId),
+            contentDescription = "HoopMaster logo",
+            modifier = Modifier.size(120.dp)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
         Text(
             "HOOPMASTER",
             style = MaterialTheme.typography.headlineLarge,

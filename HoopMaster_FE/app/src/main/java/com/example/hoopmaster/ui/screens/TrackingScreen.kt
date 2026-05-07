@@ -73,6 +73,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.hoopmaster.R
 import com.example.hoopmaster.utils.PoseAnalyzer
 import com.example.hoopmaster.viewmodels.TrackingViewModel
 import java.util.concurrent.Executors
@@ -660,25 +661,20 @@ private fun StatColumn(
 
 @Composable
 private fun CameraFallbackBackground() {
-    val context = LocalContext.current
-    val logoId = remember(context) {
-        context.resources.getIdentifier("hoopmaster_logo", "drawable", context.packageName)
-    }
+    val logoId = R.drawable.hoopmaster_logo
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        if (logoId != 0) {
-            androidx.compose.foundation.Image(
-                painter = painterResource(id = logoId),
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(48.dp),
-                alpha = 0.18f
-            )
-        }
+        androidx.compose.foundation.Image(
+            painter = painterResource(id = logoId),
+            contentDescription = null,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(48.dp),
+            alpha = 0.18f
+        )
         Text(
             text = "Camera permission needed",
             color = MaterialTheme.colorScheme.onSurface,

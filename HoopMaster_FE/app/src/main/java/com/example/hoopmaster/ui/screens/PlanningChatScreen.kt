@@ -16,9 +16,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -64,7 +64,7 @@ fun PlanningChatScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.Outlined.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
                 }
                 Text(
                     text = "Planning",
@@ -97,7 +97,7 @@ fun PlanningChatScreen(
                         modifier = Modifier.weight(1f),
                         enabled = !uiState.isLoading
                     ) {
-                        Icon(Icons.Outlined.Send, contentDescription = null)
+                        Icon(Icons.AutoMirrored.Outlined.Send, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Send")
                     }

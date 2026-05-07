@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PlayArrow
@@ -189,7 +189,7 @@ private fun ExercisePlanCard(
                         text = exercise.category ?: exercise.exercise?.category ?: "Work"
                     )
                 }
-                Icon(Icons.Outlined.ArrowForward, contentDescription = null)
+                Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = null)
             }
             Text(
                 text = exercise.description ?: exercise.exercise?.description ?: "",

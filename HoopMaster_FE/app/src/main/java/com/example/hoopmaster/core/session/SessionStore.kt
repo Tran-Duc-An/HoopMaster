@@ -1,6 +1,7 @@
 package com.example.hoopmaster.core.session
 
 import android.content.Context
+import androidx.core.content.edit
 import com.example.hoopmaster.data.model.CoachTone
 import com.example.hoopmaster.data.model.UserDto
 
@@ -9,17 +10,17 @@ class SessionStore(context: Context) {
 
     fun saveUser(user: UserDto) {
         val userId = user.id ?: return
-        prefs.edit()
-            .putString(KEY_USER_ID, userId)
-            .putString(KEY_USERNAME, user.username)
-            .putString(KEY_EMAIL, user.email)
-            .putString(KEY_NAME, user.name)
-            .putString(KEY_TONE, user.tone?.backendValue())
-            .apply()
+        prefs.edit {
+            putString(KEY_USER_ID, userId)
+            putString(KEY_USERNAME, user.username)
+            putString(KEY_EMAIL, user.email)
+            putString(KEY_NAME, user.name)
+            putString(KEY_TONE, user.tone?.backendValue())
+        }
     }
 
     fun saveTone(tone: CoachTone) {
-        prefs.edit().putString(KEY_TONE, tone.backendValue()).apply()
+        prefs.edit { putString(KEY_TONE, tone.backendValue()) }
     }
 
     fun getUserId(): String? = prefs.getString(KEY_USER_ID, null)
@@ -29,7 +30,7 @@ class SessionStore(context: Context) {
     fun isLoggedIn(): Boolean = getUserId() != null
 
     fun clear() {
-        prefs.edit().clear().apply()
+        prefs.edit { clear() }
     }
 
     private fun String?.toCoachTone(): CoachTone = when (this?.lowercase()) {
