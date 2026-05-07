@@ -4,9 +4,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material3.MaterialTheme
@@ -17,7 +20,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.hoopmaster.ui.components.HoopCard
 import com.example.hoopmaster.ui.components.HoopFilterChip
@@ -25,6 +27,9 @@ import com.example.hoopmaster.ui.components.HoopScreenScaffold
 import com.example.hoopmaster.ui.components.HoopStatus
 import com.example.hoopmaster.ui.components.HoopStatusPanel
 import com.example.hoopmaster.ui.components.HoopSecondaryButton
+import com.example.hoopmaster.ui.responsive.rememberHoopResponsiveTokens
+import com.example.hoopmaster.ui.responsive.rememberHoopWindowInfo
+import com.example.hoopmaster.ui.responsive.responsiveContentWidth
 import com.example.hoopmaster.viewmodels.ProfileAction
 import com.example.hoopmaster.viewmodels.ProfileViewModel
 
@@ -36,6 +41,9 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val windowInfo = rememberHoopWindowInfo()
+    val tokens = rememberHoopResponsiveTokens(windowInfo)
+    val compactBottomBar = windowInfo.isLandscape || windowInfo.isSmallHeight
 
     LaunchedEffect(Unit) {
         viewModel.loadProfile(null)
@@ -44,8 +52,14 @@ fun ProfileScreen(
     HoopScreenScaffold(
         title = "Profile",
         onBack = onBack,
+        windowInfo = windowInfo,
         bottomBar = {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(
+                modifier = Modifier.padding(
+                    horizontal = tokens.spacing.bottomBarHorizontal,
+                    vertical = tokens.spacing.bottomBarVertical
+                )
+            ) {
                 HoopSecondaryButton(
                     text = "Logout",
                     icon = Icons.AutoMirrored.Outlined.Logout,
@@ -53,7 +67,10 @@ fun ProfileScreen(
                         viewModel.logout()
                         onLogout()
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .responsiveContentWidth(windowInfo, tokens),
+                    compact = compactBottomBar
                 )
             }
         }
@@ -62,11 +79,21 @@ fun ProfileScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .then(
+                    if (windowInfo.isSmallHeight) {
+                        Modifier.verticalScroll(rememberScrollState())
+                    } else {
+                        Modifier
+                    }
+                )
+                .padding(horizontal = tokens.spacing.screenMargin, vertical = tokens.spacing.contentGap),
+            verticalArrangement = Arrangement.spacedBy(tokens.spacing.sectionGap)
         ) {
-            HoopCard {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            HoopCard(
+                modifier = Modifier.responsiveContentWidth(windowInfo, tokens),
+                contentPadding = PaddingValues(tokens.spacing.cardPadding)
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(tokens.spacing.contentGap)) {
                     Text("Profile summary", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     Text("User ${uiState.userId ?: "guest"}")
                     if (uiState.displayName.isNotBlank()) {
@@ -78,9 +105,15 @@ fun ProfileScreen(
                     Text("Tone ${uiState.tone}")
                 }
             }
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                modifier = Modifier.responsiveContentWidth(windowInfo, tokens),
+                verticalArrangement = Arrangement.spacedBy(tokens.spacing.contentGap)
+            ) {
                 Text("Coach tone", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(tokens.spacing.contentGap),
+                    verticalArrangement = Arrangement.spacedBy(tokens.spacing.contentGap)
+                ) {
                     listOf("strict", "neutral", "cheerful").forEach { tone ->
                         HoopFilterChip(
                             label = tone.replaceFirstChar { it.uppercase() },
@@ -95,14 +128,16 @@ fun ProfileScreen(
                 HoopStatusPanel(
                     title = "Saving tone",
                     message = "Coach voice update in progress.",
-                    status = HoopStatus.Active
+                    status = HoopStatus.Active,
+                    modifier = Modifier.responsiveContentWidth(windowInfo, tokens)
                 )
             }
             if (uiState.errorMessage != null) {
                 HoopStatusPanel(
                     title = "Profile error",
                     message = uiState.errorMessage ?: "",
-                    status = HoopStatus.Error
+                    status = HoopStatus.Error,
+                    modifier = Modifier.responsiveContentWidth(windowInfo, tokens)
                 )
             }
         }

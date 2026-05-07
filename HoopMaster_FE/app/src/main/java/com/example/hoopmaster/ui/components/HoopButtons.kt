@@ -4,6 +4,7 @@ package com.example.hoopmaster.ui.components
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,6 +30,7 @@ import com.example.hoopmaster.ui.theme.NavyShadow
 
 private val HoopButtonShape = androidx.compose.foundation.shape.RoundedCornerShape(HoopRadius.Full)
 private val HoopButtonPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp)
+private val HoopButtonCompactPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
 
 @Composable
 fun HoopActionButton(
@@ -37,13 +39,14 @@ fun HoopActionButton(
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
     enabled: Boolean = true,
+    compact: Boolean = false,
 ) {
     Button(
         onClick = onClick,
-        modifier = modifier.sizeIn(minHeight = 48.dp),
+        modifier = modifier.sizeIn(minHeight = if (compact) 40.dp else 48.dp),
         enabled = enabled,
         shape = HoopButtonShape,
-        contentPadding = HoopButtonPadding,
+        contentPadding = if (compact) HoopButtonCompactPadding else HoopButtonPadding,
         colors = ButtonDefaults.buttonColors(
             containerColor = ActiveOrange,
             contentColor = NavyShadow,
@@ -64,13 +67,14 @@ fun HoopPrimaryButton(
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
     enabled: Boolean = true,
+    compact: Boolean = false,
 ) {
     Button(
         onClick = onClick,
-        modifier = modifier.sizeIn(minHeight = 48.dp),
+        modifier = modifier.sizeIn(minHeight = if (compact) 40.dp else 48.dp),
         enabled = enabled,
         shape = HoopButtonShape,
-        contentPadding = HoopButtonPadding,
+        contentPadding = if (compact) HoopButtonCompactPadding else HoopButtonPadding,
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -91,13 +95,14 @@ fun HoopSecondaryButton(
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
     enabled: Boolean = true,
+    compact: Boolean = false,
 ) {
     OutlinedButton(
         onClick = onClick,
-        modifier = modifier.sizeIn(minHeight = 48.dp),
+        modifier = modifier.sizeIn(minHeight = if (compact) 40.dp else 48.dp),
         enabled = enabled,
         shape = HoopButtonShape,
-        contentPadding = HoopButtonPadding,
+        contentPadding = if (compact) HoopButtonCompactPadding else HoopButtonPadding,
         colors = ButtonDefaults.outlinedButtonColors(
             contentColor = NavyShadow,
             disabledContentColor = NavyShadow.copy(alpha = 0.38f)
@@ -115,12 +120,13 @@ fun HoopIconButton(
     contentDescription: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    emphasized: Boolean = false
+    emphasized: Boolean = false,
+    size: androidx.compose.ui.unit.Dp = 48.dp
 ) {
     when {
         emphasized -> FilledIconButton(
             onClick = onClick,
-            modifier = modifier,
+            modifier = modifier.size(size),
             enabled = true
         ) {
             Icon(imageVector = icon, contentDescription = contentDescription)
@@ -128,7 +134,7 @@ fun HoopIconButton(
 
         else -> FilledTonalIconButton(
             onClick = onClick,
-            modifier = modifier,
+            modifier = modifier.size(size),
             enabled = true
         ) {
             Icon(imageVector = icon, contentDescription = contentDescription)

@@ -43,6 +43,7 @@ fun HoopCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     enabled: Boolean = true,
+    contentPadding: PaddingValues = PaddingValues(16.dp),
     content: @Composable ColumnScope.() -> Unit
 ) {
     if (onClick != null) {
@@ -57,7 +58,7 @@ fun HoopCard(
             ),
             elevation = CardDefaults.elevatedCardElevation(defaultElevation = HoopElevation.Level1)
         ) {
-            Column(modifier = Modifier.padding(16.dp), content = content)
+            Column(modifier = Modifier.padding(contentPadding), content = content)
         }
     } else {
         Card(
@@ -69,7 +70,7 @@ fun HoopCard(
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = HoopElevation.Level0)
         ) {
-            Column(modifier = Modifier.padding(16.dp), content = content)
+            Column(modifier = Modifier.padding(contentPadding), content = content)
         }
     }
 }
@@ -80,8 +81,15 @@ fun HoopMetricCard(
     value: String,
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
-    accentColor: Color = MaterialTheme.colorScheme.secondary
+    accentColor: Color = MaterialTheme.colorScheme.secondary,
+    compact: Boolean = false
 ) {
+    val iconPadding = if (compact) 8.dp else 10.dp
+    val iconGap = if (compact) 8.dp else 12.dp
+    val valueGap = if (compact) 2.dp else 4.dp
+    val labelStyle = if (compact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium
+    val valueStyle = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall
+
     HoopCard(modifier = modifier) {
         Row(modifier = Modifier.fillMaxWidth()) {
             if (icon != null) {
@@ -90,25 +98,25 @@ fun HoopMetricCard(
                     contentColor = accentColor,
                     shape = RoundedCornerShape(HoopRadius.Md)
                 ) {
-                    Box(modifier = Modifier.padding(10.dp)) {
+                    Box(modifier = Modifier.padding(iconPadding)) {
                         Icon(
                             imageVector = icon,
                             contentDescription = null
                         )
                     }
                 }
-                Spacer(modifier = Modifier.size(12.dp))
+                Spacer(modifier = Modifier.size(iconGap))
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = label,
-                    style = MaterialTheme.typography.labelMedium,
+                    style = labelStyle,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(valueGap))
                 Text(
                     text = value,
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = valueStyle,
                     color = accentColor
                 )
             }

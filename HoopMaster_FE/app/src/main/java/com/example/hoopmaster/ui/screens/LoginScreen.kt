@@ -11,8 +11,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -39,7 +42,10 @@ import com.example.hoopmaster.R
 import com.example.hoopmaster.ui.components.HoopErrorBanner
 import com.example.hoopmaster.ui.components.HoopPrimaryButton
 import com.example.hoopmaster.ui.components.HoopOutlinedTextField
-import com.example.hoopmaster.ui.theme.HoopSpacing
+import com.example.hoopmaster.ui.responsive.HoopResponsiveTokens
+import com.example.hoopmaster.ui.responsive.HoopWindowInfo
+import com.example.hoopmaster.ui.responsive.rememberHoopResponsiveTokens
+import com.example.hoopmaster.ui.responsive.rememberHoopWindowInfo
 import com.example.hoopmaster.viewmodels.AuthViewModel
 
 @Composable
@@ -54,37 +60,85 @@ fun LoginScreen(
     val loadingValue = viewModel.isLoading.value
     val errorValue = viewModel.errorMessage.value
 
+    val windowInfo = rememberHoopWindowInfo()
+    val tokens = rememberHoopResponsiveTokens(windowInfo)
+
+    LoginScreenContent(
+        isSignupMode = isSignupMode,
+        onSignupModeChange = { isSignupMode = it },
+        logoId = logoId,
+        emailValue = emailValue,
+        onEmailChange = { viewModel.email.value = it },
+        passwordValue = passwordValue,
+        onPasswordChange = { viewModel.password.value = it },
+        loadingValue = loadingValue,
+        errorValue = errorValue,
+        onLoginClick = {
+            if (isSignupMode) {
+                viewModel.signup(onSuccess = onLoginSuccess)
+            } else {
+                viewModel.login(onSuccess = onLoginSuccess)
+            }
+        },
+        windowInfo = windowInfo,
+        tokens = tokens
+    )
+}
+
+@Composable
+private fun LoginScreenContent(
+    isSignupMode: Boolean,
+    onSignupModeChange: (Boolean) -> Unit,
+    logoId: Int,
+    emailValue: String,
+    onEmailChange: (String) -> Unit,
+    passwordValue: String,
+    onPasswordChange: (String) -> Unit,
+    loadingValue: Boolean,
+    errorValue: String?,
+    onLoginClick: () -> Unit,
+    windowInfo: HoopWindowInfo,
+    tokens: HoopResponsiveTokens
+) {
+    val compactLayout = windowInfo.isLandscape || windowInfo.isSmallHeight
+    val outerVerticalPadding = if (compactLayout) tokens.spacing.contentGap else tokens.spacing.sectionGap
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .imePadding()
             .verticalScroll(rememberScrollState())
     ) {
         Surface(
             modifier = Modifier
                 .align(Alignment.Center)
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 32.dp),
+                .padding(
+                    horizontal = tokens.spacing.screenMargin,
+                    vertical = outerVerticalPadding
+                )
+                .widthIn(max = tokens.sizing.contentMaxWidth),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 0.dp
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
+                    .padding(tokens.spacing.cardPadding),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(HoopSpacing.Lg)
+                verticalArrangement = Arrangement.spacedBy(tokens.spacing.sectionGap)
             ) {
                 Image(
                     painter = painterResource(id = logoId),
                     contentDescription = "HoopMaster logo",
-                    modifier = Modifier.size(88.dp),
+                    modifier = Modifier.size(tokens.sizing.logoSize),
                     contentScale = ContentScale.Fit
                 )
 
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(HoopSpacing.Sm)
+                    verticalArrangement = Arrangement.spacedBy(tokens.spacing.contentGap)
                 ) {
                     Text(
                         text = "HOOPMASTER",
@@ -104,7 +158,7 @@ fun LoginScreen(
                 ) {
                     SegmentedButton(
                         selected = !isSignupMode,
-                        onClick = { isSignupMode = false },
+                        onClick = { onSignupModeChange(false) },
                         shape = androidx.compose.material3.SegmentedButtonDefaults.itemShape(index = 0, count = 2),
                         icon = {
                             if (!isSignupMode) {
@@ -119,7 +173,7 @@ fun LoginScreen(
                     }
                     SegmentedButton(
                         selected = isSignupMode,
-                        onClick = { isSignupMode = true },
+                        onClick = { onSignupModeChange(true) },
                         shape = androidx.compose.material3.SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                         icon = {
                             if (isSignupMode) {
@@ -136,11 +190,11 @@ fun LoginScreen(
 
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(HoopSpacing.Md)
+                    verticalArrangement = Arrangement.spacedBy(tokens.spacing.contentGap)
                 ) {
                     HoopOutlinedTextField(
                         value = emailValue,
-                        onValueChange = { viewModel.email.value = it },
+                        onValueChange = onEmailChange,
                         label = "Email",
                         placeholder = "name@school.com",
                         modifier = Modifier.fillMaxWidth()
@@ -148,7 +202,7 @@ fun LoginScreen(
 
                     HoopOutlinedTextField(
                         value = passwordValue,
-                        onValueChange = { viewModel.password.value = it },
+                        onValueChange = onPasswordChange,
                         label = "Password",
                         placeholder = "Enter password",
                         visualTransformation = PasswordVisualTransformation(),
@@ -167,17 +221,13 @@ fun LoginScreen(
 
                 HoopPrimaryButton(
                     text = if (isSignupMode) "Sign up" else "Log in",
-                    onClick = {
-                        if (isSignupMode) {
-                            viewModel.signup(onSuccess = onLoginSuccess)
-                        } else {
-                            viewModel.login(onSuccess = onLoginSuccess)
-                        }
-                    },
+                    onClick = onLoginClick,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = HoopSpacing.Xs),
-                    enabled = !loadingValue
+                        .padding(top = tokens.spacing.contentGap)
+                        .heightIn(min = tokens.sizing.buttonMinHeight),
+                    enabled = !loadingValue,
+                    compact = compactLayout
                 )
 
                 if (loadingValue) {

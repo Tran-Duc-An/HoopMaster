@@ -17,6 +17,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.layout.RowScope
+import com.example.hoopmaster.ui.responsive.HoopWindowInfo
+import com.example.hoopmaster.ui.responsive.rememberHoopResponsiveTokens
+import com.example.hoopmaster.ui.responsive.rememberHoopWindowInfo
 
 @Composable
 fun HoopScreenScaffold(
@@ -26,6 +29,7 @@ fun HoopScreenScaffold(
     actions: @Composable RowScope.() -> Unit = {},
     floatingActionButton: @Composable () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
+    windowInfo: HoopWindowInfo = rememberHoopWindowInfo(),
     content: @Composable (PaddingValues) -> Unit
 ) {
     Scaffold(
@@ -34,7 +38,8 @@ fun HoopScreenScaffold(
             HoopTopAppBar(
                 title = title,
                 onBack = onBack,
-                actions = actions
+                actions = actions,
+                windowInfo = windowInfo
             )
         },
         bottomBar = bottomBar,
@@ -51,8 +56,10 @@ fun HoopTopAppBar(
     title: String,
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
-    actions: @Composable RowScope.() -> Unit = {}
+    actions: @Composable RowScope.() -> Unit = {},
+    windowInfo: HoopWindowInfo = rememberHoopWindowInfo()
 ) {
+    val tokens = rememberHoopResponsiveTokens(windowInfo)
     CenterAlignedTopAppBar(
         title = {
             Text(
@@ -67,7 +74,8 @@ fun HoopTopAppBar(
                 HoopIconButton(
                     icon = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
-                    onClick = onBack
+                    onClick = onBack,
+                    size = tokens.sizing.iconButtonSize
                 )
             }
         },

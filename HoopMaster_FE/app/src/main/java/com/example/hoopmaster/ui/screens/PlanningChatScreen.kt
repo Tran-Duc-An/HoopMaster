@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -44,6 +45,13 @@ import com.example.hoopmaster.ui.components.HoopScreenScaffold
 import com.example.hoopmaster.ui.components.HoopStatus
 import com.example.hoopmaster.ui.components.HoopStatusBadge
 import com.example.hoopmaster.ui.components.HoopStatusPanel
+import com.example.hoopmaster.ui.responsive.HoopPhoneSizeClass
+import com.example.hoopmaster.ui.responsive.HoopResponsiveTokens
+import com.example.hoopmaster.ui.responsive.HoopWindowInfo
+import com.example.hoopmaster.ui.responsive.ResponsiveActionRow
+import com.example.hoopmaster.ui.responsive.rememberHoopResponsiveTokens
+import com.example.hoopmaster.ui.responsive.rememberHoopWindowInfo
+import com.example.hoopmaster.ui.responsive.responsiveContentWidth
 import com.example.hoopmaster.ui.theme.ActiveOrange
 import com.example.hoopmaster.ui.theme.HoopRadius
 import com.example.hoopmaster.ui.theme.NavyShadow
@@ -57,6 +65,8 @@ fun PlanningChatScreen(
     viewModel: PlanningChatViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val windowInfo = rememberHoopWindowInfo()
+    val tokens = rememberHoopResponsiveTokens(windowInfo)
     val canSend = !uiState.isLoading && uiState.input.isNotBlank()
     val canConfirm = !uiState.isLoading && uiState.draftPlan != null
 
@@ -67,6 +77,7 @@ fun PlanningChatScreen(
     HoopScreenScaffold(
         title = "Planning",
         onBack = onBack,
+        windowInfo = windowInfo,
         bottomBar = {
             PlanningChatBottomBar(
                 input = uiState.input,
@@ -84,16 +95,22 @@ fun PlanningChatScreen(
                     if (canConfirm) {
                         viewModel.confirmPlan()
                     }
-                }
+                },
+                windowInfo = windowInfo,
+                tokens = tokens
             )
         }
     ) { padding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(padding)
+                .padding(horizontal = tokens.spacing.screenMargin)
+                .responsiveContentWidth(windowInfo, tokens),
+            contentPadding = PaddingValues(
+                vertical = tokens.spacing.contentGap
+            ),
+            verticalArrangement = Arrangement.spacedBy(tokens.spacing.contentGap)
         ) {
             when {
                 uiState.errorMessage != null -> item {
@@ -131,7 +148,11 @@ fun PlanningChatScreen(
                 }
             } else {
                 items(uiState.messages) { message ->
-                    ChatBubble(message = message)
+                    ChatBubble(
+                        message = message,
+                        windowInfo = windowInfo,
+                        tokens = tokens
+                    )
                     if (message.planDraft != null) {
                         Spacer(modifier = Modifier.height(4.dp))
                         DraftPlanCard(plan = message.planDraft)
@@ -158,14 +179,19 @@ private fun PlanningChatBottomBar(
     canConfirm: Boolean,
     onInputChange: (String) -> Unit,
     onSend: () -> Unit,
-    onConfirm: () -> Unit
+    onConfirm: () -> Unit,
+    windowInfo: HoopWindowInfo,
+    tokens: HoopResponsiveTokens
 ) {
     Column(
         modifier = Modifier
             .navigationBarsPadding()
             .imePadding()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+            .padding(
+                horizontal = tokens.spacing.bottomBarHorizontal,
+                vertical = tokens.spacing.bottomBarVertical
+            ),
+        verticalArrangement = Arrangement.spacedBy(tokens.spacing.contentGap)
     ) {
         HoopOutlinedTextField(
             value = input,
@@ -180,14 +206,13 @@ private fun PlanningChatBottomBar(
                 onSend = { if (canSend) onSend() }
             )
         )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
+        ResponsiveActionRow(windowInfo = windowInfo) {
             Button(
                 onClick = onSend,
                 enabled = canSend,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f, fill = true)
+                    .widthIn(min = 140.dp),
                 shape = RoundedCornerShape(HoopRadius.Full),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = NavyShadow,
@@ -207,7 +232,9 @@ private fun PlanningChatBottomBar(
             Button(
                 onClick = onConfirm,
                 enabled = canConfirm,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f, fill = true)
+                    .widthIn(min = 140.dp),
                 shape = RoundedCornerShape(HoopRadius.Full),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = ActiveOrange,
@@ -229,7 +256,9 @@ private fun PlanningChatBottomBar(
 
 @Composable
 private fun ChatBubble(
-    message: PlanningChatEntry
+    message: PlanningChatEntry,
+    windowInfo: HoopWindowInfo,
+    tokens: HoopResponsiveTokens
 ) {
     val isUser = message.role.equals("user", ignoreCase = true)
     val containerColor = if (isUser) {
@@ -248,6 +277,13 @@ private fun ChatBubble(
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
     ) {
         Surface(
+            modifier = Modifier.widthIn(
+                max = if (windowInfo.phoneSizeClass == HoopPhoneSizeClass.Large) {
+                    tokens.sizing.contentMaxWidth * 0.82f
+                } else {
+                    tokens.sizing.contentMaxWidth * 0.9f
+                }
+            ),
             color = containerColor,
             contentColor = contentColor,
             shape = RoundedCornerShape(HoopRadius.Lg)

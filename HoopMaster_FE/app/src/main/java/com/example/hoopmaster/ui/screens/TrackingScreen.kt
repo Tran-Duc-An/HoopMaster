@@ -84,6 +84,8 @@ import com.example.hoopmaster.ui.theme.ActiveOrange
 import com.example.hoopmaster.ui.theme.HoopRadius
 import com.example.hoopmaster.ui.theme.HoopSpacing
 import com.example.hoopmaster.ui.theme.NavyShadow
+import com.example.hoopmaster.ui.responsive.rememberHoopResponsiveTokens
+import com.example.hoopmaster.ui.responsive.rememberHoopWindowInfo
 import com.example.hoopmaster.viewmodels.TrackingViewModel
 import java.util.concurrent.Executors
 
@@ -95,9 +97,20 @@ fun TrackingScreen(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val windowInfo = rememberHoopWindowInfo()
+    val tokens = rememberHoopResponsiveTokens(windowInfo)
     val executor = remember { Executors.newSingleThreadExecutor() }
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
     val uiStateValue by viewModel.uiState.collectAsState()
+    val compactOverlay = windowInfo.isLandscape || windowInfo.isSmallHeight
+    val tightLandscape = windowInfo.isLandscape && windowInfo.isSmallHeight
+    val overlayMargin = tokens.spacing.screenMargin
+    val shotModeBottomPadding = if (compactOverlay) {
+        overlayMargin
+    } else {
+        156.dp
+    }
+    val analysisOnTop = tightLandscape
 
     // Trạng thái hiển thị
     var lensFacing by remember { mutableIntStateOf(CameraSelector.LENS_FACING_BACK) }
@@ -252,13 +265,17 @@ fun TrackingScreen(
                         CameraSelector.LENS_FACING_BACK
                     }
                 },
-                timerText = "00:59"
+                timerText = "00:59",
+                iconSize = tokens.sizing.iconButtonSize
             )
 
             Column(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = 96.dp, end = HoopSpacing.ScreenMargin),
+                    .padding(
+                        top = if (compactOverlay) 76.dp else 96.dp,
+                        end = overlayMargin
+                    ),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 GlassIconButton(
@@ -269,49 +286,59 @@ fun TrackingScreen(
                         ActiveOrange.copy(alpha = 0.2f)
                     } else {
                         NavyShadow.copy(alpha = 0.62f)
-                    }
+                    },
+                    size = tokens.sizing.iconButtonSize
                 )
             }
 
             AccuracyMeter(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
-                    .padding(start = HoopSpacing.ScreenMargin),
+                    .padding(start = overlayMargin),
                 progress = accuracyValue,
-                label = "Accuracy"
+                label = "Accuracy",
+                meterHeight = tokens.sizing.trackingMeterHeight
             )
 
             Column(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
-                    .padding(end = HoopSpacing.ScreenMargin),
-                verticalArrangement = Arrangement.spacedBy(HoopSpacing.Sm)
+                    .padding(end = overlayMargin),
+                verticalArrangement = Arrangement.spacedBy(tokens.spacing.contentGap)
             ) {
                 QuickStatCard(
                     icon = Icons.Outlined.Speed,
                     iconTint = MaterialTheme.colorScheme.tertiaryContainer,
                     value = releaseValue,
-                    label = "Release"
+                    label = "Release",
+                    compact = compactOverlay
                 )
                 QuickStatCard(
                     icon = Icons.Outlined.Architecture,
                     iconTint = ActiveOrange,
                     value = arcValue,
-                    label = "Arc"
+                    label = "Arc",
+                    compact = compactOverlay
                 )
             }
 
             Surface(
                 modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(start = HoopSpacing.ScreenMargin, end = HoopSpacing.ScreenMargin, bottom = 156.dp),
+                    .align(if (compactOverlay) Alignment.BottomEnd else Alignment.BottomStart)
+                    .padding(
+                        start = overlayMargin,
+                        end = overlayMargin,
+                        bottom = shotModeBottomPadding
+                    ),
                 shape = RoundedCornerShape(HoopRadius.Lg),
                 color = NavyShadow.copy(alpha = 0.66f),
                 border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.14f))
             ) {
                 Column(
-                    modifier = Modifier.padding(HoopSpacing.Md),
-                    verticalArrangement = Arrangement.spacedBy(HoopSpacing.Sm)
+                    modifier = Modifier
+                        .width(if (compactOverlay) tokens.sizing.trackingControlSize * 2f else tokens.sizing.trackingControlSize * 2.4f)
+                        .padding(tokens.spacing.cardPadding),
+                    verticalArrangement = Arrangement.spacedBy(tokens.spacing.contentGap)
                 ) {
                     Text(
                         text = "Shot mode",
@@ -335,7 +362,7 @@ fun TrackingScreen(
                                     labelColor = Color.White.copy(alpha = 0.82f),
                                     iconColor = Color.White.copy(alpha = 0.82f)
                                 ),
-                                modifier = Modifier.heightIn(min = 48.dp)
+                                modifier = Modifier.heightIn(min = tokens.sizing.buttonMinHeight)
                             )
                         }
                     }
@@ -345,7 +372,7 @@ fun TrackingScreen(
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(min = 48.dp),
+                            .heightIn(min = tokens.sizing.buttonMinHeight),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = ActiveOrange,
                             contentColor = NavyShadow,
@@ -363,13 +390,18 @@ fun TrackingScreen(
 
             LastShotAnalysisCard(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(horizontal = HoopSpacing.ScreenMargin, vertical = HoopSpacing.Md),
+                    .align(if (analysisOnTop) Alignment.TopCenter else Alignment.BottomCenter)
+                    .padding(
+                        horizontal = overlayMargin,
+                        vertical = if (analysisOnTop) 82.dp else tokens.spacing.contentGap
+                    ),
                 title = analysisTitle,
                 message = analysisMessage,
                 made = madeShots,
                 total = totalShots,
-                streak = streakValue
+                streak = streakValue,
+                compact = compactOverlay,
+                applyNavigationPadding = !analysisOnTop
             )
 
             if (poseInitError != null) {
@@ -398,7 +430,8 @@ fun TrackingScreen(
 private fun TopTrackingBar(
     onClose: () -> Unit,
     onFlipCamera: () -> Unit,
-    timerText: String
+    timerText: String,
+    iconSize: Dp
 ) {
     Surface(
         modifier = Modifier
@@ -419,7 +452,8 @@ private fun TopTrackingBar(
             GlassIconButton(
                 onClick = onClose,
                 icon = Icons.Outlined.Close,
-                contentDescription = "Close session"
+                contentDescription = "Close session",
+                size = iconSize
             )
 
             RecordingPill(timerText = timerText)
@@ -427,7 +461,8 @@ private fun TopTrackingBar(
             GlassIconButton(
                 onClick = onFlipCamera,
                 icon = Icons.Default.FlipCameraAndroid,
-                contentDescription = "Flip camera"
+                contentDescription = "Flip camera",
+                size = iconSize
             )
         }
     }
@@ -502,7 +537,8 @@ private fun GlassIconButton(
 private fun AccuracyMeter(
     modifier: Modifier,
     progress: Float,
-    label: String
+    label: String,
+    meterHeight: Dp
 ) {
     Column(
         modifier = modifier,
@@ -510,7 +546,7 @@ private fun AccuracyMeter(
     ) {
         Box(
             modifier = Modifier
-                .height(220.dp)
+                .height(meterHeight)
                 .width(44.dp)
                 .clip(RoundedCornerShape(HoopRadius.Full))
                 .background(NavyShadow.copy(alpha = 0.64f))
@@ -554,7 +590,8 @@ private fun QuickStatCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     iconTint: Color,
     value: String,
-    label: String
+    label: String,
+    compact: Boolean
 ) {
     Surface(
         shape = RoundedCornerShape(16.dp),
@@ -562,19 +599,22 @@ private fun QuickStatCard(
         border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.14f))
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = HoopSpacing.Md, vertical = HoopSpacing.Sm),
+            modifier = Modifier.padding(
+                horizontal = if (compact) HoopSpacing.Sm else HoopSpacing.Md,
+                vertical = if (compact) HoopSpacing.Xs else HoopSpacing.Sm
+            ),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 tint = iconTint,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(if (compact) 16.dp else 20.dp)
             )
             Spacer(modifier = Modifier.height(HoopSpacing.Xs))
             Text(
                 text = value,
-                style = MaterialTheme.typography.titleMedium,
+                style = if (compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
                 color = Color.White
             )
             Text(
@@ -594,11 +634,13 @@ private fun LastShotAnalysisCard(
     message: String,
     made: Int,
     total: Int,
-    streak: Int
+    streak: Int,
+    compact: Boolean,
+    applyNavigationPadding: Boolean
 ) {
     Surface(
         modifier = modifier
-            .navigationBarsPadding(),
+            .then(if (applyNavigationPadding) Modifier.navigationBarsPadding() else Modifier),
         shape = RoundedCornerShape(HoopRadius.Lg),
         color = NavyShadow.copy(alpha = 0.72f),
         border = androidx.compose.foundation.BorderStroke(
@@ -609,7 +651,7 @@ private fun LastShotAnalysisCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(HoopSpacing.Md)
+                .padding(if (compact) HoopSpacing.Sm else HoopSpacing.Md)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -627,7 +669,7 @@ private fun LastShotAnalysisCard(
                     )
                     Text(
                         text = message,
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall,
                         fontStyle = FontStyle.Italic,
                         fontWeight = FontWeight.Bold,
                         color = ActiveOrange
@@ -643,14 +685,14 @@ private fun LastShotAnalysisCard(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(56.dp),
+                            .size(if (compact) 44.dp else 56.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Check,
                             contentDescription = null,
                             tint = ActiveOrange,
-                            modifier = Modifier.size(28.dp)
+                            modifier = Modifier.size(if (compact) 22.dp else 28.dp)
                         )
                     }
                 }

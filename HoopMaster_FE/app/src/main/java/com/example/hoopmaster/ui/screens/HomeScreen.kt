@@ -7,12 +7,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -25,7 +23,6 @@ import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.Whatshot
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,6 +45,13 @@ import com.example.hoopmaster.ui.components.HoopMetricCard
 import com.example.hoopmaster.ui.components.HoopSecondaryButton
 import com.example.hoopmaster.ui.components.HoopStatus
 import com.example.hoopmaster.ui.components.HoopStatusBadge
+import com.example.hoopmaster.ui.responsive.HoopResponsiveTokens
+import com.example.hoopmaster.ui.responsive.HoopWindowInfo
+import com.example.hoopmaster.ui.responsive.ResponsiveActionRow
+import com.example.hoopmaster.ui.responsive.ResponsiveMetricGrid
+import com.example.hoopmaster.ui.responsive.rememberHoopResponsiveTokens
+import com.example.hoopmaster.ui.responsive.rememberHoopWindowInfo
+import com.example.hoopmaster.ui.responsive.responsiveContentWidth
 import com.example.hoopmaster.ui.theme.ActiveOrange
 import com.example.hoopmaster.ui.theme.HoopSpacing
 import com.example.hoopmaster.ui.theme.NavyShadow
@@ -62,10 +66,35 @@ fun HomeScreen(
     viewModel: HomeViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val windowInfo = rememberHoopWindowInfo()
+    val tokens = rememberHoopResponsiveTokens(windowInfo)
 
     LaunchedEffect(Unit) {
         viewModel.loadHome()
     }
+
+    HomeScreenContent(
+        uiState = uiState,
+        onPersonalizePlan = onPersonalizePlan,
+        onStartShooting = onStartShooting,
+        onOpenExercise = onOpenExercise,
+        onOpenProfile = onOpenProfile,
+        windowInfo = windowInfo,
+        tokens = tokens
+    )
+}
+
+@Composable
+private fun HomeScreenContent(
+    uiState: com.example.hoopmaster.viewmodels.HomeUiState,
+    onPersonalizePlan: () -> Unit,
+    onStartShooting: () -> Unit,
+    onOpenExercise: (Int) -> Unit,
+    onOpenProfile: () -> Unit,
+    windowInfo: HoopWindowInfo,
+    tokens: HoopResponsiveTokens
+) {
+    val compact = windowInfo.phoneSizeClass == com.example.hoopmaster.ui.responsive.HoopPhoneSizeClass.Small || windowInfo.isSmallHeight
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -73,11 +102,15 @@ fun HomeScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = HoopSpacing.ScreenMargin, vertical = HoopSpacing.Md),
+                    .padding(horizontal = tokens.spacing.screenMargin, vertical = tokens.spacing.contentGap)
+                    .responsiveContentWidth(windowInfo, tokens),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(HoopSpacing.Xs)) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(HoopSpacing.Xs)
+                ) {
                     Text(
                         text = "Good to see you",
                         style = MaterialTheme.typography.labelLarge,
@@ -94,7 +127,9 @@ fun HomeScreen(
                     icon = Icons.Outlined.Person,
                     contentDescription = "Open profile",
                     onClick = onOpenProfile,
-                    emphasized = true
+                    emphasized = true,
+                    size = tokens.sizing.iconButtonSize,
+                    modifier = Modifier.size(tokens.sizing.iconButtonSize)
                 )
             }
         }
@@ -104,15 +139,19 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(padding),
             contentPadding = PaddingValues(
-                start = HoopSpacing.ScreenMargin,
-                end = HoopSpacing.ScreenMargin,
-                bottom = HoopSpacing.Section
+                start = tokens.spacing.screenMargin,
+                end = tokens.spacing.screenMargin,
+                bottom = tokens.spacing.sectionGap
             ),
-            verticalArrangement = Arrangement.spacedBy(HoopSpacing.Lg)
+            verticalArrangement = Arrangement.spacedBy(tokens.spacing.contentGap),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             item {
-                HoopCard(modifier = Modifier.fillMaxWidth()) {
-                    Column(verticalArrangement = Arrangement.spacedBy(HoopSpacing.Md)) {
+                HoopCard(
+                    modifier = Modifier.responsiveContentWidth(windowInfo, tokens),
+                    contentPadding = PaddingValues(tokens.spacing.cardPadding)
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(tokens.spacing.contentGap)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -156,18 +195,20 @@ fun HomeScreen(
                             )
                         }
 
-                        Row(horizontalArrangement = Arrangement.spacedBy(HoopSpacing.Sm)) {
+                        ResponsiveActionRow(windowInfo = windowInfo) {
                             HoopActionButton(
                                 text = "Start session",
                                 icon = Icons.Outlined.PlayArrow,
                                 onClick = onStartShooting,
-                                modifier = Modifier.weight(1f)
+                                compact = compact,
+                                modifier = if (compact) Modifier.fillMaxWidth() else Modifier.weight(1f)
                             )
                             HoopSecondaryButton(
                                 text = "Personalize",
                                 icon = Icons.Outlined.Edit,
                                 onClick = onPersonalizePlan,
-                                modifier = Modifier.weight(1f)
+                                compact = compact,
+                                modifier = if (compact) Modifier.fillMaxWidth() else Modifier.weight(1f)
                             )
                         }
                     }
@@ -175,30 +216,39 @@ fun HomeScreen(
             }
 
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(HoopSpacing.Sm)) {
-                    HoopMetricCard(
-                        label = "Streak",
-                        value = "${uiState.streakDays}",
-                        icon = Icons.Outlined.Whatshot,
-                        accentColor = ActiveOrange,
-                        modifier = Modifier.weight(1f)
-                    )
-                    HoopMetricCard(
-                        label = "Session",
-                        value = when (uiState.currentSessionState) {
-                            "active" -> "Active"
-                            "ready" -> "Ready"
-                            else -> "Idle"
-                        },
-                        icon = Icons.Outlined.Timer,
-                        modifier = Modifier.weight(1f)
-                    )
-                    HoopMetricCard(
-                        label = "Exercises",
-                        value = "${uiState.exercises.size}",
-                        icon = Icons.Outlined.SportsBasketball,
-                        modifier = Modifier.weight(1f)
-                    )
+                ResponsiveMetricGrid(
+                    modifier = Modifier.responsiveContentWidth(windowInfo, tokens),
+                    itemCount = 3,
+                    windowInfo = windowInfo
+                ) { index, itemModifier ->
+                    when (index) {
+                        0 -> HoopMetricCard(
+                            label = "Streak",
+                            value = "${uiState.streakDays}",
+                            icon = Icons.Outlined.Whatshot,
+                            accentColor = ActiveOrange,
+                            compact = compact,
+                            modifier = itemModifier
+                        )
+                        1 -> HoopMetricCard(
+                            label = "Session",
+                            value = when (uiState.currentSessionState) {
+                                "active" -> "Active"
+                                "ready" -> "Ready"
+                                else -> "Idle"
+                            },
+                            icon = Icons.Outlined.Timer,
+                            compact = compact,
+                            modifier = itemModifier
+                        )
+                        else -> HoopMetricCard(
+                            label = "Exercises",
+                            value = "${uiState.exercises.size}",
+                            icon = Icons.Outlined.SportsBasketball,
+                            compact = compact,
+                            modifier = itemModifier
+                        )
+                    }
                 }
             }
 
@@ -206,7 +256,7 @@ fun HomeScreen(
                 item {
                     HoopLoadingRow(
                         text = "Loading your plan...",
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.responsiveContentWidth(windowInfo, tokens)
                     )
                 }
             }
@@ -215,7 +265,7 @@ fun HomeScreen(
                 item {
                     HoopErrorBanner(
                         message = uiState.errorMessage.orEmpty(),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.responsiveContentWidth(windowInfo, tokens)
                     )
                 }
             }
@@ -225,12 +275,14 @@ fun HomeScreen(
                     Text(
                         text = "Exercises",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.responsiveContentWidth(windowInfo, tokens)
                     )
                 }
                 items(uiState.exercises) { exercise ->
                     ExercisePlanCard(
                         exercise = exercise,
+                        modifier = Modifier.responsiveContentWidth(windowInfo, tokens),
                         onClick = {
                             exercise.exerciseId?.let(onOpenExercise)
                         }
@@ -240,7 +292,10 @@ fun HomeScreen(
 
             if (!uiState.isLoading && uiState.exercises.isEmpty() && uiState.errorMessage == null) {
                 item {
-                    HoopCard(modifier = Modifier.fillMaxWidth()) {
+                    HoopCard(
+                        modifier = Modifier.responsiveContentWidth(windowInfo, tokens),
+                        contentPadding = PaddingValues(tokens.spacing.cardPadding)
+                    ) {
                         Column(verticalArrangement = Arrangement.spacedBy(HoopSpacing.Sm)) {
                             Text(
                                 text = "No exercises loaded",
@@ -262,6 +317,7 @@ fun HomeScreen(
 @Composable
 private fun ExercisePlanCard(
     exercise: PlanExerciseDto,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     val exerciseId = exercise.exerciseId ?: exercise.exercise?.id
@@ -274,7 +330,7 @@ private fun ExercisePlanCard(
     val restSeconds = target?.restSeconds
 
     HoopCard(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         onClick = if (exerciseId != null) onClick else null,
         enabled = exerciseId != null
     ) {

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -26,6 +27,10 @@ import com.example.hoopmaster.ui.components.HoopMetricCard
 import com.example.hoopmaster.ui.components.HoopScreenScaffold
 import com.example.hoopmaster.ui.components.HoopStatus
 import com.example.hoopmaster.ui.components.HoopStatusPanel
+import com.example.hoopmaster.ui.responsive.ResponsiveMetricGrid
+import com.example.hoopmaster.ui.responsive.rememberHoopResponsiveTokens
+import com.example.hoopmaster.ui.responsive.rememberHoopWindowInfo
+import com.example.hoopmaster.ui.responsive.responsiveContentWidth
 import com.example.hoopmaster.ui.theme.ActiveOrange
 import com.example.hoopmaster.viewmodels.ExerciseDetailAction
 import com.example.hoopmaster.viewmodels.ExerciseDetailUiState
@@ -39,6 +44,9 @@ fun ExerciseDetailScreen(
     viewModel: ExerciseDetailViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val windowInfo = rememberHoopWindowInfo()
+    val tokens = rememberHoopResponsiveTokens(windowInfo)
+    val compactBottomControls = windowInfo.isLandscape || windowInfo.isSmallHeight
 
     LaunchedEffect(exerciseId) {
         viewModel.loadExercise(exerciseId)
@@ -47,8 +55,16 @@ fun ExerciseDetailScreen(
     HoopScreenScaffold(
         title = uiState.title.ifBlank { "Exercise" },
         onBack = onBack,
+        windowInfo = windowInfo,
         bottomBar = {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        horizontal = tokens.spacing.bottomBarHorizontal,
+                        vertical = tokens.spacing.bottomBarVertical
+                    )
+            ) {
                 HoopActionButton(
                     text = "Start tracking",
                     icon = Icons.Outlined.PlayArrow,
@@ -56,6 +72,7 @@ fun ExerciseDetailScreen(
                         viewModel.onAction(ExerciseDetailAction.StartExercise)
                         onStartTracking()
                     },
+                    compact = compactBottomControls,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -64,58 +81,78 @@ fun ExerciseDetailScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(padding)
+                .padding(horizontal = tokens.spacing.screenMargin),
+            contentPadding = PaddingValues(vertical = tokens.spacing.contentGap),
+            verticalArrangement = Arrangement.spacedBy(tokens.spacing.contentGap)
         ) {
             item {
                 HoopStatusPanel(
+                    modifier = Modifier.responsiveContentWidth(windowInfo, tokens),
                     title = uiState.category.ifBlank { "Shooting" },
                     message = uiState.description.ifBlank { "Loading exercise..." },
                     status = if (uiState.isLoading) HoopStatus.Active else HoopStatus.Info
                 )
             }
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(
+                    modifier = Modifier.responsiveContentWidth(windowInfo, tokens),
+                    verticalArrangement = Arrangement.spacedBy(tokens.spacing.contentGap)
+                ) {
                     Text(
                         text = "Targets",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        HoopMetricCard(
-                            label = "Sets",
-                            value = uiState.sets?.toString() ?: "-",
-                            accentColor = ActiveOrange
-                        )
-                        HoopMetricCard(
-                            label = "Reps",
-                            value = uiState.reps?.toString() ?: "-",
-                            accentColor = MaterialTheme.colorScheme.primary
-                        )
-                        HoopMetricCard(
-                            label = "Rest",
-                            value = uiState.restSeconds?.let { "${it}s" } ?: "-",
-                            accentColor = MaterialTheme.colorScheme.tertiary
-                        )
-                        Text(
-                            text = buildTargets(uiState),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    ResponsiveMetricGrid(
+                        itemCount = 3,
+                        windowInfo = windowInfo
+                    ) { index, itemModifier ->
+                        when (index) {
+                            0 -> HoopMetricCard(
+                                label = "Sets",
+                                value = uiState.sets?.toString() ?: "-",
+                                accentColor = ActiveOrange,
+                                compact = compactBottomControls,
+                                modifier = itemModifier
+                            )
+                            1 -> HoopMetricCard(
+                                label = "Reps",
+                                value = uiState.reps?.toString() ?: "-",
+                                accentColor = MaterialTheme.colorScheme.primary,
+                                compact = compactBottomControls,
+                                modifier = itemModifier
+                            )
+                            else -> HoopMetricCard(
+                                label = "Rest",
+                                value = uiState.restSeconds?.let { "${it}s" } ?: "-",
+                                accentColor = MaterialTheme.colorScheme.tertiary,
+                                compact = compactBottomControls,
+                                modifier = itemModifier
+                            )
+                        }
                     }
+                    Text(
+                        text = buildTargets(uiState),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
             if (uiState.steps.isNotEmpty()) {
                 item {
                     Text(
+                        modifier = Modifier.responsiveContentWidth(windowInfo, tokens),
                         text = "Steps",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
                 items(uiState.steps) { step ->
-                    HoopCard {
+                    HoopCard(
+                        modifier = Modifier.responsiveContentWidth(windowInfo, tokens),
+                        contentPadding = PaddingValues(tokens.spacing.cardPadding)
+                    ) {
                         Text(text = step)
                     }
                 }
@@ -123,6 +160,7 @@ fun ExerciseDetailScreen(
             if (uiState.warnings.isNotEmpty()) {
                 item {
                     Text(
+                        modifier = Modifier.responsiveContentWidth(windowInfo, tokens),
                         text = "Warnings",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
@@ -130,6 +168,7 @@ fun ExerciseDetailScreen(
                 }
                 items(uiState.warnings) { warning ->
                     HoopStatusPanel(
+                        modifier = Modifier.responsiveContentWidth(windowInfo, tokens),
                         title = "Warning",
                         message = warning,
                         status = HoopStatus.Error
@@ -139,6 +178,7 @@ fun ExerciseDetailScreen(
             if (uiState.isLoading) {
                 item {
                     HoopStatusPanel(
+                        modifier = Modifier.responsiveContentWidth(windowInfo, tokens),
                         title = "Loading exercise",
                         message = "Pulling drill details and targets.",
                         status = HoopStatus.Active
@@ -148,6 +188,7 @@ fun ExerciseDetailScreen(
             if (uiState.errorMessage != null) {
                 item {
                     HoopStatusPanel(
+                        modifier = Modifier.responsiveContentWidth(windowInfo, tokens),
                         title = "Load error",
                         message = uiState.errorMessage ?: "",
                         status = HoopStatus.Error
