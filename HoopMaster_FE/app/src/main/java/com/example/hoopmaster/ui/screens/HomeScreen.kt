@@ -1,9 +1,9 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+
 package com.example.hoopmaster.ui.screens
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -20,14 +20,10 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PlayArrow
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.outlined.SportsBasketball
+import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.Whatshot
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -42,7 +38,19 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.hoopmaster.data.model.PlanExerciseDto
-import com.example.hoopmaster.viewmodels.HomeAction
+import com.example.hoopmaster.ui.components.HoopActionButton
+import com.example.hoopmaster.ui.components.HoopCard
+import com.example.hoopmaster.ui.components.HoopErrorBanner
+import com.example.hoopmaster.ui.components.HoopFilterChip
+import com.example.hoopmaster.ui.components.HoopIconButton
+import com.example.hoopmaster.ui.components.HoopLoadingRow
+import com.example.hoopmaster.ui.components.HoopMetricCard
+import com.example.hoopmaster.ui.components.HoopSecondaryButton
+import com.example.hoopmaster.ui.components.HoopStatus
+import com.example.hoopmaster.ui.components.HoopStatusBadge
+import com.example.hoopmaster.ui.theme.ActiveOrange
+import com.example.hoopmaster.ui.theme.HoopSpacing
+import com.example.hoopmaster.ui.theme.NavyShadow
 import com.example.hoopmaster.viewmodels.HomeUiState
 import com.example.hoopmaster.viewmodels.HomeViewModel
 
@@ -64,82 +72,156 @@ fun HomeScreen(
         }
     }
 
-    Scaffold { padding ->
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = HoopSpacing.ScreenMargin, vertical = HoopSpacing.Md),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(HoopSpacing.Xs)) {
+                    Text(
+                        text = "Good to see you",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = uiState.userName?.let { "Hi, $it" } ?: "Hi, Coach",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+                HoopIconButton(
+                    icon = Icons.Outlined.Person,
+                    contentDescription = "Open profile",
+                    onClick = onOpenProfile,
+                    emphasized = true
+                )
+            }
+        }
+    ) { padding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            contentPadding = PaddingValues(
+                start = HoopSpacing.ScreenMargin,
+                end = HoopSpacing.ScreenMargin,
+                bottom = HoopSpacing.Section
+            ),
+            verticalArrangement = Arrangement.spacedBy(HoopSpacing.Lg)
         ) {
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "HOOPMASTER",
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                    Text(
-                        text = "Today",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = uiState.activePlanTitle ?: "Default training plan",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+                HoopCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(HoopSpacing.Md)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(HoopSpacing.Xs)
+                            ) {
+                                Text(
+                                    text = uiState.activePlanTitle ?: "Active plan",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = uiState.activePlanDescription
+                                        ?: "Ready to move from warm-up into live reps.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            HoopStatusBadge(
+                                label = if (uiState.isLoading) "Loading" else "Active",
+                                status = if (uiState.isLoading) HoopStatus.Info else HoopStatus.Active
+                            )
+                        }
 
-            item {
-                Card(colors = CardDefaults.cardColors()) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(
-                            text = uiState.activePlanTitle ?: "No plan loaded",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            text = uiState.activePlanDescription ?: "Training will fall back to the default plan when nothing is active.",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Button(onClick = onPersonalizePlan) {
-                                Icon(Icons.Outlined.Edit, contentDescription = null)
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Personalize")
-                            }
-                            Button(onClick = onStartShooting) {
-                                Icon(Icons.Outlined.PlayArrow, contentDescription = null)
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Start session")
-                            }
-                            IconButton(onClick = onOpenProfile) {
-                                Icon(Icons.Outlined.Person, contentDescription = "Profile")
-                            }
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(HoopSpacing.Sm),
+                            verticalArrangement = Arrangement.spacedBy(HoopSpacing.Sm)
+                        ) {
+                            HoopFilterChip(
+                                label = uiState.plan?.goal ?: "Game prep",
+                                selected = true,
+                                onClick = {}
+                            )
+                            HoopFilterChip(
+                                label = uiState.plan?.status ?: "Custom plan",
+                                selected = false,
+                                onClick = {}
+                            )
+                        }
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(HoopSpacing.Sm)) {
+                            HoopActionButton(
+                                text = "Start session",
+                                icon = Icons.Outlined.PlayArrow,
+                                onClick = onStartShooting,
+                                modifier = Modifier.weight(1f)
+                            )
+                            HoopSecondaryButton(
+                                text = "Personalize",
+                                icon = Icons.Outlined.Edit,
+                                onClick = onPersonalizePlan,
+                                modifier = Modifier.weight(1f)
+                            )
                         }
                     }
                 }
             }
 
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(HoopSpacing.Sm)) {
+                    HoopMetricCard(
+                        label = "Streak",
+                        value = "${uiState.streakDays}",
+                        icon = Icons.Outlined.Whatshot,
+                        accentColor = ActiveOrange,
+                        modifier = Modifier.weight(1f)
+                    )
+                    HoopMetricCard(
+                        label = "Session",
+                        value = when (uiState.currentSessionState) {
+                            "active" -> "Active"
+                            "ready" -> "Ready"
+                            else -> "Idle"
+                        },
+                        icon = Icons.Outlined.Timer,
+                        modifier = Modifier.weight(1f)
+                    )
+                    HoopMetricCard(
+                        label = "Exercises",
+                        value = "${uiState.exercises.size}",
+                        icon = Icons.Outlined.SportsBasketball,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
             if (uiState.isLoading) {
                 item {
-                    Text(
-                        text = "Loading plan...",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    HoopLoadingRow(
+                        text = "Loading your plan...",
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
 
             if (uiState.errorMessage != null) {
                 item {
-                    Surface(color = MaterialTheme.colorScheme.errorContainer) {
-                        Text(
-                            text = uiState.errorMessage ?: "",
-                            modifier = Modifier.padding(12.dp),
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                    }
+                    HoopErrorBanner(
+                        message = uiState.errorMessage.orEmpty(),
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
 
@@ -160,6 +242,24 @@ fun HomeScreen(
                     )
                 }
             }
+
+            if (!uiState.isLoading && uiState.exercises.isEmpty() && uiState.errorMessage == null) {
+                item {
+                    HoopCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(HoopSpacing.Sm)) {
+                            Text(
+                                text = "No exercises loaded",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "Your active plan will appear here once it is available.",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -170,49 +270,95 @@ private fun ExercisePlanCard(
     onClick: () -> Unit
 ) {
     val exerciseId = exercise.exerciseId ?: exercise.exercise?.id
-    Card(
+    val title = exercise.name ?: exercise.exercise?.name ?: "Exercise"
+    val category = exercise.category ?: exercise.exercise?.category ?: "Training"
+    val status = if (exerciseId != null) HoopStatus.Success else HoopStatus.Info
+    val target = exercise.target ?: exercise.exercise?.target
+    val sets = exercise.sets ?: exercise.exercise?.sets
+    val reps = exercise.reps ?: exercise.exercise?.reps
+    val restSeconds = target?.restSeconds
+
+    HoopCard(
         modifier = Modifier.fillMaxWidth(),
-        enabled = exerciseId != null,
-        onClick = onClick,
-        colors = CardDefaults.cardColors()
+        onClick = if (exerciseId != null) onClick else null,
+        enabled = exerciseId != null
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(HoopSpacing.Md)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
-                Column(modifier = Modifier.weight(1f)) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(HoopSpacing.Xs)
+                ) {
                     Text(
-                        text = exercise.name ?: exercise.exercise?.name ?: "Exercise",
+                        text = title,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = exercise.category ?: exercise.exercise?.category ?: "Work"
+                        text = exercise.description ?: exercise.exercise?.description ?: "",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
-                Icon(Icons.AutoMirrored.Outlined.ArrowForward, contentDescription = null)
-            }
-            Text(
-                text = exercise.description ?: exercise.exercise?.description ?: "",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Sets ${exercise.sets ?: exercise.exercise?.sets ?: "-"}")
-                Text("Reps ${exercise.reps ?: exercise.exercise?.reps ?: "-"}")
-                Text("Rest ${exercise.target?.restSeconds ?: exercise.exercise?.target?.restSeconds ?: "-"}s")
-            }
-            if (exerciseId == null) {
                 Text(
-                    text = "No exercise id",
+                    text = exerciseId?.toString() ?: "draft",
+                    style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(HoopSpacing.Sm)) {
+                HoopFilterChip(
+                    label = category,
+                    selected = true,
+                    onClick = {}
+                )
+                HoopStatusBadge(
+                    label = if (exerciseId != null) "Ready" else "Draft",
+                    status = status
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "Target",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = buildTargetRow(sets, reps, restSeconds),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                if (exerciseId != null) {
+                    androidx.compose.material3.Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                        contentDescription = null,
+                        tint = NavyShadow
+                    )
+                }
+            }
         }
     }
+}
+
+private fun buildTargetRow(sets: Int?, reps: Int?, restSeconds: Int?): String {
+    val safeSets = sets?.toString() ?: "-"
+    val safeReps = reps?.toString() ?: "-"
+    val safeRest = restSeconds?.let { "${it}s" } ?: "-"
+    return "$safeSets sets · $safeReps reps · $safeRest rest"
 }

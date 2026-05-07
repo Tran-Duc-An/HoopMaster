@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -39,6 +40,7 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,12 +48,15 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -75,6 +80,10 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.hoopmaster.R
 import com.example.hoopmaster.utils.PoseAnalyzer
+import com.example.hoopmaster.ui.theme.ActiveOrange
+import com.example.hoopmaster.ui.theme.HoopRadius
+import com.example.hoopmaster.ui.theme.HoopSpacing
+import com.example.hoopmaster.ui.theme.NavyShadow
 import com.example.hoopmaster.viewmodels.TrackingUiState
 import com.example.hoopmaster.viewmodels.TrackingViewModel
 import java.util.concurrent.Executors
@@ -93,7 +102,12 @@ fun TrackingScreen(
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     val executor = remember { Executors.newSingleThreadExecutor() }
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
-    val uiStateValue = demoState ?: requireNotNull(liveViewModel).uiState.value
+    val liveUiState = if (isDemo) {
+        null
+    } else {
+        requireNotNull(liveViewModel).uiState.collectAsState()
+    }
+    val uiStateValue = demoState ?: requireNotNull(liveUiState).value
 
     // Trạng thái hiển thị
     var lensFacing by remember { mutableIntStateOf(CameraSelector.LENS_FACING_BACK) }
@@ -203,15 +217,15 @@ fun TrackingScreen(
 
             Box(
                 modifier = Modifier
-                    .matchParentSize()
+                    .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.35f))
             )
 
             if (hasCameraPermission) {
                 val poseResult = liveViewModel?.poseResult?.value
                 if (showSkeleton && poseResult != null && poseResult.landmarks().isNotEmpty()) {
-                    val skeletonLineColor = MaterialTheme.colorScheme.tertiary
-                    val skeletonPointColor = MaterialTheme.colorScheme.tertiary
+                    val skeletonLineColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.92f)
+                    val skeletonPointColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.96f)
                     Canvas(modifier = Modifier.fillMaxSize()) {
                         val landmarks = poseResult.landmarks()[0]
                         val connections = listOf(
@@ -261,7 +275,7 @@ fun TrackingScreen(
             Column(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = 96.dp, end = 20.dp),
+                    .padding(top = 96.dp, end = HoopSpacing.ScreenMargin),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 GlassIconButton(
@@ -269,9 +283,9 @@ fun TrackingScreen(
                     icon = if (showSkeleton) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                     contentDescription = "Toggle skeleton",
                     containerColor = if (showSkeleton) {
-                        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                        ActiveOrange.copy(alpha = 0.2f)
                     } else {
-                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                        NavyShadow.copy(alpha = 0.62f)
                     }
                 )
             }
@@ -279,7 +293,7 @@ fun TrackingScreen(
             AccuracyMeter(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
-                    .padding(start = 20.dp),
+                    .padding(start = HoopSpacing.ScreenMargin),
                 progress = accuracyValue,
                 label = "Accuracy"
             )
@@ -287,18 +301,18 @@ fun TrackingScreen(
             Column(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
-                    .padding(end = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(end = HoopSpacing.ScreenMargin),
+                verticalArrangement = Arrangement.spacedBy(HoopSpacing.Sm)
             ) {
                 QuickStatCard(
                     icon = Icons.Outlined.Speed,
-                    iconTint = MaterialTheme.colorScheme.tertiary,
+                    iconTint = MaterialTheme.colorScheme.tertiaryContainer,
                     value = releaseValue,
                     label = "Release"
                 )
                 QuickStatCard(
                     icon = Icons.Outlined.Architecture,
-                    iconTint = MaterialTheme.colorScheme.primaryContainer,
+                    iconTint = ActiveOrange,
                     value = arcValue,
                     label = "Arc"
                 )
@@ -307,22 +321,22 @@ fun TrackingScreen(
             Surface(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .padding(start = 20.dp, end = 20.dp, bottom = 156.dp),
-                shape = RoundedCornerShape(18.dp),
-                color = Color.White.copy(alpha = 0.08f),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
+                    .padding(start = HoopSpacing.ScreenMargin, end = HoopSpacing.ScreenMargin, bottom = 156.dp),
+                shape = RoundedCornerShape(HoopRadius.Lg),
+                color = NavyShadow.copy(alpha = 0.66f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.14f))
             ) {
                 Column(
-                    modifier = Modifier.padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    modifier = Modifier.padding(HoopSpacing.Md),
+                    verticalArrangement = Arrangement.spacedBy(HoopSpacing.Sm)
                 ) {
                     Text(
                         text = "Shot mode",
-                        fontSize = 12.sp,
+                        style = MaterialTheme.typography.labelMedium,
                         letterSpacing = 1.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = Color.White.copy(alpha = 0.84f)
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(HoopSpacing.Sm)) {
                         listOf("strict", "neutral", "cheerful").forEach { tone ->
                             FilterChip(
                                 selected = if (isDemo) demoTone == tone else liveViewModel?.selectedTone?.value == tone,
@@ -333,7 +347,16 @@ fun TrackingScreen(
                                         requireNotNull(liveViewModel).updateTone(tone)
                                     }
                                 },
-                                label = { Text(tone.replaceFirstChar { it.uppercase() }) }
+                                label = { Text(tone.replaceFirstChar { it.uppercase() }) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = ActiveOrange.copy(alpha = 0.18f),
+                                    selectedLabelColor = NavyShadow,
+                                    selectedLeadingIconColor = NavyShadow,
+                                    containerColor = Color.White.copy(alpha = 0.04f),
+                                    labelColor = Color.White.copy(alpha = 0.82f),
+                                    iconColor = Color.White.copy(alpha = 0.82f)
+                                ),
+                                modifier = Modifier.heightIn(min = 48.dp)
                             )
                         }
                     }
@@ -343,10 +366,19 @@ fun TrackingScreen(
                                 requireNotNull(liveViewModel).onShotReleased()
                             }
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = ActiveOrange,
+                            contentColor = NavyShadow,
+                            disabledContainerColor = ActiveOrange.copy(alpha = 0.38f),
+                            disabledContentColor = NavyShadow.copy(alpha = 0.38f)
+                        ),
+                        shape = RoundedCornerShape(HoopRadius.Full)
                     ) {
                         Icon(Icons.Outlined.Check, contentDescription = null)
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(HoopSpacing.Xs))
                         Text("Shot released")
                     }
                 }
@@ -355,7 +387,7 @@ fun TrackingScreen(
             LastShotAnalysisCard(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(horizontal = 20.dp, vertical = 24.dp),
+                    .padding(horizontal = HoopSpacing.ScreenMargin, vertical = HoopSpacing.Md),
                 title = analysisTitle,
                 message = analysisMessage,
                 made = madeShots,
@@ -368,15 +400,16 @@ fun TrackingScreen(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .padding(top = 88.dp)
-                        .padding(horizontal = 16.dp),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
-                    shape = RoundedCornerShape(8.dp)
+                        .padding(horizontal = HoopSpacing.ScreenMargin),
+                    color = NavyShadow.copy(alpha = 0.7f),
+                    shape = RoundedCornerShape(HoopRadius.Md),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
                 ) {
                     Text(
                         text = poseInitError ?: "",
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(12.dp),
-                        fontSize = 12.sp
+                        color = Color.White,
+                        modifier = Modifier.padding(HoopSpacing.Md),
+                        style = MaterialTheme.typography.labelMedium
                     )
                 }
             }
@@ -390,59 +423,68 @@ private fun TopTrackingBar(
     onFlipCamera: () -> Unit,
     timerText: String
 ) {
-    Row(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+            .padding(horizontal = HoopSpacing.ScreenMargin, vertical = HoopSpacing.Sm),
+        color = NavyShadow.copy(alpha = 0.62f),
+        shape = RoundedCornerShape(HoopRadius.Full),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.14f))
     ) {
-        GlassIconButton(
-            onClick = onClose,
-            icon = Icons.Outlined.Close,
-            contentDescription = "Close session"
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(HoopSpacing.Sm),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            GlassIconButton(
+                onClick = onClose,
+                icon = Icons.Outlined.Close,
+                contentDescription = "Close session"
+            )
 
-        RecordingPill(timerText = timerText)
+            RecordingPill(timerText = timerText)
 
-        GlassIconButton(
-            onClick = onFlipCamera,
-            icon = Icons.Default.FlipCameraAndroid,
-            contentDescription = "Flip camera"
-        )
+            GlassIconButton(
+                onClick = onFlipCamera,
+                icon = Icons.Default.FlipCameraAndroid,
+                contentDescription = "Flip camera"
+            )
+        }
     }
 }
 
 @Composable
 private fun RecordingPill(timerText: String) {
-    val pillShape = RoundedCornerShape(999.dp)
+    val pillShape = RoundedCornerShape(HoopRadius.Full)
     Row(
         modifier = Modifier
             .clip(pillShape)
             .background(Color.White.copy(alpha = 0.08f))
-            .border(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.35f), pillShape)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .border(1.dp, ActiveOrange.copy(alpha = 0.35f), pillShape)
+            .padding(horizontal = HoopSpacing.Md, vertical = HoopSpacing.Sm),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
                 .size(8.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.error)
+                .background(ActiveOrange)
         )
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(HoopSpacing.Sm))
         Text(
             text = "REC",
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.error,
+            color = ActiveOrange,
             letterSpacing = 2.sp
         )
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(HoopSpacing.Md))
         Text(
             text = timerText,
             style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface
+            color = Color.White
         )
     }
 }
@@ -452,22 +494,28 @@ private fun GlassIconButton(
     onClick: () -> Unit,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     contentDescription: String,
-    containerColor: Color = Color.White.copy(alpha = 0.08f),
+    containerColor: Color = NavyShadow.copy(alpha = 0.64f),
     size: Dp = 48.dp
 ) {
     Surface(
         shape = CircleShape,
         color = containerColor,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.14f))
     ) {
         IconButton(
             onClick = onClick,
-            modifier = Modifier.size(size)
+            modifier = Modifier.size(size),
+            colors = IconButtonDefaults.iconButtonColors(
+                containerColor = Color.Transparent,
+                contentColor = Color.White,
+                disabledContainerColor = Color.Transparent,
+                disabledContentColor = Color.White.copy(alpha = 0.38f)
+            )
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = contentDescription,
-                tint = MaterialTheme.colorScheme.onSurface
+                tint = Color.White
             )
         }
     }
@@ -487,9 +535,9 @@ private fun AccuracyMeter(
             modifier = Modifier
                 .height(220.dp)
                 .width(44.dp)
-                .clip(RoundedCornerShape(999.dp))
-                .background(Color.White.copy(alpha = 0.08f))
-                .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(999.dp))
+                .clip(RoundedCornerShape(HoopRadius.Full))
+                .background(NavyShadow.copy(alpha = 0.64f))
+                .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(HoopRadius.Full))
                 .padding(6.dp)
         ) {
             Box(
@@ -497,8 +545,8 @@ private fun AccuracyMeter(
                     .fillMaxWidth()
                     .fillMaxHeight(progress)
                     .align(Alignment.BottomCenter)
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(MaterialTheme.colorScheme.secondaryContainer)
+                    .clip(RoundedCornerShape(HoopRadius.Full))
+                    .background(ActiveOrange)
             )
             Box(
                 modifier = Modifier
@@ -506,20 +554,20 @@ private fun AccuracyMeter(
                     .height(2.dp)
                     .align(Alignment.TopCenter)
                     .offset(y = 38.dp)
-                    .background(Color.White.copy(alpha = 0.8f))
+                    .background(Color.White.copy(alpha = 0.86f))
             )
         }
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(HoopSpacing.Sm))
         Text(
             text = "${(progress * 100).toInt()}%",
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.secondaryContainer
+            color = ActiveOrange
         )
         Text(
             text = label.uppercase(),
             fontSize = 10.sp,
             letterSpacing = 1.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = Color.White.copy(alpha = 0.78f)
         )
     }
 }
@@ -533,11 +581,11 @@ private fun QuickStatCard(
 ) {
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.08f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
+        color = NavyShadow.copy(alpha = 0.66f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.14f))
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier.padding(horizontal = HoopSpacing.Md, vertical = HoopSpacing.Sm),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
@@ -546,17 +594,17 @@ private fun QuickStatCard(
                 tint = iconTint,
                 modifier = Modifier.size(20.dp)
             )
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(HoopSpacing.Xs))
             Text(
                 text = value,
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                color = Color.White
             )
             Text(
                 text = label.uppercase(),
                 fontSize = 10.sp,
                 letterSpacing = 1.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = Color.White.copy(alpha = 0.78f)
             )
         }
     }
@@ -574,17 +622,17 @@ private fun LastShotAnalysisCard(
     Surface(
         modifier = modifier
             .navigationBarsPadding(),
-        shape = RoundedCornerShape(20.dp),
-        color = Color.White.copy(alpha = 0.08f),
+        shape = RoundedCornerShape(HoopRadius.Lg),
+        color = NavyShadow.copy(alpha = 0.72f),
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+            Color.White.copy(alpha = 0.14f)
         )
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(HoopSpacing.Md)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -596,24 +644,24 @@ private fun LastShotAnalysisCard(
                 ) {
                     Text(
                         text = title.uppercase(),
-                        fontSize = 12.sp,
+                        style = MaterialTheme.typography.labelMedium,
                         letterSpacing = 1.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = Color.White.copy(alpha = 0.78f)
                     )
                     Text(
                         text = message,
-                        fontSize = 28.sp,
+                        style = MaterialTheme.typography.headlineSmall,
                         fontStyle = FontStyle.Italic,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primaryContainer
+                        color = ActiveOrange
                     )
                 }
                 Surface(
                     shape = CircleShape,
-                    color = Color.White.copy(alpha = 0.08f),
+                    color = ActiveOrange.copy(alpha = 0.14f),
                     border = androidx.compose.foundation.BorderStroke(
-                        3.dp,
-                        MaterialTheme.colorScheme.secondaryContainer
+                        2.dp,
+                        ActiveOrange.copy(alpha = 0.68f)
                     )
                 ) {
                     Box(
@@ -624,19 +672,19 @@ private fun LastShotAnalysisCard(
                         Icon(
                             imageVector = Icons.Outlined.Check,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.secondaryContainer,
+                            tint = ActiveOrange,
                             modifier = Modifier.size(28.dp)
                         )
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(HoopSpacing.Sm))
             HorizontalDivider(
                 Modifier,
                 DividerDefaults.Thickness,
                 color = Color.White.copy(alpha = 0.12f)
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(HoopSpacing.Sm))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -668,7 +716,7 @@ private fun StatColumn(
             text = label.uppercase(),
             fontSize = 10.sp,
             letterSpacing = 1.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = Color.White.copy(alpha = 0.78f),
             textAlign = if (alignEnd) TextAlign.End else TextAlign.Start
         )
         Text(

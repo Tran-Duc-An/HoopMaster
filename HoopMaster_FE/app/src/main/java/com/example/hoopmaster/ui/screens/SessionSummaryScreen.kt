@@ -2,34 +2,28 @@ package com.example.hoopmaster.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.hoopmaster.ui.components.HoopCard
+import com.example.hoopmaster.ui.components.HoopMetricCard
+import com.example.hoopmaster.ui.components.HoopScreenScaffold
+import com.example.hoopmaster.ui.components.HoopPrimaryButton
+import com.example.hoopmaster.ui.components.HoopStatus
+import com.example.hoopmaster.ui.components.HoopStatusPanel
+import com.example.hoopmaster.ui.theme.ActiveOrange
 import com.example.hoopmaster.viewmodels.SessionSummaryAction
 import com.example.hoopmaster.viewmodels.SessionSummaryUiState
 import com.example.hoopmaster.viewmodels.SessionSummaryViewModel
@@ -57,31 +51,17 @@ fun SessionSummaryScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBackHome) {
-                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
-                }
-                Text("Summary", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-            }
-        },
+    HoopScreenScaffold(
+        title = "Summary",
+        onBack = onBackHome,
         bottomBar = {
-            Column(
-                modifier = Modifier
-                    .navigationBarsPadding()
-                    .padding(16.dp)
-            ) {
-                Button(onClick = onBackHome, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Outlined.Home, contentDescription = null)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Back home")
-                }
+            Column(modifier = Modifier.padding(16.dp)) {
+                HoopPrimaryButton(
+                    text = "Back home",
+                    icon = Icons.Outlined.Home,
+                    onClick = onBackHome,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     ) { padding ->
@@ -92,27 +72,36 @@ fun SessionSummaryScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Card {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Shots", style = MaterialTheme.typography.labelLarge)
-                    Text("${uiState.madeShots} / ${uiState.totalShots}", style = MaterialTheme.typography.headlineMedium)
-                    Text("Duration ${uiState.durationSeconds}s")
-                }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Session stats", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                HoopMetricCard(
+                    label = "Made shots",
+                    value = "${uiState.madeShots}",
+                    accentColor = ActiveOrange
+                )
+                HoopMetricCard(
+                    label = "Total shots",
+                    value = "${uiState.totalShots}",
+                    accentColor = MaterialTheme.colorScheme.primary
+                )
+                HoopMetricCard(
+                    label = "Duration",
+                    value = "${uiState.durationSeconds}s",
+                    accentColor = MaterialTheme.colorScheme.tertiary
+                )
             }
-            Card {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Feedback", style = MaterialTheme.typography.labelLarge)
+            HoopCard {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Feedback", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     Text(uiState.lastFeedback.ifBlank { "No feedback yet." })
                 }
             }
             if (uiState.highlight.isNotBlank()) {
-                Surface(color = MaterialTheme.colorScheme.secondaryContainer) {
-                    Text(
-                        text = uiState.highlight,
-                        modifier = Modifier.padding(12.dp),
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                }
+                HoopStatusPanel(
+                    title = "Highlight",
+                    message = uiState.highlight,
+                    status = HoopStatus.Success
+                )
             }
         }
     }

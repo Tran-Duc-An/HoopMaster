@@ -8,28 +8,23 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -42,6 +37,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.hoopmaster.data.model.TrainingPlanDto
+import com.example.hoopmaster.ui.components.HoopCard
+import com.example.hoopmaster.ui.components.HoopOutlinedTextField
+import com.example.hoopmaster.ui.components.HoopScreenScaffold
+import com.example.hoopmaster.ui.components.HoopStatus
+import com.example.hoopmaster.ui.components.HoopStatusBadge
+import com.example.hoopmaster.ui.components.HoopStatusPanel
+import com.example.hoopmaster.ui.theme.ActiveOrange
+import com.example.hoopmaster.ui.theme.HoopRadius
+import com.example.hoopmaster.ui.theme.NavyShadow
+import com.example.hoopmaster.viewmodels.PlanningChatAction
+import com.example.hoopmaster.viewmodels.PlanningChatEntry
 import com.example.hoopmaster.viewmodels.PlanningChatUiState
 import com.example.hoopmaster.viewmodels.PlanningChatViewModel
 
@@ -53,6 +60,9 @@ fun PlanningChatScreen(
 ) {
     val liveState by viewModel.uiState.collectAsState()
     val uiState = demoState ?: liveState
+    val isInteractive = demoState == null
+    val canSend = isInteractive && !uiState.isLoading && uiState.input.isNotBlank()
+    val canConfirm = isInteractive && !uiState.isLoading && uiState.draftPlan != null
 
     LaunchedEffect(demoState) {
         if (demoState == null) {
@@ -60,127 +70,88 @@ fun PlanningChatScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Back")
-                }
-                Text(
-                    text = "Planning",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        },
+    HoopScreenScaffold(
+        title = "Planning",
+        onBack = onBack,
         bottomBar = {
-            Column(
-                modifier = Modifier
-                    .navigationBarsPadding()
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedTextField(
-                    value = uiState.input,
-                    onValueChange = {
-                        if (demoState == null) {
-                            viewModel.onAction(com.example.hoopmaster.viewmodels.PlanningChatAction.InputChanged(it))
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Ask for a plan update") },
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                    keyboardActions = KeyboardActions(
-                        onSend = {
-                            if (demoState == null) {
-                                viewModel.sendMessage()
-                            }
-                        }
-                    ),
-                    singleLine = true,
-                    enabled = demoState == null
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    Button(
-                        onClick = {
-                            if (demoState == null) {
-                                viewModel.sendMessage()
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                        enabled = demoState == null && !uiState.isLoading
-                    ) {
-                        Icon(Icons.AutoMirrored.Outlined.Send, contentDescription = null)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Send")
+            PlanningChatBottomBar(
+                input = uiState.input,
+                isInteractive = isInteractive,
+                isLoading = uiState.isLoading,
+                canSend = canSend,
+                canConfirm = canConfirm,
+                onInputChange = {
+                    if (isInteractive) {
+                        viewModel.onAction(PlanningChatAction.InputChanged(it))
                     }
-                    Button(
-                        onClick = {
-                            if (demoState == null) {
-                                viewModel.confirmPlan()
-                            }
-                        },
-                        modifier = Modifier.weight(1f),
-                        enabled = demoState == null && uiState.draftPlan != null && !uiState.isLoading
-                    ) {
-                        Icon(Icons.Outlined.Check, contentDescription = null)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Confirm")
+                },
+                onSend = {
+                    if (canSend) {
+                        viewModel.sendMessage()
+                    }
+                },
+                onConfirm = {
+                    if (canConfirm) {
+                        viewModel.confirmPlan()
                     }
                 }
-                if (uiState.errorMessage != null) {
-                    Text(
-                        text = uiState.errorMessage ?: "",
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
+            )
         }
     ) { padding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            if (uiState.statusMessage != null) {
+            when {
+                uiState.errorMessage != null -> item {
+                    HoopStatusPanel(
+                        title = "Problem",
+                        message = uiState.errorMessage.orEmpty(),
+                        status = HoopStatus.Error
+                    )
+                }
+
+                uiState.isLoading -> item {
+                    HoopStatusPanel(
+                        title = "Working",
+                        message = "Updating the planning chat and draft plan.",
+                        status = HoopStatus.Active
+                    )
+                }
+
+                uiState.statusMessage != null -> item {
+                    HoopStatusPanel(
+                        title = statusTitle(uiState.statusMessage.orEmpty()),
+                        message = uiState.statusMessage.orEmpty(),
+                        status = statusForMessage(uiState.statusMessage.orEmpty())
+                    )
+                }
+            }
+
+            if (uiState.messages.isEmpty()) {
                 item {
-                    Surface(color = MaterialTheme.colorScheme.primaryContainer) {
-                        Text(
-                            text = uiState.statusMessage ?: "",
-                            modifier = Modifier.padding(12.dp),
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+                    HoopStatusPanel(
+                        title = "Planning chat",
+                        message = "Send a prompt to shape the next plan draft.",
+                        status = HoopStatus.Info
+                    )
+                }
+            } else {
+                items(uiState.messages) { message ->
+                    ChatBubble(message = message)
+                    if (message.planDraft != null) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        DraftPlanCard(plan = message.planDraft)
                     }
                 }
             }
-            items(uiState.messages) { message ->
-                ChatBubble(
-                    role = message.role,
-                    text = message.text
-                )
-                if (message.planDraft != null) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    DraftPlanCard(plan = message.planDraft)
-                }
-            }
-            if (uiState.draftPlan != null) {
+
+            if (uiState.draftPlan != null && uiState.messages.none { it.planDraft?.id == uiState.draftPlan.id }) {
                 item {
                     DraftPlanCard(plan = uiState.draftPlan!!)
-                }
-            }
-            if (uiState.isLoading) {
-                item {
-                    Text(
-                        text = "Working...",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
             }
         }
@@ -188,45 +159,248 @@ fun PlanningChatScreen(
 }
 
 @Composable
-private fun ChatBubble(role: String, text: String) {
-    val isUser = role == "user"
+private fun PlanningChatBottomBar(
+    input: String,
+    isInteractive: Boolean,
+    isLoading: Boolean,
+    canSend: Boolean,
+    canConfirm: Boolean,
+    onInputChange: (String) -> Unit,
+    onSend: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .navigationBarsPadding()
+            .imePadding()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        HoopOutlinedTextField(
+            value = input,
+            onValueChange = onInputChange,
+            label = "Prompt",
+            placeholder = "Ask for a plan update",
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            enabled = isInteractive && !isLoading,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+            keyboardActions = KeyboardActions(
+                onSend = { if (canSend) onSend() }
+            )
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Button(
+                onClick = onSend,
+                enabled = canSend,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(HoopRadius.Full),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = NavyShadow,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    disabledContainerColor = NavyShadow.copy(alpha = 0.38f),
+                    disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.38f)
+                )
+            ) {
+                androidx.compose.material3.Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.Send,
+                    contentDescription = null
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = "Send")
+            }
+
+            Button(
+                onClick = onConfirm,
+                enabled = canConfirm,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(HoopRadius.Full),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = ActiveOrange,
+                    contentColor = NavyShadow,
+                    disabledContainerColor = ActiveOrange.copy(alpha = 0.38f),
+                    disabledContentColor = NavyShadow.copy(alpha = 0.38f)
+                )
+            ) {
+                androidx.compose.material3.Icon(
+                    imageVector = Icons.Outlined.Check,
+                    contentDescription = null
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = "Confirm")
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChatBubble(
+    message: PlanningChatEntry
+) {
+    val isUser = message.role.equals("user", ignoreCase = true)
+    val containerColor = if (isUser) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant
+    }
+    val contentColor = if (isUser) {
+        MaterialTheme.colorScheme.onPrimary
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
     ) {
         Surface(
-            color = if (isUser) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-            shape = MaterialTheme.shapes.medium
+            color = containerColor,
+            contentColor = contentColor,
+            shape = RoundedCornerShape(HoopRadius.Lg)
         ) {
-            Text(
-                text = text,
-                modifier = Modifier.padding(12.dp),
-                color = if (isUser) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = if (isUser) TextAlign.End else TextAlign.Start
-            )
+            Column(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = if (isUser) "You" else "Assistant",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = contentColor.copy(alpha = 0.78f)
+                )
+                Text(
+                    text = message.text,
+                    color = contentColor,
+                    textAlign = if (isUser) TextAlign.End else TextAlign.Start
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun DraftPlanCard(plan: com.example.hoopmaster.data.model.TrainingPlanDto) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                text = plan.title ?: "Draft plan",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = plan.description ?: plan.goal ?: "",
-                color = MaterialTheme.colorScheme.onSecondaryContainer
-            )
-            Text(
-                text = "Exercises ${plan.exercises?.size ?: 0}",
-                color = MaterialTheme.colorScheme.onSecondaryContainer
-            )
+private fun DraftPlanCard(plan: TrainingPlanDto) {
+    HoopCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = plan.title ?: "Draft plan",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (!plan.goal.isNullOrBlank()) {
+                        Text(
+                            text = plan.goal,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                HoopStatusBadge(
+                    label = planStatusLabel(plan),
+                    status = planStatus(plan)
+                )
+            }
+
+            if (!plan.description.isNullOrBlank()) {
+                Text(
+                    text = plan.description,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                PlanStat(
+                    modifier = Modifier.weight(1f),
+                    label = "Exercises",
+                    value = plan.exercises?.size?.toString() ?: "0"
+                )
+                PlanStat(
+                    modifier = Modifier.weight(1f),
+                    label = "Source",
+                    value = plan.source ?: plan.metadata?.source ?: "draft"
+                )
+                PlanStat(
+                    modifier = Modifier.weight(1f),
+                    label = "Status",
+                    value = plan.status ?: plan.metadata?.status ?: "draft"
+                )
+            }
+
+            if (!plan.injuryConstraints.isNullOrEmpty()) {
+                Text(
+                    text = "Constraints: ${plan.injuryConstraints.joinToString(", ")}",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun PlanStat(
+    modifier: Modifier = Modifier,
+    label: String,
+    value: String
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+private fun statusTitle(message: String): String {
+    return when {
+        message.startsWith("Saved ", ignoreCase = true) -> "Plan saved"
+        message.equals("Draft ready", ignoreCase = true) -> "Draft ready"
+        else -> "Status"
+    }
+}
+
+private fun statusForMessage(message: String): HoopStatus {
+    return when {
+        message.startsWith("Saved ", ignoreCase = true) -> HoopStatus.Success
+        message.equals("Draft ready", ignoreCase = true) -> HoopStatus.Active
+        else -> HoopStatus.Info
+    }
+}
+
+private fun planStatusLabel(plan: TrainingPlanDto): String {
+    return plan.status?.takeIf { it.isNotBlank() } ?: plan.metadata?.status?.takeIf { it.isNotBlank() } ?: "Draft"
+}
+
+private fun planStatus(plan: TrainingPlanDto): HoopStatus {
+    val status = (plan.status ?: plan.metadata?.status).orEmpty()
+    return when {
+        status.equals("saved", ignoreCase = true) -> HoopStatus.Success
+        status.equals("active", ignoreCase = true) -> HoopStatus.Active
+        status.equals("error", ignoreCase = true) -> HoopStatus.Error
+        else -> HoopStatus.Info
     }
 }
