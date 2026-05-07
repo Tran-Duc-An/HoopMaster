@@ -27,4 +27,18 @@ const updateProfile = async (req, res) => {
   }
 };
 
-module.exports = { signup, login, updateProfile };
+const updateTone = async (req, res) => {
+  try {
+    const { tone } = req.body;
+    if (!['strict', 'cheerful', 'neutral'].includes(tone)) {
+      return res.status(400).json({ error: 'Invalid tone' });
+    }
+
+    const user = await userService.updateProfile(req.params.id, { tone });
+    return res.status(200).json({ user });
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+};
+
+module.exports = { signup, login, updateProfile, updateTone };

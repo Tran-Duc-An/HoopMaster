@@ -4,12 +4,12 @@
     "feedback": {
       "low": {
         "strict": [
-          "Your elbow is too low. Raise it immediately if you want to improve!",
-          "This is not acceptable. Lift your elbow higher and focus!"
+          "Elbow low. Raise it higher now.",
+          "Lift your elbow higher. Focus."
         ],
         "cheerful": [
-          "Hey, try raising your elbow a bit more! You can do it!",
-          "Just a little higher with your elbow and you'll nail it!"
+          "Nice effort! Raise your elbow higher, keep your wrist relaxed, and follow through smoothly.",
+          "You are close! Lift your elbow a little higher and keep the shot motion confident."
         ],
         "neutral": [
           "Raise your elbow higher to generate more power.",
@@ -18,12 +18,12 @@
       },
       "high": {
         "strict": [
-          "Your elbow is too high. Lower it and control your form!",
-          "This is not the right technique. Keep your elbow at a proper angle."
+          "Elbow high. Lower it now.",
+          "Lower your elbow. Control the shot."
         ],
         "cheerful": [
-          "Lower your elbow just a bit for even better control! Great effort!",
-          "Almost there! Relax your arm and keep your elbow comfy."
+          "Great effort! Lower your elbow just a bit, relax your arm, and keep the release smooth.",
+          "Almost there! Bring your elbow lower and keep your shooting rhythm comfortable."
         ],
         "neutral": [
           "Your elbow angle is a bit high. Try to relax your arm and keep your elbow more comfortable. Smoother motion will help you control the shot better.",
@@ -32,10 +32,10 @@
       },
       "perfect": {
         "strict": [
-          "Good. This is the form I expect. Maintain it!"
+          "Good. Hold this form."
         ],
         "cheerful": [
-          "Awesome! Perfect push up form! Keep it up!"
+          "Awesome! Your elbow position looks strong, stable, and ready for a smooth shot."
         ],
         "neutral": [
           "Perfect push up form!",
@@ -49,12 +49,12 @@
     "feedback": {
       "low": {
         "strict": [
-          "You are bending your knees too much. Stand up straighter and focus!",
-          "This is not the right posture. Fix your knees if you want to improve."
+          "Knees too low. Stand taller.",
+          "Stand up higher. Focus."
         ],
         "cheerful": [
-          "Try not to bend your knees too much, just a little is enough! Keep going!",
-          "Stand taller and keep your knees flexible, you're doing great!"
+          "Good effort! Stand a little taller, keep your knees flexible, and stay balanced through the shot.",
+          "You are doing well! Rise up slightly and keep your legs ready for a smooth jump."
         ],
         "neutral": [
           "Your center of gravity is a bit low. Stand up a little straighter and bend your knees just enough to jump. Adjusting your posture will help stabilize your shot.",
@@ -63,12 +63,12 @@
       },
       "high": {
         "strict": [
-          "You are not bending your knees enough. Lower your center of gravity!",
-          "Bend your knees more to build power. No excuses!"
+          "Bend lower. Build power.",
+          "Lower your stance. Focus."
         ],
         "cheerful": [
-          "Bend your knees a bit more to get more power! You got this!",
-          "Lower your center of gravity, and you'll jump even higher!"
+          "Nice rhythm! Bend your knees a bit more, load your legs, and jump with more power.",
+          "You got this! Lower your center of gravity and use your legs to rise higher."
         ],
         "neutral": [
           "Lower your center of gravity, bend your knees more to build power.",
@@ -77,10 +77,10 @@
       },
       "perfect": {
         "strict": [
-          "Good. Knee position is correct. Maintain this standard."
+          "Good. Knees set."
         ],
         "cheerful": [
-          "Great! Knee position is ideal and ready to jump! Keep it up!"
+          "Great! Your knees are balanced, loaded, and ready to help you jump higher."
         ],
         "neutral": [
           "Great! Knee position is ideal and ready to jump.",
@@ -104,18 +104,46 @@
     },
     "shoulder": {
       "feedback": {
-        "low": [
-          "Raise your arm higher, your shoulder is too low.",
-          "Roll your shoulders in a bigger circle."
-        ],
-        "high": [
-          "Lower your shoulder, no need to overextend.",
-          "Keep the movement comfortable."
-        ],
-        "perfect": [
-          "Exactly! Shoulder angle is perfect.",
-          "Nice shoulder roll!"
-        ]
+        "low": {
+          "strict": [
+            "Shoulder low. Raise it higher.",
+            "Lift higher. Keep control."
+          ],
+          "cheerful": [
+            "Nice effort! Raise your shoulder higher and keep the arm path smooth.",
+            "You are close! Lift your shoulder a bit higher and stay relaxed."
+          ],
+          "neutral": [
+            "Raise your arm higher, your shoulder is too low.",
+            "Roll your shoulders in a bigger circle."
+          ]
+        },
+        "high": {
+          "strict": [
+            "Shoulder high. Lower it.",
+            "Lower your shoulder. Stay controlled."
+          ],
+          "cheerful": [
+            "Good work! Lower your shoulder slightly and keep the movement comfortable.",
+            "Almost there! Relax your shoulder and keep the motion smooth."
+          ],
+          "neutral": [
+            "Lower your shoulder, no need to overextend.",
+            "Keep the movement comfortable."
+          ]
+        },
+        "perfect": {
+          "strict": [
+            "Good. Shoulder set."
+          ],
+          "cheerful": [
+            "Exactly! Your shoulder angle is smooth, stable, and ready for the shot."
+          ],
+          "neutral": [
+            "Exactly! Shoulder angle is perfect.",
+            "Nice shoulder roll!"
+          ]
+        }
       }
     },
   "general": {
@@ -194,8 +222,8 @@
     }
   },
   "instruction": {
-    "strict": "Be direct and brief. Focus only on the most important mistake. No unnecessary words.",
-    "cheerful": "Give detailed, friendly, and encouraging advice. Motivate the user and highlight their effort!",
+    "strict": "Be direct and brief. Use one short correction. Focus only on the most important mistake.",
+    "cheerful": "Give friendly, energetic, and encouraging advice. Use a slightly longer explanation, celebrate effort, and make the next action feel achievable.",
     "neutral": "Give practical advice, focus on 1-2 main points to improve. Use a friendly, encouraging tone."
   },
   "session": {

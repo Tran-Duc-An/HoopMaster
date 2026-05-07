@@ -13,7 +13,8 @@ const sessionService = require('../services/sessionService');
 const ttsService = require('../services/ttsService');
 const {
   createExerciseRuntime,
-  processExerciseFrame
+  processExerciseFrame,
+  normalizeCoachTone
 } = require('../services/exerciseCounterService');
 
 const EXERCISE_CUE_COOLDOWN_MS = parseInt(process.env.EXERCISE_CUE_COOLDOWN_MS, 10) || 1200;
@@ -126,7 +127,7 @@ function setupSocketHandlers(io) {
     });
 
     // Event: start_exercise
-    // Payload: { exerciseId, sets?, reps?, restSeconds? }
+    // Payload: { exerciseId, sets?, reps?, restSeconds?, tone? }
     socket.on('start_exercise', async (payload = {}) => {
       try {
         const runtime = createExerciseRuntime(payload.exerciseId, payload);
@@ -143,6 +144,7 @@ function setupSocketHandlers(io) {
           targetSets: runtime.targetSets,
           targetReps: runtime.targetReps,
           restSeconds: runtime.restSeconds,
+          tone: runtime.coachTone,
           counting: runtime.exercise.counting,
           tracking: runtime.exercise.tracking
         });
@@ -233,13 +235,18 @@ async function emitExerciseAudioCue(socket, runtime, force = false) {
   if (!force && runtime.lastCueKey === cueKey) return;
   if (!force && runtime.lastCueAt && now - runtime.lastCueAt < EXERCISE_CUE_COOLDOWN_MS) return;
 
-  const ttsResult = await ttsService.synthesizeSpeech(cue.text, cue.type === 'complete' ? 'cheerful' : 'focus');
+  const tone = normalizeCoachTone(runtime.coachTone || (cue.type === 'complete' ? 'cheerful' : 'neutral'));
+  const ttsResult = await ttsService.synthesizeSpeech(cue.text, tone);
   const payload = {
     type: `exercise_${cue.type}`,
     text: cue.text,
     audioBase64: ttsResult.audioBase64,
     exerciseId: runtime.exerciseId,
-    metadata: cue.metadata,
+    metadata: {
+      ...cue.metadata,
+      tone,
+      emphasisWords: ttsResult.metadata?.emphasisWords || []
+    },
     timestamp: new Date().toISOString()
   };
 

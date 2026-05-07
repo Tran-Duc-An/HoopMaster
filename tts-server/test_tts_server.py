@@ -3,11 +3,12 @@ import httpx
 TTS_URL = "http://localhost:8000/api/v1/tts"
 
 
-def test_tts(text, intent, audio_format="wav"):
+def test_tts(text, intent, audio_format="wav", emphasis_words=None):
     payload = {
         "text": text,
         "intent": intent,
         "format": audio_format,
+        "emphasis_words": emphasis_words or [],
     }
     with httpx.stream("POST", TTS_URL, json=payload, timeout=60.0) as response:
         if response.status_code == 200:
@@ -27,7 +28,10 @@ def test_tts(text, intent, audio_format="wav"):
 
 
 if __name__ == "__main__":
-    test_tts("Raise elbow higher and speed up!", "up")
-    test_tts("Relax and slow down.", "down")
-    test_tts("Focus on the movement.", "focus")
+    test_tts("Lower your stance and focus.", "strict", emphasis_words=["lower", "focus"])
+    test_tts(
+        "Great effort! Raise your elbow higher and keep going.",
+        "cheerful",
+        emphasis_words=["higher"],
+    )
     test_tts("Keep it steady.", "neutral")

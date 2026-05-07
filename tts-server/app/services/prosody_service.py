@@ -20,6 +20,8 @@ class TextSegment:
 
 INTENT_PROFILES = {
     "neutral": ProsodyProfile(rate=1.0, pitch=0.0, volume=1.0),
+    "strict": ProsodyProfile(rate=1.08, pitch=-1.0, volume=1.05),
+    "cheerful": ProsodyProfile(rate=1.12, pitch=1.5, volume=1.15),
     "up": ProsodyProfile(rate=1.05, pitch=2.0, volume=1.1),
     "down": ProsodyProfile(rate=0.95, pitch=-2.0, volume=0.9),
     "focus": ProsodyProfile(rate=0.98, pitch=1.0, volume=1.05),

@@ -27,6 +27,10 @@ const JOINT_POINTS = {
   ]
 };
 
+function normalizeCoachTone(tone) {
+  return ['strict', 'cheerful', 'neutral'].includes(tone) ? tone : 'neutral';
+}
+
 function createExerciseRuntime(exerciseId, options = {}) {
   const exercise = exerciseService.getExerciseById(Number(exerciseId));
   if (!exercise) throw new Error('Exercise not found');
@@ -44,6 +48,7 @@ function createExerciseRuntime(exerciseId, options = {}) {
     targetSets,
     targetReps,
     restSeconds,
+    coachTone: normalizeCoachTone(options.tone || options.coachTone),
     currentSet: 1,
     currentRep: 0,
     phase: 'setup',
@@ -187,6 +192,7 @@ function buildProgress(runtime, extra = {}) {
   if (!runtime) return null;
   return {
     exerciseId: runtime.exerciseId,
+    tone: runtime.coachTone,
     name: runtime.exercise?.name,
     category: runtime.exercise?.category,
     set: runtime.currentSet,
@@ -255,5 +261,6 @@ module.exports = {
   createExerciseRuntime,
   processExerciseFrame,
   calculateJointAngle,
-  buildProgress
+  buildProgress,
+  normalizeCoachTone
 };

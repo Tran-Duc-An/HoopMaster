@@ -8,17 +8,6 @@ router.post('/login', userController.login);
 router.put('/profile/:id', userController.updateProfile);
 
 // Update coach tone only
-router.put('/profile/:id/tone', async (req, res) => {
-	try {
-		const { tone } = req.body;
-		if (!['strict', 'cheerful', 'neutral'].includes(tone)) {
-			return res.status(400).json({ error: 'Invalid tone' });
-		}
-		const user = await require('../services/userService').updateProfile(req.params.id, { tone });
-		res.status(200).json({ user });
-	} catch (err) {
-		res.status(400).json({ error: err.message });
-	}
-});
+router.put('/profile/:id/tone', userController.updateTone);
 
 module.exports = router;

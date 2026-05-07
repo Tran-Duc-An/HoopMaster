@@ -68,22 +68,36 @@ uv run fastapi dev
 
 Once the server is up, visit `http://127.0.0.1:8000/docs` for the interactive Swagger UI.
 
-### Endpoint: `POST /v1/tts/generate`
-Generates audio with the ability to emphasize specific words.
+### Endpoint: `POST /api/v1/tts`
+Generates audio with the ability to emphasize specific words. The response is an audio stream, not JSON.
 
 **Request Payload:**
 ```json
 {
   "text": "Raise your elbow higher and snap your wrist.",
-  "voice_id": "en_US-ryan-high",
+  "voice": "en_US-ryan-high",
+  "intent": "up",
   "emphasis_words": ["higher", "snap"],
-  "output_format": "wav"
+  "format": "wav"
 }
 ```
 
 **Features:**
 *   **Chunked Streaming:** The server uses `StreamingResponse`, allowing the app to start playing audio while it is still being generated.
 *   **Prosody Control:** Uses `emphasis_words` to dynamically adjust the pitch and volume of critical coaching cues.
+
+### Legacy Endpoint: `POST /tts`
+Also available for compatibility. It accepts the same payload and returns the same audio stream.
+
+### HoopMaster Backend Configuration
+
+`HoopMaster_BE` converts the streamed audio bytes into `data:audio/...;base64,...` for the mobile client. Use:
+
+```env
+TTS_PROVIDER=local
+LOCAL_TTS_URL=http://localhost:8000/api/v1/tts
+LOCAL_TTS_FORMAT=wav
+```
 
 ## 🔧 Troubleshooting
 

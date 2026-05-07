@@ -35,12 +35,23 @@ const CONFIG = {
 /**
  * Lấy feedback ngẫu nhiên nhưng ổn định
  */
-function getRandomFeedback(joint, status) {
+function normalizeCoachTone(tone) {
+  return ['strict', 'cheerful', 'neutral'].includes(tone) ? tone : 'neutral';
+}
+
+function getRandomFeedback(joint, status, tone = 'neutral') {
   const map = { tooLow: 'low', tooHigh: 'high', perfect: 'perfect' };
   const key = map[status] || 'perfect';
+  const selectedTone = normalizeCoachTone(tone);
   // Ưu tiên lấy neutral nếu có, nếu không thì lấy strict/cheerful bất kỳ
   const jointFeedback = poseFeedback[joint]?.feedback?.[key];
   if (jointFeedback) {
+    if (Array.isArray(jointFeedback) && jointFeedback.length > 0) {
+      return jointFeedback[Math.floor(Math.random() * jointFeedback.length)];
+    }
+    if (Array.isArray(jointFeedback[selectedTone]) && jointFeedback[selectedTone].length > 0) {
+      return jointFeedback[selectedTone][Math.floor(Math.random() * jointFeedback[selectedTone].length)];
+    }
     if (Array.isArray(jointFeedback.neutral) && jointFeedback.neutral.length > 0) {
       return jointFeedback.neutral[Math.floor(Math.random() * jointFeedback.neutral.length)];
     }
@@ -101,6 +112,7 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
       }
   let session = sessionService.getSession(socketId);
   if (!session) return;
+  const coachTone = normalizeCoachTone(poseData.tone || session.coachTone || 'neutral');
 
   // 1. Chặn Race Condition: Nếu đang bận xử lý frame trước, bỏ qua frame này
   if (session.isProcessingRealtimeFeedback) return;
@@ -109,7 +121,7 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
   const lastFeedbackTime = session.lastFeedback?.time || 0;
   
   try {
-    sessionService.updateSession(socketId, { isProcessingRealtimeFeedback: true });
+    sessionService.updateSession(socketId, { isProcessingRealtimeFeedback: true, coachTone });
     sessionService.incrementStats(socketId, 'totalFrames');
 
     const { landmarks, exerciseType: poseDataExerciseType } = poseData;
@@ -235,7 +247,7 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
 
       if (primaryIssue) {
         // Nếu có lỗi, chỉ lấy đúng 1 câu feedback của lỗi đó
-        let baseMsg = getRandomFeedback(primaryIssue.joint, primaryIssue.data.status);
+        let baseMsg = getRandomFeedback(primaryIssue.joint, primaryIssue.data.status, coachTone);
         // Bổ sung chi tiết bên trái/phải nếu có
         let side = primaryIssue.data?.side || primaryIssue.side;
         if (!side && evalResult.shootingHand) {
@@ -258,7 +270,7 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
 
       if (message) {
         // Gọi TTS
-        const ttsResult = await synthesizeSpeech(message, 'coach');
+        const ttsResult = await synthesizeSpeech(message, coachTone);
         // Tính toán Dynamic Cooldown dựa trên độ dài chuỗi trả về
         const estimatedAudioDuration = (message.length * 80) + 1500; 
         const cooldownToUse = Math.max(CONFIG.MIN_FEEDBACK_INTERVAL, estimatedAudioDuration);
@@ -266,7 +278,11 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
           text: message,
           audioBase64: ttsResult.audioBase64,
           angles: evalResult,
-          metadata: { timestamp: now }
+          metadata: {
+            timestamp: now,
+            tone: coachTone,
+            emphasisWords: ttsResult.metadata?.emphasisWords || []
+          }
         });
         // Cập nhật session sau khi đã phát Voice
         sessionService.updateSession(socketId, {
@@ -279,19 +295,9 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
           },
           previousLandmarks: landmarks
         });
+      } else {
+        sessionService.updateSession(socketId, { previousLandmarks: landmarks });
       }
-
-      // Cập nhật session sau khi đã phát Voice
-      sessionService.updateSession(socketId, {
-        lastFeedback: { 
-          angles: evalResult, 
-          time: now, 
-          message: message,
-          poseStatus: currentPoseStatus,
-          cooldown: cooldownToUse // Lưu thời gian chờ động vào đây
-        },
-        previousLandmarks: landmarks
-      });
     } else {
       // Lưu landmarks cho frame sau đối chiếu ổn định
       sessionService.updateSession(socketId, { previousLandmarks: landmarks });
@@ -313,17 +319,25 @@ async function handlePostShotAnalysis(socketId, emitCallback) {
     const session = sessionService.getSession(socketId);
     if (!session || session.frameBuffer.length === 0) return;
 
-    const stats = calculateShotStatistics(session.frameBuffer);
+    const coachTone = normalizeCoachTone(session.coachTone || 'neutral');
+    const stats = {
+      ...calculateShotStatistics(session.frameBuffer),
+      tone: coachTone
+    };
     const { generatePostShotFeedback } = require('../services/llmService');
     const llmResult = await generatePostShotFeedback(stats);
 
     if (llmResult.success) {
-      const ttsResult = await synthesizeSpeech(llmResult.feedback, 'focus');
+      const ttsResult = await synthesizeSpeech(llmResult.feedback, coachTone);
       emitCallback('llm_post_shot_feedback', {
         text: llmResult.feedback,
         audioBase64: ttsResult.audioBase64,
         stats,
-        metadata: { timestamp: new Date().toISOString() }
+        metadata: {
+          timestamp: new Date().toISOString(),
+          tone: coachTone,
+          emphasisWords: ttsResult.metadata?.emphasisWords || []
+        }
       });
     }
 

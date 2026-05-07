@@ -1,91 +1,43 @@
-/**
- * Text-to-Speech Service
- * Convert text to SSML with pitch/rate/volume adjustment by intent
- * Generate base64 audio (mock or real API)
- */
-
+const axios = require('axios');
+const Bottleneck = require('bottleneck');
 const { TTS_INTENTS } = require('../models/ruleModel');
 
-/**
- * Convert text to SSML (Speech Synthesis Markup Language)
- * SSML allows voice adjustment: pitch, rate, volume
- *
- * @param {string} text - Text to speak
- * @param {string} intent - Intent from ruleModel ('up', 'down', 'focus', 'neutral')
- * @param {string} lang - Language (default: 'en-US')
- * @returns {string} SSML markup
- */
-function textToSSML(text, intent = 'neutral', lang = 'en-US') {
-  if (!text || typeof text !== 'string') {
-    console.warn('[TTS] Invalid text input');
-    return '';
-  }
+const limiter = new Bottleneck({
+  minTime: parseInt(process.env.TTS_MIN_INTERVAL_MS, 10) || 1000
+});
 
-  // Get modifiers from TTS_INTENTS
-  const intentConfig = TTS_INTENTS[intent] || TTS_INTENTS.neutral;
-  const { pitch, rate, volume } = intentConfig.ssmlModifiers;
+const EMPHASIS_KEYWORDS = [
+  'higher',
+  'lower',
+  'faster',
+  'slower',
+  'fast',
+  'slow',
+  'power',
+  'strong',
+  'stronger',
+  'soft',
+  'softer',
+  'focus',
+  'relax',
+  'up',
+  'down'
+];
 
-  // Từ khóa nhấn mạnh và mức pitch riêng
-  const highlightKeywords = [
-    { word: /cao hơn|vươn cao|higher/gi, pitch: '+12%' },
-    { word: /thấp hơn|hạ thấp|lower/gi, pitch: '-12%' },
-    { word: /nhanh|nhanh lên|tăng tốc|faster|fast|nhanh chóng/gi, pitch: '+10%' },
-    { word: /chậm|chậm lại|giảm tốc|slower|slow|từ từ/gi, pitch: '-10%' },
-    { word: /mạnh|mạnh hơn|mạnh mẽ|power|strong|stronger/gi, pitch: '+8%' },
-    { word: /nhẹ|nhẹ nhàng|nhẹ hơn|soft|softer/gi, pitch: '-8%' },
-    { word: /focus|tập trung/gi, pitch: '+6%' },
-    { word: /relax|thả lỏng/gi, pitch: '-6%' }
-  ];
-
-  // --- New logic: split text by keywords and map pitch to semitone ---
-  function splitTextByKeywords(text) {
-    if (!text || typeof text !== 'string') return [];
-    let result = [{ text, pitch: null }];
-    highlightKeywords.forEach(({ word, pitch }) => {
-      let newResult = [];
-      result.forEach(segment => {
-        if (segment.pitch !== null) {
-          newResult.push(segment);
-        } else {
-          let lastIndex = 0;
-          let match;
-          word.lastIndex = 0;
-          while ((match = word.exec(segment.text)) !== null) {
-            if (match.index > lastIndex) {
-              newResult.push({ text: segment.text.slice(lastIndex, match.index), pitch: null });
-            }
-            newResult.push({ text: match[0], pitch });
-            lastIndex = match.index + match[0].length;
-          }
-          if (lastIndex < segment.text.length) {
-            newResult.push({ text: segment.text.slice(lastIndex), pitch: null });
-          }
-        }
-      });
-      result = newResult;
-    });
-    return result.filter(seg => seg.text && seg.text.trim() !== '');
-  }
-
-  function mapPitchPercentToSemitone(pitchStr) {
-    if (!pitchStr || typeof pitchStr !== 'string') return 0;
-    const match = pitchStr.match(/([+-]?\d+)%/);
-    if (!match) return 0;
-    // 12% ~ 2 semitone, 6% ~ 1 semitone
-    const percent = parseInt(match[1], 10);
-    return percent / 6;
-  }
-
-// ...existing code...
-  // ElevenLabs không hỗ trợ SSML, chỉ trả về text thuần
-  return text;
+function getProvider(provider = process.env.TTS_PROVIDER || 'mock') {
+  return provider.toLowerCase();
 }
 
-/**
- * Escape XML special characters to avoid SSML errors
- * @param {string} text
- * @returns {string}
- */
+function textToSSML(text, intent = 'neutral', lang = 'en-US') {
+  if (!text || typeof text !== 'string') return '';
+
+  const intentConfig = TTS_INTENTS[intent] || TTS_INTENTS.neutral;
+  const { pitch, rate, volume } = intentConfig.ssmlModifiers;
+  const escapedText = escapeXML(text);
+
+  return `<speak version="1.0" xml:lang="${lang}"><prosody pitch="${pitch}" rate="${rate}" volume="${volume}">${escapedText}</prosody></speak>`;
+}
+
 function escapeXML(text) {
   return text
     .replace(/&/g, '&amp;')
@@ -95,240 +47,181 @@ function escapeXML(text) {
     .replace(/'/g, '&apos;');
 }
 
-/**
- * Generate Base64 Audio from SSML
- * Provider: mock | google | elevenlabs
- *
- * @param {string} ssml - SSML markup
- * @param {string} provider - 'mock' | 'google' | 'elevenlabs'
- * @returns {Promise<string>} Base64 encoded audio data
- */
-/**
- * Generate Base64 Audio from TTS provider
- * @param {object|string} input - {text, intent, ssml} hoặc ssml (backward compatible)
- * @param {string} provider
- * @returns {Promise<string>}
- */
-async function _generateAudioBase64(input, provider = process.env.TTS_PROVIDER || 'mock') {
-  try {
-    // ElevenLabs chỉ nhận text, không nhận SSML
-    let text;
-    if (typeof input === 'string') {
-      text = input;
-    } else if (typeof input === 'object' && input !== null) {
-      text = input.text;
-    }
-    return await generateElevenLabsTTS(text);
-  } catch (error) {
-    console.error('[TTS] Error generating audio:', error.message);
-    // Fallback to mock if API fails
-    return generateMockAudioBase64(text);
+async function _generateAudioBase64(input, provider = getProvider()) {
+  const normalized = normalizeInput(input);
+
+  switch (getProvider(provider)) {
+    case 'elevenlabs':
+      return generateElevenLabsTTS(normalized.text);
+    case 'google':
+      return generateGoogleTTS(normalized.ssml || textToSSML(normalized.text, normalized.intent));
+    case 'local':
+    case 'kokoro':
+      return generateLocalTTS(normalized.text, normalized.intent, normalized.emphasisWords);
+    case 'mock':
+    default:
+      return generateMockAudioBase64(normalized.text);
   }
 }
 
-/**
- * Gọi TTS nội bộ kiểu kokoro (http://localhost:8000/tts)
- * @param {string} text
- * @param {string} intent
- * @returns {Promise<string>} Base64 encoded audio data
- */
-async function generateKokoroTTS(text, intent) {
-  const axios = require('axios');
-  try {
-    const response = await axios.post('http://localhost:8000/tts', { text, intent }, {
-      timeout: 10000,
-      headers: { 'Content-Type': 'application/json' }
-    });
-    if (response.data && response.data.audioBase64) {
-      return response.data.audioBase64;
-    } else {
-      throw new Error('Kokoro TTS: No audioBase64 in response');
-    }
-  } catch (error) {
-    console.error('[TTS] Kokoro API error:', error.response?.data || error.message);
-    throw error;
+const generateAudioBase64 = limiter.wrap(_generateAudioBase64);
+
+function normalizeInput(input) {
+  if (typeof input === 'string') {
+    return {
+      text: input.replace(/<[^>]*>/g, ''),
+      ssml: input,
+      intent: 'neutral',
+      emphasisWords: extractEmphasisWords(input, 'neutral')
+    };
   }
+
+  if (input && typeof input === 'object') {
+    const text = input.text || '';
+    const intent = input.intent || 'neutral';
+    return {
+      text,
+      ssml: input.ssml,
+      intent,
+      emphasisWords: Array.isArray(input.emphasisWords)
+        ? input.emphasisWords
+        : extractEmphasisWords(text, intent)
+    };
+  }
+
+  return { text: '', ssml: '', intent: 'neutral', emphasisWords: [] };
 }
 
-/**
- * Local TTS API (http://localhost:8000/tts)
- * @param {string} ssml
- * @returns {Promise<string>} Base64 encoded audio data
- */
-async function generateLocalTTS(ssml) {
-  const axios = require('axios');
-  try {
-    const response = await axios.post('http://localhost:8000/tts', { ssml }, {
-      timeout: 10000,
-      headers: { 'Content-Type': 'application/json' }
-    });
-    // Expecting { audioBase64: 'data:audio/wav;base64,...' }
-    if (response.data && response.data.audioBase64) {
-      return response.data.audioBase64;
-    } else {
-      throw new Error('Local TTS: No audioBase64 in response');
-    }
-  } catch (error) {
-    console.error('[TTS] Local API error:', error.response?.data || error.message);
-    throw error;
-  }
-}
-
-  // Limit 1 request/second to ElevenLabs (or real provider)
-  const Bottleneck = require('bottleneck');
-  const limiter = new Bottleneck({
-    minTime: 1000 // 1 request per 1000ms
+function extractEmphasisWords(text = '', intent = 'neutral') {
+  if (!['strict', 'cheerful'].includes(intent)) return [];
+  if (!text || typeof text !== 'string') return [];
+  const lowerText = text.toLowerCase();
+  return EMPHASIS_KEYWORDS.filter(keyword => {
+    const pattern = new RegExp(`\\b${escapeRegExp(keyword)}\\b`, 'i');
+    return pattern.test(lowerText);
   });
+}
 
-  // Wrap original function with limiter
-  const generateAudioBase64 = limiter.wrap(_generateAudioBase64);
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
-
-/**
- * Mock Audio Generator - Return fake Base64 string
- * In production, replace with real API
- *
- * @param {string} ssml
- * @returns {string} Base64 string
- */
-function generateMockAudioBase64(ssml) {
-  // Create a fake base64 string (WAV header + silence)
-  // In reality, this should be real audio from TTS engine
-  
-  const mockAudioData = {
-    format: 'audio/wav',
-    sampleRate: 16000,
-    channels: 1,
-    duration: 2000, // 2 seconds
-    ssml: ssml
-  };
-
-  // Mô phỏng WAV file header (44 bytes) + silent audio
+function generateMockAudioBase64(text = '') {
   const header = 'UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
-  
   return `data:audio/wav;base64,${header}`;
 }
 
-/**
- * Google Cloud Text-to-Speech API
- * Docs: https://cloud.google.com/text-to-speech
- *
- * @param {string} ssml
- * @returns {Promise<string>}
- */
-async function generateGoogleTTS(ssml) {
-  const axios = require('axios');
-  
-  const API_KEY = process.env.TTS_API_KEY;
-  if (!API_KEY) {
-    throw new Error('Google TTS API key not configured');
-  }
-
-  const endpoint = 'https://texttospeech.googleapis.com/v1/text:synthesize';
-
-  const requestBody = {
-    input: { ssml },
-    voice: {
-      languageCode: 'en-US',
-      name: 'en-US-Standard-B', // Standard US English male
-      ssmlGender: 'MALE'
+async function generateLocalTTS(text, intent = 'neutral', emphasisWords = []) {
+  const endpoint = process.env.LOCAL_TTS_URL || 'http://localhost:8000/api/v1/tts';
+  const audioFormat = process.env.LOCAL_TTS_FORMAT || 'wav';
+  const response = await axios.post(
+    endpoint,
+    {
+      text,
+      intent,
+      emphasis_words: emphasisWords,
+      format: audioFormat,
+      voice: process.env.LOCAL_TTS_VOICE || undefined,
+      engine: process.env.LOCAL_TTS_ENGINE || undefined,
+      language: process.env.LOCAL_TTS_LANGUAGE || undefined
     },
-    audioConfig: {
-      audioEncoding: 'MP3',
-      pitch: 0,
-      speakingRate: 1.0
+    {
+      timeout: parseInt(process.env.LOCAL_TTS_TIMEOUT_MS, 10) || 60000,
+      headers: { 'Content-Type': 'application/json' },
+      responseType: 'arraybuffer'
     }
-  };
+  );
 
-  try {
-    const response = await axios.post(`${endpoint}?key=${API_KEY}`, requestBody, {
-      timeout: 5000,
-      headers: { 'Content-Type': 'application/json' }
-    });
-
-    // Google returns base64 in audioContent field
-    const audioContent = response.data.audioContent;
-    return `data:audio/mp3;base64,${audioContent}`;
-  } catch (error) {
-    console.error('[TTS] Google API error:', error.response?.data || error.message);
-    throw error;
+  const contentType = response.headers['content-type'] || mediaTypeForFormat(audioFormat);
+  if (!response.data || response.data.byteLength === 0) {
+    throw new Error('Local TTS response did not include audio bytes');
   }
+
+  return `data:${contentType};base64,${Buffer.from(response.data).toString('base64')}`;
 }
 
-/**
- * ElevenLabs Text-to-Speech API
- * Docs: https://elevenlabs.io/docs
- *
- * @param {string} ssml
- * @returns {Promise<string>}
- */
-async function generateElevenLabsTTS(ssml) {
-  const axios = require('axios');
-  
+function mediaTypeForFormat(format) {
+  const normalized = (format || 'wav').toLowerCase();
+  if (normalized === 'mp3') return 'audio/mpeg';
+  if (normalized === 'ogg') return 'audio/ogg';
+  return 'audio/wav';
+}
+
+async function generateGoogleTTS(ssml) {
   const API_KEY = process.env.TTS_API_KEY;
-  if (!API_KEY) {
-    throw new Error('ElevenLabs API key not configured');
-  }
+  if (!API_KEY) throw new Error('Google TTS API key not configured');
 
-  // ElevenLabs does not support SSML directly, need to extract text
-  const text = ssml.replace(/<[^>]*>/g, ''); // Remove XML tags
-  
-  const voiceId = 'ErXwobaYiN019PkySvjV'; // Antoni voice (default English)
-  const endpoint = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
-
-  const requestBody = {
-    text: text,
-    model_id: 'eleven_multilingual_v2',
-    voice_settings: {
-      stability: 0.5,
-      similarity_boost: 0.75
+  const response = await axios.post(
+    `https://texttospeech.googleapis.com/v1/text:synthesize?key=${API_KEY}`,
+    {
+      input: { ssml },
+      voice: {
+        languageCode: process.env.TTS_LANGUAGE || 'en-US',
+        name: process.env.GOOGLE_TTS_VOICE || 'en-US-Standard-B',
+        ssmlGender: process.env.GOOGLE_TTS_GENDER || 'MALE'
+      },
+      audioConfig: {
+        audioEncoding: 'MP3',
+        pitch: 0,
+        speakingRate: 1
+      }
+    },
+    {
+      timeout: parseInt(process.env.TTS_TIMEOUT_MS, 10) || 10000,
+      headers: { 'Content-Type': 'application/json' }
     }
-  };
+  );
 
-  try {
-    const response = await axios.post(endpoint, requestBody, {
+  return `data:audio/mp3;base64,${response.data.audioContent}`;
+}
+
+async function generateElevenLabsTTS(text) {
+  const API_KEY = process.env.TTS_API_KEY;
+  if (!API_KEY) throw new Error('ElevenLabs API key not configured');
+
+  const voiceId = process.env.ELEVENLABS_VOICE_ID || 'ErXwobaYiN019PkySvjV';
+  const response = await axios.post(
+    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+    {
+      text,
+      model_id: process.env.ELEVENLABS_MODEL || 'eleven_multilingual_v2',
+      voice_settings: {
+        stability: Number(process.env.ELEVENLABS_STABILITY || 0.5),
+        similarity_boost: Number(process.env.ELEVENLABS_SIMILARITY_BOOST || 0.75)
+      }
+    },
+    {
       headers: {
-        'Accept': 'audio/mpeg',
+        Accept: 'audio/mpeg',
         'xi-api-key': API_KEY,
         'Content-Type': 'application/json'
       },
       responseType: 'arraybuffer',
-      timeout: 10000
-    });
+      timeout: parseInt(process.env.TTS_TIMEOUT_MS, 10) || 10000
+    }
+  );
 
-    // Convert arraybuffer to base64
-    const base64Audio = Buffer.from(response.data).toString('base64');
-    return `data:audio/mpeg;base64,${base64Audio}`;
-  } catch (error) {
-    console.error('[TTS] ElevenLabs API error:', error.response?.data || error.message);
-    throw error;
-  }
+  return `data:audio/mpeg;base64,${Buffer.from(response.data).toString('base64')}`;
 }
 
-/**
- * High-level function: Convert text to audio ready to send to client
- *
- * @param {string} text - Text to speak
- * @param {string} intent - Intent from rules ('up', 'down', 'focus')
- * @returns {Promise<object>} { audioBase64: string, ssml: string, metadata: object }
- */
 async function synthesizeSpeech(text, intent = 'neutral') {
   const startTime = Date.now();
+  const provider = getProvider();
+  const ssml = textToSSML(text, intent);
+  const emphasisWords = extractEmphasisWords(text, intent);
 
   try {
-    // ElevenLabs chỉ nhận text, không nhận SSML
-    const input = textToSSML(text, intent);
-    const audioBase64 = await generateAudioBase64(input);
-    const duration = Date.now() - startTime;
+    const audioBase64 = await generateAudioBase64({ text, intent, ssml, emphasisWords }, provider);
     return {
       success: true,
       audioBase64,
-      ssml: input,
+      ssml,
       metadata: {
         text,
         intent,
-        provider: 'elevenlabs',
-        generationTime: duration,
+        emphasisWords,
+        provider,
+        generationTime: Date.now() - startTime,
         timestamp: new Date().toISOString()
       }
     };
@@ -337,11 +230,13 @@ async function synthesizeSpeech(text, intent = 'neutral') {
     return {
       success: false,
       audioBase64: generateMockAudioBase64(text),
-      ssml: text,
+      ssml,
       metadata: {
         text,
         intent,
+        emphasisWords,
         provider: 'mock_fallback',
+        requestedProvider: provider,
         error: error.message,
         timestamp: new Date().toISOString()
       }
@@ -349,56 +244,31 @@ async function synthesizeSpeech(text, intent = 'neutral') {
   }
 }
 
-/**
- * Batch synthesize multiple sentences in parallel
- * @param {array} requests - Array of {text, intent}
- * @returns {Promise<array>} Array of synthesis results
- */
 async function batchSynthesize(requests) {
-  if (!Array.isArray(requests) || requests.length === 0) {
-    return [];
-  }
-
-  try {
-    const promises = requests.map(req => 
-      synthesizeSpeech(req.text, req.intent)
-    );
-
-    return await Promise.all(promises);
-  } catch (error) {
-    console.error('[TTS] Batch synthesis error:', error.message);
-    return [];
-  }
+  if (!Array.isArray(requests) || requests.length === 0) return [];
+  return Promise.all(requests.map(req => synthesizeSpeech(req.text, req.intent)));
 }
 
-/**
- * Validate TTS configuration
- * @returns {object} { valid: boolean, errors: array }
- */
 function validateConfig() {
+  const provider = getProvider();
   const errors = [];
-  const provider = process.env.TTS_PROVIDER;
 
-  if (!provider) {
-    errors.push('TTS_PROVIDER not set in environment variables');
+  if (!['mock', 'local', 'kokoro', 'google', 'elevenlabs'].includes(provider)) {
+    errors.push(`Unsupported TTS_PROVIDER: ${provider}`);
   }
 
-  if (provider === 'google' || provider === 'elevenlabs') {
-    if (!process.env.TTS_API_KEY) {
-      errors.push(`TTS_API_KEY required for provider: ${provider}`);
-    }
+  if (['google', 'elevenlabs'].includes(provider) && !process.env.TTS_API_KEY) {
+    errors.push(`TTS_API_KEY required for provider: ${provider}`);
   }
-
-  // Log actual value of environment variables
-  errors.push(`[DEBUG] TTS_PROVIDER: ${process.env.TTS_PROVIDER || '[NOT SET]'}`);
-  errors.push(`[DEBUG] TTS_API_KEY: ${process.env.TTS_API_KEY ? '[SET]' : '[NOT SET]'}`);
 
   return {
     valid: errors.length === 0,
     errors,
     config: {
-      provider: provider || 'mock',
-      hasApiKey: !!process.env.TTS_API_KEY
+      provider,
+      hasApiKey: !!process.env.TTS_API_KEY,
+      localUrl: process.env.LOCAL_TTS_URL || 'http://localhost:8000/api/v1/tts',
+      localFormat: process.env.LOCAL_TTS_FORMAT || 'wav'
     }
   };
 }
@@ -409,7 +279,7 @@ module.exports = {
   synthesizeSpeech,
   batchSynthesize,
   validateConfig,
-  // Utility exports
   escapeXML,
-  generateMockAudioBase64
+  generateMockAudioBase64,
+  extractEmphasisWords
 };

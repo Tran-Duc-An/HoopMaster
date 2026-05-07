@@ -72,4 +72,13 @@ describe('exerciseCounterService', () => {
     const angle = calculateJointAngle(makeLandmarksForKneeAngle(120), 'knee');
     expect(angle).toBeCloseTo(120, 1);
   });
+
+  it('stores a valid coach tone for exercise audio cues', () => {
+    const cheerfulRuntime = createExerciseRuntime(3, { tone: 'cheerful' });
+    const fallbackRuntime = createExerciseRuntime(3, { tone: 'cheeful' });
+
+    expect(cheerfulRuntime.coachTone).toBe('cheerful');
+    expect(cheerfulRuntime.nextCue.metadata.exerciseId).toBe(3);
+    expect(fallbackRuntime.coachTone).toBe('neutral');
+  });
 });
