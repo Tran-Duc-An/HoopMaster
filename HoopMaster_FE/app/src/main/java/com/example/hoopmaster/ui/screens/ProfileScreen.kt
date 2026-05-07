@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.hoopmaster.viewmodels.ProfileAction
+import com.example.hoopmaster.viewmodels.ProfileUiState
 import com.example.hoopmaster.viewmodels.ProfileViewModel
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -40,12 +41,16 @@ import com.example.hoopmaster.viewmodels.ProfileViewModel
 fun ProfileScreen(
     onBack: () -> Unit,
     onLogout: () -> Unit,
+    demoState: ProfileUiState? = null,
     viewModel: ProfileViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val liveState by viewModel.uiState.collectAsState()
+    val uiState = demoState ?: liveState
 
-    LaunchedEffect(Unit) {
-        viewModel.loadProfile(null)
+    LaunchedEffect(demoState) {
+        if (demoState == null) {
+            viewModel.loadProfile(null)
+        }
     }
 
     Scaffold(
@@ -71,7 +76,9 @@ fun ProfileScreen(
             ) {
                 Button(
                     onClick = {
-                        viewModel.logout()
+                        if (demoState == null) {
+                            viewModel.logout()
+                        }
                         onLogout()
                     },
                     modifier = Modifier.fillMaxWidth()
@@ -97,7 +104,12 @@ fun ProfileScreen(
                         listOf("strict", "neutral", "cheerful").forEach { tone ->
                             FilterChip(
                                 selected = uiState.tone == tone,
-                                onClick = { viewModel.onAction(ProfileAction.ToneChanged(tone)) },
+                                onClick = {
+                                    if (demoState == null) {
+                                        viewModel.onAction(ProfileAction.ToneChanged(tone))
+                                    }
+                                },
+                                enabled = demoState == null,
                                 label = { Text(tone.replaceFirstChar { it.uppercase() }) }
                             )
                         }

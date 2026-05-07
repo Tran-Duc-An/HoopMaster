@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.hoopmaster.data.model.PlanExerciseDto
 import com.example.hoopmaster.viewmodels.HomeAction
+import com.example.hoopmaster.viewmodels.HomeUiState
 import com.example.hoopmaster.viewmodels.HomeViewModel
 
 @Composable
@@ -51,12 +52,16 @@ fun HomeScreen(
     onStartShooting: () -> Unit,
     onOpenExercise: (Int) -> Unit,
     onOpenProfile: () -> Unit,
+    demoState: HomeUiState? = null,
     viewModel: HomeViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val liveState by viewModel.uiState.collectAsState()
+    val uiState = demoState ?: liveState
 
-    LaunchedEffect(Unit) {
-        viewModel.loadHome()
+    LaunchedEffect(demoState) {
+        if (demoState == null) {
+            viewModel.loadHome()
+        }
     }
 
     Scaffold { padding ->

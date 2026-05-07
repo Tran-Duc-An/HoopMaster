@@ -14,15 +14,25 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.hoopmaster.R
+import com.example.hoopmaster.viewmodels.AuthUiState
 import com.example.hoopmaster.viewmodels.AuthViewModel
 
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
+    demoState: AuthUiState? = null,
+    demoSignupMode: Boolean? = null,
     viewModel: AuthViewModel = viewModel()
 ) {
-    var isSignupMode by rememberSaveable { mutableStateOf(false) }
+    val isDemo = demoState != null
+    var isSignupMode by rememberSaveable { mutableStateOf(demoSignupMode ?: false) }
+    var demoEmail by rememberSaveable { mutableStateOf(demoState?.email ?: "") }
+    var demoPassword by rememberSaveable { mutableStateOf(demoState?.password ?: "") }
     val logoId = R.drawable.hoopmaster_logo
+    val emailValue = if (isDemo) demoEmail else viewModel.email.value
+    val passwordValue = if (isDemo) demoPassword else viewModel.password.value
+    val loadingValue = if (isDemo) demoState?.isLoading == true else viewModel.isLoading.value
+    val errorValue = if (isDemo) demoState?.errorMessage else viewModel.errorMessage.value
 
     Column(
         modifier = Modifier
@@ -65,8 +75,14 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(48.dp))
 
         OutlinedTextField(
-            value = viewModel.email.value,
-            onValueChange = { viewModel.email.value = it },
+            value = emailValue,
+            onValueChange = {
+                if (isDemo) {
+                    demoEmail = it
+                } else {
+                    viewModel.email.value = it
+                }
+            },
             label = { Text("Email") },
             modifier = Modifier.fillMaxWidth(),
             colors = OutlinedTextFieldDefaults.colors(
@@ -79,8 +95,14 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
-            value = viewModel.password.value,
-            onValueChange = { viewModel.password.value = it },
+            value = passwordValue,
+            onValueChange = {
+                if (isDemo) {
+                    demoPassword = it
+                } else {
+                    viewModel.password.value = it
+                }
+            },
             label = { Text("Password") },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
@@ -91,19 +113,21 @@ fun LoginScreen(
             )
         )
 
-        viewModel.errorMessage.value?.let { error ->
+        errorValue?.let { error ->
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = error, color = MaterialTheme.colorScheme.error, fontSize = 14.sp)
         }
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        if (viewModel.isLoading.value) {
+        if (loadingValue) {
             CircularProgressIndicator()
         } else {
             Button(
                 onClick = {
-                    if (isSignupMode) {
+                    if (isDemo) {
+                        onLoginSuccess()
+                    } else if (isSignupMode) {
                         viewModel.signup(onSuccess = onLoginSuccess)
                     } else {
                         viewModel.login(onSuccess = onLoginSuccess)

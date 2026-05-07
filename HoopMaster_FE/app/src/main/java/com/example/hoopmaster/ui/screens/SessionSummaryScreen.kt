@@ -31,25 +31,30 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.hoopmaster.viewmodels.SessionSummaryAction
+import com.example.hoopmaster.viewmodels.SessionSummaryUiState
 import com.example.hoopmaster.viewmodels.SessionSummaryViewModel
 
 @Composable
 fun SessionSummaryScreen(
     onBackHome: () -> Unit,
+    demoState: SessionSummaryUiState? = null,
     viewModel: SessionSummaryViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val liveState by viewModel.uiState.collectAsState()
+    val uiState = demoState ?: liveState
 
-    LaunchedEffect(Unit) {
-        viewModel.onAction(
-            SessionSummaryAction.LoadSummary(
-                sessionId = null,
-                totalShots = 15,
-                madeShots = 12,
-                durationSeconds = 60,
-                lastFeedback = "Last shot looked clean."
+    LaunchedEffect(demoState) {
+        if (demoState == null) {
+            viewModel.onAction(
+                SessionSummaryAction.LoadSummary(
+                    sessionId = null,
+                    totalShots = 15,
+                    madeShots = 12,
+                    durationSeconds = 60,
+                    lastFeedback = "Last shot looked clean."
+                )
             )
-        )
+        }
     }
 
     Scaffold(

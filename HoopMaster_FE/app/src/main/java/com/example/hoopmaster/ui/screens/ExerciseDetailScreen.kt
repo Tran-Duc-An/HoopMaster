@@ -42,12 +42,16 @@ fun ExerciseDetailScreen(
     exerciseId: Int,
     onBack: () -> Unit,
     onStartTracking: () -> Unit,
+    demoState: ExerciseDetailUiState? = null,
     viewModel: ExerciseDetailViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val liveState by viewModel.uiState.collectAsState()
+    val uiState = demoState ?: liveState
 
-    LaunchedEffect(exerciseId) {
-        viewModel.loadExercise(exerciseId)
+    LaunchedEffect(exerciseId, demoState) {
+        if (demoState == null) {
+            viewModel.loadExercise(exerciseId)
+        }
     }
 
     Scaffold(
@@ -78,7 +82,9 @@ fun ExerciseDetailScreen(
             ) {
                 Button(
                     onClick = {
-                        viewModel.onAction(com.example.hoopmaster.viewmodels.ExerciseDetailAction.StartExercise)
+                        if (demoState == null) {
+                            viewModel.onAction(com.example.hoopmaster.viewmodels.ExerciseDetailAction.StartExercise)
+                        }
                         onStartTracking()
                     },
                     modifier = Modifier.fillMaxWidth()

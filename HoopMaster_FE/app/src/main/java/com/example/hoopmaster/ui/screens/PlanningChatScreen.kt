@@ -42,17 +42,22 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.hoopmaster.viewmodels.PlanningChatUiState
 import com.example.hoopmaster.viewmodels.PlanningChatViewModel
 
 @Composable
 fun PlanningChatScreen(
     onBack: () -> Unit,
+    demoState: PlanningChatUiState? = null,
     viewModel: PlanningChatViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val liveState by viewModel.uiState.collectAsState()
+    val uiState = demoState ?: liveState
 
-    LaunchedEffect(Unit) {
-        viewModel.loadHistory()
+    LaunchedEffect(demoState) {
+        if (demoState == null) {
+            viewModel.loadHistory()
+        }
     }
 
     Scaffold(
@@ -82,29 +87,46 @@ fun PlanningChatScreen(
             ) {
                 OutlinedTextField(
                     value = uiState.input,
-                    onValueChange = { viewModel.onAction(com.example.hoopmaster.viewmodels.PlanningChatAction.InputChanged(it)) },
+                    onValueChange = {
+                        if (demoState == null) {
+                            viewModel.onAction(com.example.hoopmaster.viewmodels.PlanningChatAction.InputChanged(it))
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = { Text("Ask for a plan update") },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                     keyboardActions = KeyboardActions(
-                        onSend = { viewModel.sendMessage() }
+                        onSend = {
+                            if (demoState == null) {
+                                viewModel.sendMessage()
+                            }
+                        }
                     ),
-                    singleLine = true
+                    singleLine = true,
+                    enabled = demoState == null
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     Button(
-                        onClick = { viewModel.sendMessage() },
+                        onClick = {
+                            if (demoState == null) {
+                                viewModel.sendMessage()
+                            }
+                        },
                         modifier = Modifier.weight(1f),
-                        enabled = !uiState.isLoading
+                        enabled = demoState == null && !uiState.isLoading
                     ) {
                         Icon(Icons.AutoMirrored.Outlined.Send, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Send")
                     }
                     Button(
-                        onClick = { viewModel.confirmPlan() },
+                        onClick = {
+                            if (demoState == null) {
+                                viewModel.confirmPlan()
+                            }
+                        },
                         modifier = Modifier.weight(1f),
-                        enabled = uiState.draftPlan != null && !uiState.isLoading
+                        enabled = demoState == null && uiState.draftPlan != null && !uiState.isLoading
                     ) {
                         Icon(Icons.Outlined.Check, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
