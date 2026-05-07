@@ -38,12 +38,14 @@ import androidx.compose.material.icons.outlined.Architecture
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material3.Button
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -288,6 +290,44 @@ fun TrackingScreen(
                     value = arcValue,
                     label = "Arc"
                 )
+            }
+
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 20.dp, end = 20.dp, bottom = 156.dp),
+                shape = RoundedCornerShape(18.dp),
+                color = Color.White.copy(alpha = 0.08f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
+            ) {
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "Shot mode",
+                        fontSize = 12.sp,
+                        letterSpacing = 1.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf("strict", "neutral", "cheerful").forEach { tone ->
+                            FilterChip(
+                                selected = viewModel.selectedTone.value == tone,
+                                onClick = { viewModel.updateTone(tone) },
+                                label = { Text(tone.replaceFirstChar { it.uppercase() }) }
+                            )
+                        }
+                    }
+                    Button(
+                        onClick = { viewModel.onShotReleased() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Outlined.Check, contentDescription = null)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Shot released")
+                    }
+                }
             }
 
             LastShotAnalysisCard(

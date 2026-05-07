@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -22,6 +23,7 @@ fun LoginScreen(
     viewModel: AuthViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    var isSignupMode by rememberSaveable { mutableStateOf(false) }
     val logoId = remember(context) {
         val drawableId = context.resources.getIdentifier("hoopmaster_logo", "drawable", context.packageName)
         if (drawableId != 0) {
@@ -57,9 +59,22 @@ fun LoginScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            TextButton(onClick = { isSignupMode = false }) {
+                Text("Log in", fontWeight = if (!isSignupMode) FontWeight.Bold else FontWeight.Normal)
+            }
+            TextButton(onClick = { isSignupMode = true }) {
+                Text("Sign up", fontWeight = if (isSignupMode) FontWeight.Bold else FontWeight.Normal)
+            }
+        }
+
         Spacer(modifier = Modifier.height(48.dp))
 
-        // Input Email
         OutlinedTextField(
             value = viewModel.email.value,
             onValueChange = { viewModel.email.value = it },
@@ -74,7 +89,6 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Input Password
         OutlinedTextField(
             value = viewModel.password.value,
             onValueChange = { viewModel.password.value = it },
@@ -88,7 +102,6 @@ fun LoginScreen(
             )
         )
 
-        // Hiển thị lỗi nếu có
         viewModel.errorMessage.value?.let { error ->
             Spacer(modifier = Modifier.height(8.dp))
             Text(text = error, color = MaterialTheme.colorScheme.error, fontSize = 14.sp)
@@ -100,25 +113,21 @@ fun LoginScreen(
             CircularProgressIndicator()
         } else {
             Button(
-                onClick = { viewModel.login(onSuccess = onLoginSuccess) },
+                onClick = {
+                    if (isSignupMode) {
+                        viewModel.signup(onSuccess = onLoginSuccess)
+                    } else {
+                        viewModel.login(onSuccess = onLoginSuccess)
+                    }
+                },
                 modifier = Modifier.fillMaxWidth().height(50.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             ) {
-                Text("LOG IN", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            OutlinedButton(
-                onClick = { viewModel.signup(onSuccess = onLoginSuccess) },
-                modifier = Modifier.fillMaxWidth().height(50.dp)
-            ) {
                 Text(
-                    "SIGN UP",
-                    color = MaterialTheme.colorScheme.onBackground,
+                    if (isSignupMode) "SIGN UP" else "LOG IN",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
