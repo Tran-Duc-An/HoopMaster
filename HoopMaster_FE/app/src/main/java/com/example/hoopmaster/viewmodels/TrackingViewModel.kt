@@ -98,7 +98,7 @@ class TrackingViewModel(application: Application) : AndroidViewModel(application
     }
 
     // Hàm đóng gói tọa độ khung xương MediaPipe và bắn lên Backend
-    fun streamPoseToServer(result: PoseLandmarkerResult) {
+    fun streamPoseToServer(result: PoseLandmarkerResult, mirrorX: Boolean = false) {
         val currentTime = System.currentTimeMillis()
 
         // 1. Kiểm soát tần suất gửi
@@ -112,9 +112,10 @@ class TrackingViewModel(application: Application) : AndroidViewModel(application
 
         // Lặp qua 33 điểm khớp trên cơ thể
         landmarks.forEachIndexed { index, landmark ->
+            val transformedX = if (mirrorX) 1f - landmark.x() else landmark.x()
             val point = JSONObject().apply {
                 put("id", index)
-                put("x", landmark.x())
+                put("x", transformedX)
                 put("y", landmark.y())
                 put("z", landmark.z())
                 put("visibility", landmark.visibility().orElse(0f)) // Đã đổi thành visibility

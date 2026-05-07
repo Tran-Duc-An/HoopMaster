@@ -119,7 +119,10 @@ fun TrackingScreen(
                         context,
                         onPoseDetected = { result, _, _ ->
                             viewModel.poseResult.value = result
-                            viewModel.streamPoseToServer(result)
+                            viewModel.streamPoseToServer(
+                                result,
+                                mirrorX = lensFacing == CameraSelector.LENS_FACING_FRONT
+                            )
                         },
                         onError = { message ->
                             poseInitError = message
@@ -166,7 +169,10 @@ fun TrackingScreen(
             if (hasCameraPermission) {
                 AndroidView(
                     modifier = Modifier.fillMaxSize(),
-                    factory = { previewView }
+                    factory = { previewView },
+                    update = {
+                        it.scaleX = if (lensFacing == CameraSelector.LENS_FACING_FRONT) -1f else 1f
+                    }
                 )
             } else {
                 CameraFallbackBackground()
@@ -185,6 +191,9 @@ fun TrackingScreen(
                     val skeletonPointColor = MaterialTheme.colorScheme.tertiary
                     Canvas(modifier = Modifier.fillMaxSize()) {
                         val landmarks = poseResult.landmarks()[0]
+                        fun displayX(x: Float): Float {
+                            return if (lensFacing == CameraSelector.LENS_FACING_FRONT) 1f - x else x
+                        }
                         val connections = listOf(
                             Pair(11, 12), Pair(11, 13), Pair(13, 15),
                             Pair(12, 14), Pair(14, 16),
@@ -198,8 +207,8 @@ fun TrackingScreen(
                             if (startPoint.visibility().orElse(0f) > 0.5f && endPoint.visibility().orElse(0f) > 0.5f) {
                                 drawLine(
                                     color = skeletonLineColor,
-                                    start = Offset(startPoint.x() * size.width, startPoint.y() * size.height),
-                                    end = Offset(endPoint.x() * size.width, endPoint.y() * size.height),
+                                    start = Offset(displayX(startPoint.x()) * size.width, startPoint.y() * size.height),
+                                    end = Offset(displayX(endPoint.x()) * size.width, endPoint.y() * size.height),
                                     strokeWidth = 4f
                                 )
                             }
@@ -209,7 +218,7 @@ fun TrackingScreen(
                                 drawCircle(
                                     color = skeletonPointColor,
                                     radius = 7f,
-                                    center = Offset(landmark.x() * size.width, landmark.y() * size.height)
+                                    center = Offset(displayX(landmark.x()) * size.width, landmark.y() * size.height)
                                 )
                             }
                         }
