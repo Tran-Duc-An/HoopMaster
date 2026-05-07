@@ -10,7 +10,7 @@ const {
 } = require('../controllers/poseController');
 
 const sessionService = require('../services/sessionService');
-const ttsService = require('../services/ttsService');
+const { enqueueAudioInstruction, clearAudioQueue } = require('../services/audioInstructionQueueService');
 const {
   createExerciseRuntime,
   processExerciseFrame,
@@ -37,46 +37,21 @@ function setupSocketHandlers(io) {
       timestamp: new Date().toISOString()
     });
 
-    // Gửi lời chào và hướng dẫn dưới dạng audio base64
-    (async () => {
-      try {
-        // Lời chào
-        const welcomeText = 'Welcome to AI Basketball Coach!';
-        const welcomeAudio = await ttsService.synthesizeSpeech(welcomeText, 'cheerful');
-        const welcomePayload = {
-          type: 'welcome',
-          audioBase64: welcomeAudio.audioBase64,
-          text: welcomeText,
-          timestamp: new Date().toISOString()
-        };
-        console.log('[Socket][audio_feedback] welcome:', {
-          type: welcomePayload.type,
-          text: welcomePayload.text,
-          audioBase64Length: welcomePayload.audioBase64?.length
-        });
-        socket.emit('audio_feedback', welcomePayload);
+    emitQueuedAudio(socket, {
+      type: 'welcome',
+      text: 'Welcome to AI Basketball Coach!',
+      tone: 'cheerful',
+      priority: 'normal',
+      dedupeKey: 'welcome'
+    });
 
-        // Thêm delay giữa hai audio để tránh chồng chéo
-        setTimeout(async () => {
-          const instructionText = 'Please get into shooting position to start your training session.';
-          const instructionAudio = await ttsService.synthesizeSpeech(instructionText, 'neutral');
-          const instructionPayload = {
-            type: 'instruction',
-            audioBase64: instructionAudio.audioBase64,
-            text: instructionText,
-            timestamp: new Date().toISOString()
-          };
-          console.log('[Socket][audio_feedback] instruction:', {
-            type: instructionPayload.type,
-            text: instructionPayload.text,
-            audioBase64Length: instructionPayload.audioBase64?.length
-          });
-          socket.emit('audio_feedback', instructionPayload);
-        }, 2000); // 2.0s delay, có thể điều chỉnh
-      } catch (err) {
-        console.error('[Socket] TTS error:', err);
-      }
-    })();
+    emitQueuedAudio(socket, {
+      type: 'instruction',
+      text: 'Please get into shooting position to start your training session.',
+      tone: 'neutral',
+      priority: 'normal',
+      dedupeKey: 'startup_instruction'
+    });
 
     // Event: pose_data
     socket.on('pose_data', async (data) => {
@@ -163,6 +138,7 @@ function setupSocketHandlers(io) {
     socket.on('stop_exercise', () => {
       const session = sessionService.getSession(socket.id);
       const exerciseId = session.exerciseRuntime?.exerciseId;
+      clearAudioQueue(socket.id, 'stop_exercise');
       sessionService.updateSession(socket.id, { exerciseRuntime: null });
       socket.emit('exercise_stopped', {
         success: true,
@@ -205,6 +181,7 @@ function setupSocketHandlers(io) {
     // Event: reset_session
     socket.on('reset_session', () => {
       console.log(`[Socket] Resetting session for ${socket.id}`);
+      clearAudioQueue(socket.id, 'reset_session');
       sessionService.resetSession(socket.id);
       socket.emit('session_reset', { success: true });
     });
@@ -212,6 +189,7 @@ function setupSocketHandlers(io) {
     // Event: disconnect
     socket.on('disconnect', (reason) => {
       console.log(`[Socket] Client disconnected: ${socket.id}, reason: ${reason}`);
+      clearAudioQueue(socket.id, 'disconnect');
       
       // Cleanup session sau 30 giây (cho phép reconnect)
       setTimeout(() => {
@@ -236,26 +214,42 @@ async function emitExerciseAudioCue(socket, runtime, force = false) {
   if (!force && runtime.lastCueAt && now - runtime.lastCueAt < EXERCISE_CUE_COOLDOWN_MS) return;
 
   const tone = normalizeCoachTone(runtime.coachTone || (cue.type === 'complete' ? 'cheerful' : 'neutral'));
-  const ttsResult = await ttsService.synthesizeSpeech(cue.text, tone);
-  const payload = {
+  await emitQueuedAudio(socket, {
     type: `exercise_${cue.type}`,
     text: cue.text,
-    audioBase64: ttsResult.audioBase64,
+    tone,
+    priority: cue.type === 'complete' ? 'high' : 'normal',
+    dedupeKey: cueKey,
     exerciseId: runtime.exerciseId,
     metadata: {
       ...cue.metadata,
-      tone,
-      emphasisWords: ttsResult.metadata?.emphasisWords || []
+      tone
     },
     timestamp: new Date().toISOString()
-  };
-
-  socket.emit('audio_feedback', payload);
+  });
 
   runtime.lastCueKey = cueKey;
   runtime.lastCueAt = now;
   runtime.nextCue = null;
   sessionService.updateSession(socket.id, { exerciseRuntime: runtime });
+}
+
+async function emitQueuedAudio(socket, instruction, options = {}) {
+  return enqueueAudioInstruction(
+    socket.id,
+    instruction,
+    (event, payload) => {
+      if (event === 'audio_feedback') {
+        console.log('[Socket][audio_feedback][queued] emit:', {
+          type: payload?.type,
+          text: payload?.text,
+          audioBase64Length: payload?.audioBase64?.length
+        });
+      }
+      socket.emit(event, payload);
+    },
+    options
+  );
 }
 
 module.exports = { setupSocketHandlers };

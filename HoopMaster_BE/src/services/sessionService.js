@@ -5,6 +5,8 @@
 
 // Session storage (trong production nên dùng Redis)
 const activeSessions = new Map();
+const { createAudioQueueState, clearAudioQueue } = require('./audioInstructionQueueService');
+const { createShotState } = require('./shotReadinessService');
 
 // Configuration
 const SESSION_TIMEOUT_MS = parseInt(process.env.SESSION_TIMEOUT_MS) || 300000; // 5 phút
@@ -23,6 +25,10 @@ function createSession(socketId) {
     frameBuffer: [],
     previousLandmarks: null,
     shotInProgress: false,
+    shotState: createShotState(),
+    audioQueue: createAudioQueueState(),
+    lastShootingPosePromptTime: 0,
+    isProcessingRealtimeFeedback: false,
     exerciseRuntime: null,
     sessionStats: {
       totalFrames: 0,
@@ -144,8 +150,14 @@ function resetSession(socketId) {
   session.frameBuffer = [];
   session.previousLandmarks = null;
   session.shotInProgress = false;
+  session.shotState = createShotState();
+  session.audioQueue = createAudioQueueState();
+  session.lastShootingPosePromptTime = 0;
+  session.isProcessingRealtimeFeedback = false;
+  session.lastFeedback = null;
   session.exerciseRuntime = null;
   session.lastFeedbackTime = 0;
+  clearAudioQueue(socketId, 'session_reset');
   session.sessionStats = {
     totalFrames: 0,
     feedbackCount: 0,

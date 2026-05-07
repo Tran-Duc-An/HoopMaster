@@ -21,8 +21,14 @@ const {
   evaluatePose 
 } = require('../services/poseService');
 
-const { synthesizeSpeech } = require('../services/ttsService');
 const sessionService = require('../services/sessionService');
+const { enqueueAudioInstruction } = require('../services/audioInstructionQueueService');
+const {
+  updateShotState,
+  isInShootingPose,
+  shouldAllowPositiveRealtimeFeedback,
+  shouldRunPostShotAnalysis
+} = require('../services/shotReadinessService');
 
 // Cấu hình kiểm soát feedback
 const CONFIG = {
@@ -100,50 +106,15 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
   let session = sessionService.getSession(socketId);
   if (!session) return;
   const coachTone = normalizeCoachTone(poseData?.tone || session.coachTone || 'neutral');
+  const now = Date.now();
+  const shotState = updateShotState(session.shotState, landmarks, now);
+  session = sessionService.updateSession(socketId, { shotState, coachTone });
 
   // Chặn frame mới trong lúc đang tạo/gửi feedback trước đó, kể cả frame chưa vào pose.
   if (session.isProcessingRealtimeFeedback) return;
 
-      // --- Bộ lọc: chỉ phân tích form khi tay đã ở vùng chuẩn bị ném ---
-      // Điều kiện nới lỏng: ít nhất một cổ tay cao hơn khuỷu, khuỷu cao hơn hông,
-      // và cổ tay ở gần/cao hơn vai. Gối sẽ được đánh giá bằng rule thay vì chặn sớm.
-      const idx = {
-        leftShoulder: 11, rightShoulder: 12,
-        leftElbow: 13, rightElbow: 14,
-        leftWrist: 15, rightWrist: 16,
-        leftHip: 23, rightHip: 24,
-        leftKnee: 25, rightKnee: 26,
-        leftAnkle: 27, rightAnkle: 28
-      };
-      function isInShootingPose(landmarks) {
-        if (!Array.isArray(landmarks)) return false;
-
-        const isVisible = (point) => point
-          && typeof point.x === 'number'
-          && typeof point.y === 'number'
-          && typeof point.z === 'number'
-          && (point.visibility === undefined || point.visibility >= 0.5);
-
-        function isArmReady(side) {
-          const shoulder = landmarks[idx[`${side}Shoulder`]];
-          const elbow = landmarks[idx[`${side}Elbow`]];
-          const wrist = landmarks[idx[`${side}Wrist`]];
-          const hip = landmarks[idx[`${side}Hip`]];
-
-          if (!isVisible(shoulder) || !isVisible(elbow) || !isVisible(wrist)) return false;
-
-          const wristAboveElbow = wrist.y < elbow.y;
-          const elbowAboveHip = !isVisible(hip) || elbow.y < hip.y;
-          const wristNearShoulder = wrist.y <= shoulder.y + 0.15;
-
-          return wristAboveElbow && elbowAboveHip && wristNearShoulder;
-        }
-
-        return isArmReady('right') || isArmReady('left');
-      }
       // Đảm bảo chỉ kiểm tra cooldown 1 lần duy nhất
-      if (!isInShootingPose(landmarks)) {
-        const now = Date.now();
+      if (!isInShootingPose(landmarks).ready) {
         const PROMPT_COOLDOWN = 7000; // 7 giây
         const lastPromptTime = session.lastShootingPosePromptTime || 0;
         
@@ -156,29 +127,18 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
 
           const message = 'Raise your shooting hand above your elbow so I can analyze your form.';
           
-          // Gửi một tín hiệu rỗng trước (nếu frontend của bạn cần biết đang load voice)
-          // emitCallback('audio_feedback', { text: message, audioPending: true ... });
-
-          // 2. Tiến hành gọi TTS
-          try {
-            const ttsResult = await synthesizeSpeech(message, coachTone);
-            
-            emitCallback('audio_feedback', {
-              type: 'shooting_pose_prompt',
-              text: message,
-              audioBase64: ttsResult.audioBase64,
-              angles: {},
-              metadata: {
-                timestamp: now,
-                tone: coachTone,
-                reason: 'not_in_shooting_pose',
-                audioPending: false,
-                emphasisWords: ttsResult.metadata?.emphasisWords || []
-              }
-            });
-          } catch (err) {
-            console.error('[TTS] Error generating shooting_pose_prompt audio:', err);
-          }
+          await enqueueAudioInstruction(socketId, {
+            type: 'shooting_pose_prompt',
+            text: message,
+            tone: coachTone,
+            angles: {},
+            priority: 'low',
+            dedupeKey: 'shooting_pose_prompt',
+            metadata: {
+              timestamp: now,
+              reason: 'not_in_shooting_pose'
+            }
+          }, emitCallback);
         }
         
         // Luôn lưu landmarks để check ổn định cho các frame sau
@@ -186,7 +146,6 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
         return;
       }
 
-  const now = Date.now();
   const lastFeedbackTime = session.lastFeedback?.time || 0;
   
   try {
@@ -338,35 +297,28 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
         message = baseMsg;
       } else {
         // Nếu không tìm thấy lỗi nào (tất cả đều perfect)
-        message = getRandomToneFeedback(poseFeedback.general?.good, coachTone);
+        if (shouldAllowPositiveRealtimeFeedback(shotState, evalResult, now)) {
+          message = getRandomToneFeedback(poseFeedback.general?.good, coachTone);
+        }
       }
 
       if (message) {
         // Tính toán Dynamic Cooldown dựa trên độ dài chuỗi trả về
         const estimatedAudioDuration = (message.length * 80) + 1500; 
         const cooldownToUse = Math.max(CONFIG.MIN_FEEDBACK_INTERVAL, estimatedAudioDuration);
-        emitCallback('audio_feedback', {
+        await enqueueAudioInstruction(socketId, {
+          type: primaryIssue ? 'form_correction' : 'positive_feedback',
           text: message,
-          audioBase64: '',
+          tone: coachTone,
           angles: evalResult,
+          priority: primaryIssue ? 'normal' : 'low',
+          dedupeKey: `${primaryIssue?.joint || 'good'}:${currentPoseStatus}:${message}`,
           metadata: {
             timestamp: now,
-            tone: coachTone,
-            audioPending: true
+            poseStatus: currentPoseStatus,
+            shotPhase: shotState.phase
           }
-        });
-        // Gọi TTS
-        const ttsResult = await synthesizeSpeech(message, coachTone);
-        emitCallback('audio_feedback', {
-          text: message,
-          audioBase64: ttsResult.audioBase64,
-          angles: evalResult,
-          metadata: {
-            timestamp: now,
-            tone: coachTone,
-            emphasisWords: ttsResult.metadata?.emphasisWords || []
-          }
-        });
+        }, emitCallback);
         // Cập nhật session sau khi đã phát Voice
         sessionService.updateSession(socketId, {
           lastFeedback: { 
@@ -401,6 +353,16 @@ async function handlePostShotAnalysis(socketId, emitCallback) {
   try {
     const session = sessionService.getSession(socketId);
     if (!session || session.frameBuffer.length === 0) return;
+    const now = Date.now();
+
+    if (!shouldRunPostShotAnalysis(session, now)) {
+      console.log('[Controller] Ignoring premature shot_released:', {
+        socketId,
+        phase: session.shotState?.phase,
+        frameCount: session.frameBuffer.length
+      });
+      return;
+    }
 
     const coachTone = normalizeCoachTone(session.coachTone || 'neutral');
     const stats = {
@@ -411,21 +373,31 @@ async function handlePostShotAnalysis(socketId, emitCallback) {
     const llmResult = await generatePostShotFeedback(stats);
 
     if (llmResult.success) {
-      const ttsResult = await synthesizeSpeech(llmResult.feedback, coachTone);
-      emitCallback('llm_post_shot_feedback', {
+      await enqueueAudioInstruction(socketId, {
+        event: 'llm_post_shot_feedback',
+        type: 'post_shot_feedback',
         text: llmResult.feedback,
-        audioBase64: ttsResult.audioBase64,
+        tone: coachTone,
         stats,
+        priority: 'high',
+        dedupeKey: `post_shot:${session.shotState?.lastReleaseAt || now}:${llmResult.feedback}`,
         metadata: {
           timestamp: new Date().toISOString(),
-          tone: coachTone,
-          emphasisWords: ttsResult.metadata?.emphasisWords || []
+          shotPhase: session.shotState?.phase
         }
-      });
+      }, emitCallback, { clearBeforeEnqueue: true });
     }
 
     sessionService.clearFrameBuffer(socketId);
-    sessionService.updateSession(socketId, { shotInProgress: false });
+    sessionService.updateSession(socketId, {
+      shotInProgress: false,
+      shotState: {
+        ...session.shotState,
+        phase: 'not_ready',
+        enteredPhaseAt: now,
+        reason: 'post_shot_complete'
+      }
+    });
     sessionService.incrementStats(socketId, 'shotsCompleted');
 
   } catch (error) {
