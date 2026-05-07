@@ -13,17 +13,16 @@ import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -34,14 +33,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FlipCameraAndroid
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.outlined.Architecture
-import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Speed
-import androidx.compose.material3.Divider
-import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -62,9 +55,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -156,18 +147,12 @@ fun TrackingScreen(
         }
     }
 
-    val accuracyValue = 0.78f
-    val releaseValue = ".65s"
-    val arcValue = "45°"
-    val madeShots = 12
-    val totalShots = 15
-    val streakValue = 3
-    val analysisTitle = "Last Shot Analysis"
-    val analysisMessage = if (viewModel.feedbackText.value.isNotBlank()) {
+    val feedbackMessage = if (viewModel.feedbackText.value.isNotBlank()) {
         viewModel.feedbackText.value
     } else {
-        "Perfect Arc!"
+        "Waiting for coach feedback..."
     }
+    val selectedTone = viewModel.selectedTone.value
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background
@@ -262,43 +247,13 @@ fun TrackingScreen(
                 )
             }
 
-            AccuracyMeter(
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(start = 20.dp),
-                progress = accuracyValue,
-                label = "Accuracy"
-            )
-
-            Column(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                QuickStatCard(
-                    icon = Icons.Outlined.Speed,
-                    iconTint = MaterialTheme.colorScheme.tertiary,
-                    value = releaseValue,
-                    label = "Release"
-                )
-                QuickStatCard(
-                    icon = Icons.Outlined.Architecture,
-                    iconTint = MaterialTheme.colorScheme.primaryContainer,
-                    value = arcValue,
-                    label = "Arc"
-                )
-            }
-
-            LastShotAnalysisCard(
+            CoachFeedbackPanel(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(horizontal = 20.dp, vertical = 24.dp),
-                title = analysisTitle,
-                message = analysisMessage,
-                made = madeShots,
-                total = totalShots,
-                streak = streakValue
+                selectedTone = selectedTone,
+                feedbackMessage = feedbackMessage,
+                onToneSelected = viewModel::updateTone
             )
 
             if (poseInitError != null) {
@@ -412,106 +367,14 @@ private fun GlassIconButton(
 }
 
 @Composable
-private fun AccuracyMeter(
+private fun CoachFeedbackPanel(
     modifier: Modifier,
-    progress: Float,
-    label: String
-) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(
-            modifier = Modifier
-                .height(220.dp)
-                .width(44.dp)
-                .clip(RoundedCornerShape(999.dp))
-                .background(Color.White.copy(alpha = 0.08f))
-                .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(999.dp))
-                .padding(6.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(progress)
-                    .align(Alignment.BottomCenter)
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(MaterialTheme.colorScheme.secondaryContainer)
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(2.dp)
-                    .align(Alignment.TopCenter)
-                    .offset(y = 38.dp)
-                    .background(Color.White.copy(alpha = 0.8f))
-            )
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "${(progress * 100).toInt()}%",
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.secondaryContainer
-        )
-        Text(
-            text = label.uppercase(),
-            fontSize = 10.sp,
-            letterSpacing = 1.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-private fun QuickStatCard(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    iconTint: Color,
-    value: String,
-    label: String
+    selectedTone: String,
+    feedbackMessage: String,
+    onToneSelected: (String) -> Unit
 ) {
     Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = Color.White.copy(alpha = 0.08f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.12f))
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = iconTint,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = label.uppercase(),
-                fontSize = 10.sp,
-                letterSpacing = 1.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-private fun LastShotAnalysisCard(
-    modifier: Modifier,
-    title: String,
-    message: String,
-    made: Int,
-    total: Int,
-    streak: Int
-) {
-    Surface(
-        modifier = modifier
-            .navigationBarsPadding(),
+        modifier = modifier.navigationBarsPadding(),
         shape = RoundedCornerShape(20.dp),
         color = Color.White.copy(alpha = 0.08f),
         border = androidx.compose.foundation.BorderStroke(
@@ -522,99 +385,95 @@ private fun LastShotAnalysisCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = title.uppercase(),
-                        fontSize = 12.sp,
-                        letterSpacing = 1.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = message,
-                        fontSize = 28.sp,
-                        fontStyle = FontStyle.Italic,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primaryContainer
-                    )
-                }
-                Surface(
-                    shape = CircleShape,
-                    color = Color.White.copy(alpha = 0.08f),
-                    border = androidx.compose.foundation.BorderStroke(
-                        3.dp,
-                        MaterialTheme.colorScheme.secondaryContainer
-                    )
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Check,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.secondaryContainer,
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            HorizontalDivider(
-                Modifier,
-                DividerDefaults.Thickness,
-                color = Color.White.copy(alpha = 0.12f)
+            Text(
+                text = "COACH TONE",
+                fontSize = 12.sp,
+                letterSpacing = 1.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(modifier = Modifier.height(12.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                StatColumn(label = "Made", value = made.toString())
-                StatColumn(label = "Total", value = total.toString())
-                StatColumn(
-                    label = "Streak",
-                    value = streak.toString(),
-                    valueColor = MaterialTheme.colorScheme.tertiary,
-                    alignEnd = true
+                ToneChip(
+                    modifier = Modifier.weight(1f),
+                    label = "Neutral",
+                    tone = "neutral",
+                    selectedTone = selectedTone,
+                    onToneSelected = onToneSelected
+                )
+                ToneChip(
+                    modifier = Modifier.weight(1f),
+                    label = "Cheerful",
+                    tone = "cheerful",
+                    selectedTone = selectedTone,
+                    onToneSelected = onToneSelected
+                )
+                ToneChip(
+                    modifier = Modifier.weight(1f),
+                    label = "Strict",
+                    tone = "strict",
+                    selectedTone = selectedTone,
+                    onToneSelected = onToneSelected
                 )
             }
+            Text(
+                text = "LIVE FEEDBACK",
+                fontSize = 12.sp,
+                letterSpacing = 1.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = feedbackMessage,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primaryContainer
+            )
         }
     }
 }
 
 @Composable
-private fun StatColumn(
+private fun ToneChip(
+    modifier: Modifier,
     label: String,
-    value: String,
-    valueColor: Color = MaterialTheme.colorScheme.onSurface,
-    alignEnd: Boolean = false
+    tone: String,
+    selectedTone: String,
+    onToneSelected: (String) -> Unit
 ) {
-    Column(
-        horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start
+    val isSelected = selectedTone == tone
+    val shape = RoundedCornerShape(999.dp)
+    Surface(
+        modifier = modifier
+            .height(40.dp)
+            .clip(shape)
+            .clickable { onToneSelected(tone) },
+        shape = shape,
+        color = if (isSelected) {
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f)
+        } else {
+            Color.White.copy(alpha = 0.08f)
+        },
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.White.copy(alpha = 0.12f)
+        )
     ) {
-        Text(
-            text = label.uppercase(),
-            fontSize = 10.sp,
-            letterSpacing = 1.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = if (alignEnd) TextAlign.End else TextAlign.Start
-        )
-        Text(
-            text = value,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = valueColor
-        )
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = label,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (isSelected) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                }
+            )
+        }
     }
 }
 

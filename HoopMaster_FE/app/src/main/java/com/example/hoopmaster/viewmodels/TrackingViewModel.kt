@@ -137,7 +137,10 @@ class TrackingViewModel(application: Application) : AndroidViewModel(application
 
     // Hàm cập nhật thái độ (tone) của AI Coach khi người dùng chọn trên màn hình
     fun updateTone(tone: String) {
-        selectedTone.value = tone
+        selectedTone.value = when (tone) {
+            "neutral", "cheerful", "strict" -> tone
+            else -> "neutral"
+        }
     }
 
     // Hàm dọn dẹp bộ nhớ khi tắt app hoặc chuyển màn hình

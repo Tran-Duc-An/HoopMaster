@@ -1,6 +1,6 @@
 {
   "elbow": {
-    "ideal": "80-105°",
+    "ideal": "60-145°",
     "feedback": {
       "low": {
         "strict": [
@@ -45,7 +45,7 @@
     }
   },
   "knee": {
-    "ideal": "90-140°",
+    "ideal": "75-180°",
     "feedback": {
       "low": {
         "strict": [

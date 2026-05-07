@@ -26,10 +26,10 @@ const sessionService = require('../services/sessionService');
 
 // Cấu hình kiểm soát feedback
 const CONFIG = {
-  MIN_FEEDBACK_INTERVAL: 4000,     // Ít nhất 4 giây
+  MIN_FEEDBACK_INTERVAL: 4000,     // Ít nhất 3 giây
   STABILITY_THRESHOLD: 0.01,       // Ngưỡng ổn định của pose
   ANGLE_CHANGE_THRESHOLD: (POSE_RULES?.shooting?.elbow?.threshold || 12),
-  REMINDER_TIME_MS: 10000          // Nhắc lại sau 10 giây nếu tư thế vẫn sai
+  REMINDER_TIME_MS: 50000
 };
 
 /**
@@ -40,7 +40,13 @@ function normalizeCoachTone(tone) {
 }
 
 function getRandomFeedback(joint, status, tone = 'neutral') {
-  const map = { tooLow: 'low', tooHigh: 'high', perfect: 'perfect' };
+  const map = {
+    tooLow: 'low',
+    acceptable_low: 'low',
+    tooHigh: 'high',
+    acceptable_high: 'high',
+    perfect: 'perfect'
+  };
   const key = map[status] || 'perfect';
   const selectedTone = normalizeCoachTone(tone);
   // Ưu tiên lấy neutral nếu có, nếu không thì lấy strict/cheerful bất kỳ
@@ -67,14 +73,40 @@ function getRandomFeedback(joint, status, tone = 'neutral') {
   return `${joint.charAt(0).toUpperCase() + joint.slice(1)} position is ${status.replace('too', '').toLowerCase()}.`;
 }
 
+function getRandomToneFeedback(group, tone = 'neutral') {
+  const selectedTone = normalizeCoachTone(tone);
+  const toneMessages = group?.[selectedTone] || group?.neutral;
+  if (Array.isArray(toneMessages) && toneMessages.length > 0) {
+    return toneMessages[Math.floor(Math.random() * toneMessages.length)];
+  }
+
+  const allMessages = Object.values(group || {}).flat().filter(Boolean);
+  if (allMessages.length > 0) {
+    return allMessages[Math.floor(Math.random() * allMessages.length)];
+  }
+
+  return '';
+}
+
+function isActionableIssue(status) {
+  return status === 'tooLow' || status === 'tooHigh';
+}
+
 /**
  * REAL-TIME WORKFLOW
  */
 async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
-        const { landmarks } = poseData;
-      // --- Bộ lọc: chỉ feedback khi đã vào tư thế ném ---
-      // Điều kiện: cả hai đầu gối đều gập (knee angle < 160), hai tay đều giơ lên (elbow cao hơn hông, cổ tay cao hơn khuỷu)
-      // Có thể điều chỉnh điều kiện này cho phù hợp thực tế
+  const { landmarks } = poseData || {};
+  let session = sessionService.getSession(socketId);
+  if (!session) return;
+  const coachTone = normalizeCoachTone(poseData?.tone || session.coachTone || 'neutral');
+
+  // Chặn frame mới trong lúc đang tạo/gửi feedback trước đó, kể cả frame chưa vào pose.
+  if (session.isProcessingRealtimeFeedback) return;
+
+      // --- Bộ lọc: chỉ phân tích form khi tay đã ở vùng chuẩn bị ném ---
+      // Điều kiện nới lỏng: ít nhất một cổ tay cao hơn khuỷu, khuỷu cao hơn hông,
+      // và cổ tay ở gần/cao hơn vai. Gối sẽ được đánh giá bằng rule thay vì chặn sớm.
       const idx = {
         leftShoulder: 11, rightShoulder: 12,
         leftElbow: 13, rightElbow: 14,
@@ -85,43 +117,84 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
       };
       function isInShootingPose(landmarks) {
         if (!Array.isArray(landmarks)) return false;
-        // Kiểm tra gập gối
-        const leftKnee = landmarks[idx.leftKnee], leftHip = landmarks[idx.leftHip], leftAnkle = landmarks[idx.leftAnkle];
-        const rightKnee = landmarks[idx.rightKnee], rightHip = landmarks[idx.rightHip], rightAnkle = landmarks[idx.rightAnkle];
-        function angle(a, b, c) {
-          if (!a || !b || !c) return 180;
-          const ab = Math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2 + (a.z-b.z)**2);
-          const cb = Math.sqrt((c.x-b.x)**2 + (c.y-b.y)**2 + (c.z-b.z)**2);
-          const ac = Math.sqrt((a.x-c.x)**2 + (a.y-c.y)**2 + (a.z-c.z)**2);
-          return Math.acos((ab*ab + cb*cb - ac*ac)/(2*ab*cb)) * 180/Math.PI;
+
+        const isVisible = (point) => point
+          && typeof point.x === 'number'
+          && typeof point.y === 'number'
+          && typeof point.z === 'number'
+          && (point.visibility === undefined || point.visibility >= 0.5);
+
+        function isArmReady(side) {
+          const shoulder = landmarks[idx[`${side}Shoulder`]];
+          const elbow = landmarks[idx[`${side}Elbow`]];
+          const wrist = landmarks[idx[`${side}Wrist`]];
+          const hip = landmarks[idx[`${side}Hip`]];
+
+          if (!isVisible(shoulder) || !isVisible(elbow) || !isVisible(wrist)) return false;
+
+          const wristAboveElbow = wrist.y < elbow.y;
+          const elbowAboveHip = !isVisible(hip) || elbow.y < hip.y;
+          const wristNearShoulder = wrist.y <= shoulder.y + 0.15;
+
+          return wristAboveElbow && elbowAboveHip && wristNearShoulder;
         }
-        const leftKneeAngle = angle(leftHip, leftKnee, leftAnkle);
-        const rightKneeAngle = angle(rightHip, rightKnee, rightAnkle);
-        // Kiểm tra tay giơ lên (wrist cao hơn elbow, elbow cao hơn shoulder)
-        const rightShoulder = landmarks[idx.rightShoulder], rightElbow = landmarks[idx.rightElbow], rightWrist = landmarks[idx.rightWrist];
-        const leftShoulder = landmarks[idx.leftShoulder], leftElbow = landmarks[idx.leftElbow], leftWrist = landmarks[idx.leftWrist];
-        const rightArmUp = rightWrist && rightElbow && rightShoulder && rightWrist.y < rightElbow.y && rightElbow.y < rightShoulder.y;
-        const leftArmUp = leftWrist && leftElbow && leftShoulder && leftWrist.y < leftElbow.y && leftElbow.y < leftShoulder.y;
-        // Điều kiện: ít nhất 1 tay giơ lên và ít nhất 1 gối gập
-        return ((leftKneeAngle < 160 || rightKneeAngle < 160) && (rightArmUp || leftArmUp));
+
+        return isArmReady('right') || isArmReady('left');
       }
+      // Đảm bảo chỉ kiểm tra cooldown 1 lần duy nhất
       if (!isInShootingPose(landmarks)) {
-        // Không gửi feedback nếu chưa vào tư thế ném
-        sessionService.updateSession(socketId, { previousLandmarks: landmarks });
+        const now = Date.now();
+        const PROMPT_COOLDOWN = 7000; // 7 giây
+        const lastPromptTime = session.lastShootingPosePromptTime || 0;
+        
+        if (Array.isArray(landmarks) && landmarks.length > 0 && (now - lastPromptTime > PROMPT_COOLDOWN)) {
+          
+          // 1. CẬP NHẬT COOLDOWN NGAY LẬP TỨC ĐỂ CHẶN CÁC FRAME TIẾP THEO
+          sessionService.updateSession(socketId, {
+            lastShootingPosePromptTime: now
+          });
+
+          const message = 'Raise your shooting hand above your elbow so I can analyze your form.';
+          
+          // Gửi một tín hiệu rỗng trước (nếu frontend của bạn cần biết đang load voice)
+          // emitCallback('audio_feedback', { text: message, audioPending: true ... });
+
+          // 2. Tiến hành gọi TTS
+          try {
+            const ttsResult = await synthesizeSpeech(message, coachTone);
+            
+            emitCallback('audio_feedback', {
+              type: 'shooting_pose_prompt',
+              text: message,
+              audioBase64: ttsResult.audioBase64,
+              angles: {},
+              metadata: {
+                timestamp: now,
+                tone: coachTone,
+                reason: 'not_in_shooting_pose',
+                audioPending: false,
+                emphasisWords: ttsResult.metadata?.emphasisWords || []
+              }
+            });
+          } catch (err) {
+            console.error('[TTS] Error generating shooting_pose_prompt audio:', err);
+          }
+        }
+        
+        // Luôn lưu landmarks để check ổn định cho các frame sau
+        sessionService.updateSession(socketId, { previousLandmarks: landmarks, coachTone });
         return;
       }
-  let session = sessionService.getSession(socketId);
-  if (!session) return;
-  const coachTone = normalizeCoachTone(poseData.tone || session.coachTone || 'neutral');
-
-  // 1. Chặn Race Condition: Nếu đang bận xử lý frame trước, bỏ qua frame này
-  if (session.isProcessingRealtimeFeedback) return;
 
   const now = Date.now();
   const lastFeedbackTime = session.lastFeedback?.time || 0;
   
   try {
-    sessionService.updateSession(socketId, { isProcessingRealtimeFeedback: true, coachTone });
+    sessionService.updateSession(socketId, {
+      isProcessingRealtimeFeedback: true,
+      coachTone,
+      hasPromptedForShootingPose: false
+    });
     sessionService.incrementStats(socketId, 'totalFrames');
 
     const { landmarks, exerciseType: poseDataExerciseType } = poseData;
@@ -242,7 +315,7 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
 
       // Tìm lỗi ĐẦU TIÊN xuất hiện trong danh sách ưu tiên
       const primaryIssue = errorPriority.find(
-        item => item.data && item.data.status && item.data.status !== 'perfect'
+        item => item.data && isActionableIssue(item.data.status)
       );
 
       if (primaryIssue) {
@@ -250,30 +323,40 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
         let baseMsg = getRandomFeedback(primaryIssue.joint, primaryIssue.data.status, coachTone);
         // Bổ sung chi tiết bên trái/phải nếu có
         let side = primaryIssue.data?.side || primaryIssue.side;
-        if (!side && evalResult.shootingHand) {
+        if (!side && evalResult.shootingHand && primaryIssue.joint !== 'knee') {
           // Ưu tiên tay thuận nếu không có side
           side = evalResult.shootingHand === 'right' ? 'right' : 'left';
         }
-        if (side && baseMsg && /elbow|shoulder|knee/i.test(primaryIssue.joint)) {
+        if (side && baseMsg && /elbow|shoulder/i.test(primaryIssue.joint)) {
           // Thay thế "your elbow" thành "your right/left elbow" nếu có
-          baseMsg = baseMsg.replace(/your (elbow|shoulder|knee)/i, `your ${side} $1`);
+          baseMsg = baseMsg.replace(/your (elbow|shoulder)\b/i, `your ${side} $1`);
           // Nếu không có "your ...", thêm vào đầu câu
-          if (!/your (right|left) (elbow|shoulder|knee)/i.test(baseMsg)) {
+          if (!/your (right|left) (elbow|shoulder)\b/i.test(baseMsg)) {
             baseMsg = `${baseMsg.charAt(0).toUpperCase() + baseMsg.slice(1)}`;
           }
         }
         message = baseMsg;
       } else {
         // Nếu không tìm thấy lỗi nào (tất cả đều perfect)
-        message = '';
+        message = getRandomToneFeedback(poseFeedback.general?.good, coachTone);
       }
 
       if (message) {
-        // Gọi TTS
-        const ttsResult = await synthesizeSpeech(message, coachTone);
         // Tính toán Dynamic Cooldown dựa trên độ dài chuỗi trả về
         const estimatedAudioDuration = (message.length * 80) + 1500; 
         const cooldownToUse = Math.max(CONFIG.MIN_FEEDBACK_INTERVAL, estimatedAudioDuration);
+        emitCallback('audio_feedback', {
+          text: message,
+          audioBase64: '',
+          angles: evalResult,
+          metadata: {
+            timestamp: now,
+            tone: coachTone,
+            audioPending: true
+          }
+        });
+        // Gọi TTS
+        const ttsResult = await synthesizeSpeech(message, coachTone);
         emitCallback('audio_feedback', {
           text: message,
           audioBase64: ttsResult.audioBase64,
