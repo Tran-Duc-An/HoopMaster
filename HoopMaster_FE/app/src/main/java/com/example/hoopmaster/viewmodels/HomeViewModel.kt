@@ -75,9 +75,13 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 userId.isNullOrBlank() -> container.planRepository.getDefaultPlan()
                 else -> container.planRepository.getActivePlan(userId).fold(
                     onSuccess = { plan ->
-                        if (plan != null) Result.success(plan) else container.planRepository.getDefaultPlan()
+                        if (plan != null) {
+                            Result.success(plan)
+                        } else {
+                            getLatestPersonalizedPlan(userId)
+                        }
                     },
-                    onFailure = { container.planRepository.getDefaultPlan() }
+                    onFailure = { getLatestPersonalizedPlan(userId) }
                 )
             }
 
@@ -104,5 +108,14 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 }
             )
         }
+    }
+
+    private suspend fun getLatestPersonalizedPlan(userId: String): Result<TrainingPlanDto> {
+        return container.planRepository.getPlans(userId, source = "personalized", status = null).fold(
+            onSuccess = { plans ->
+                plans.firstOrNull()?.let { Result.success(it) } ?: container.planRepository.getDefaultPlan()
+            },
+            onFailure = { container.planRepository.getDefaultPlan() }
+        )
     }
 }

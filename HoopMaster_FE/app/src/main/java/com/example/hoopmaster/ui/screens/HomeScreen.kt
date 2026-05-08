@@ -28,12 +28,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.example.hoopmaster.data.model.PlanExerciseDto
 import com.example.hoopmaster.ui.components.HoopActionButton
 import com.example.hoopmaster.ui.components.HoopCard
@@ -71,6 +75,18 @@ fun HomeScreen(
 
     LaunchedEffect(Unit) {
         viewModel.loadHome()
+    }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.loadHome()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     HomeScreenContent(
@@ -174,8 +190,16 @@ private fun HomeScreenContent(
                                 )
                             }
                             HoopStatusBadge(
-                                label = if (uiState.isLoading) "Loading" else "Active",
-                                status = if (uiState.isLoading) HoopStatus.Info else HoopStatus.Active
+                                label = if (uiState.isLoading) {
+                                    "Loading"
+                                } else {
+                                    uiState.plan?.status?.replaceFirstChar { it.uppercaseChar() } ?: "Plan"
+                                },
+                                status = when {
+                                    uiState.isLoading -> HoopStatus.Info
+                                    uiState.plan?.status.equals("active", ignoreCase = true) -> HoopStatus.Active
+                                    else -> HoopStatus.Info
+                                }
                             )
                         }
 
