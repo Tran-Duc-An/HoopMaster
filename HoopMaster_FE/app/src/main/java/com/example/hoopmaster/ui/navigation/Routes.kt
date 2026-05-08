@@ -7,8 +7,11 @@ object Routes {
     const val ExerciseDetailArg = "exerciseId"
     const val ExerciseDetail = "exercise/{$ExerciseDetailArg}"
     const val Tracking = "tracking"
+    const val TrackingExerciseArg = "exerciseId"
+    const val TrackingWithExercise = "tracking/{$TrackingExerciseArg}"
     const val Summary = "summary"
     const val Profile = "profile"
 
     fun exerciseDetail(exerciseId: Int): String = "exercise/$exerciseId"
+    fun trackingWithExercise(exerciseId: Int): String = "tracking/$exerciseId"
 }

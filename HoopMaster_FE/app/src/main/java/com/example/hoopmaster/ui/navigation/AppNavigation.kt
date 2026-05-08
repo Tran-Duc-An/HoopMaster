@@ -69,12 +69,29 @@ fun AppNavigation() {
             ExerciseDetailScreen(
                 exerciseId = exerciseId,
                 onBack = { navController.popBackStack() },
-                onStartTracking = { navController.navigate(Routes.Tracking) }
+                onStartTracking = { selectedExerciseId ->
+                    navController.navigate(Routes.trackingWithExercise(selectedExerciseId))
+                }
             )
         }
 
         composable(Routes.Tracking) {
             TrackingScreen(
+                onEndSession = {
+                    navController.navigate(Routes.Summary) {
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
+
+        composable(
+            route = Routes.TrackingWithExercise,
+            arguments = listOf(navArgument(Routes.TrackingExerciseArg) { type = NavType.IntType })
+        ) { entry ->
+            val exerciseId = entry.arguments?.getInt(Routes.TrackingExerciseArg)
+            TrackingScreen(
+                exerciseId = exerciseId,
                 onEndSession = {
                     navController.navigate(Routes.Summary) {
                         launchSingleTop = true

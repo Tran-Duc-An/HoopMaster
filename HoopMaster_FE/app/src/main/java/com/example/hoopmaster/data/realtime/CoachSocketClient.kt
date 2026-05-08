@@ -7,6 +7,7 @@ import com.example.hoopmaster.data.model.CoachSocketEvent
 import com.example.hoopmaster.data.model.ConnectedEvent
 import com.example.hoopmaster.data.model.ExerciseProgressEvent
 import com.example.hoopmaster.data.model.PostShotFeedbackEvent
+import com.example.hoopmaster.data.model.ShotCountUpdateEvent
 import com.example.hoopmaster.data.model.SocketErrorEvent
 import io.socket.client.IO
 import io.socket.client.Socket
@@ -123,6 +124,16 @@ class CoachSocketClient(
                 PostShotFeedbackEvent(
                     text = payload?.optString("text"),
                     audioBase64 = payload?.optString("audioBase64"),
+                    stats = payload?.optJSONObject("stats") ?: payload
+                )
+            )
+        }
+
+        socket.on("shot_count_update") { args ->
+            val payload = firstJsonObject(args)
+            emitEvent(
+                ShotCountUpdateEvent(
+                    shotCount = payload?.optInt("shotCount", 0) ?: 0,
                     stats = payload?.optJSONObject("stats") ?: payload
                 )
             )

@@ -32,10 +32,20 @@ const {
 
 // Cấu hình kiểm soát feedback
 const CONFIG = {
-  MIN_FEEDBACK_INTERVAL: 4000,     // Ít nhất 3 giây
+  MIN_FEEDBACK_INTERVAL: 2500,     // Realtime hơn nhưng vẫn tránh spam
   STABILITY_THRESHOLD: 0.01,       // Ngưỡng ổn định của pose
   ANGLE_CHANGE_THRESHOLD: (POSE_RULES?.shooting?.elbow?.threshold || 12),
-  REMINDER_TIME_MS: 50000
+  REMINDER_TIME_MS: 50000,
+  ISSUE_CONFIRM_FRAMES: 2,         // Cần lặp cùng lỗi qua nhiều frame mới nhắc
+  ISSUE_FLIP_COOLDOWN_MS: 9000,    // Tránh đảo low/high liên tục trên cùng joint
+  SAME_JOINT_STREAK_LIMIT: 2,      // Hạn chế lặp elbow quá nhiều
+  MAX_CORRECTION_STREAK: 4         // Tối đa số lần correction liên tiếp trước khi cho ném
+};
+
+const SHOOTING_POSE_PROMPT = {
+  COOLDOWN_MS: 7000,
+  MAX_CONSECUTIVE_PROMPTS: 4,
+  GRACE_WINDOW_MS: 12000
 };
 
 /**
@@ -98,6 +108,34 @@ function isActionableIssue(status) {
   return ['tooLow', 'tooHigh', 'acceptable_low', 'acceptable_high'].includes(status);
 }
 
+function normalizeIssueDirection(status = '') {
+  if (['tooLow', 'acceptable_low'].includes(status)) return 'low';
+  if (['tooHigh', 'acceptable_high'].includes(status)) return 'high';
+  return 'perfect';
+}
+
+function choosePrimaryIssueWithAntiSpam(evalResult, session) {
+  const candidates = [
+    { joint: 'knee', data: evalResult.kneeEval, side: evalResult.kneeEval?.side },
+    { joint: 'elbow', data: evalResult.elbowEval, side: evalResult.elbowEval?.side },
+    { joint: 'shoulder', data: evalResult.shoulderEval, side: evalResult.shoulderEval?.side }
+  ].filter(item => item.data && isActionableIssue(item.data.status));
+
+  if (candidates.length === 0) return null;
+
+  const recentJoints = Array.isArray(session.recentIssueJoints) ? session.recentIssueJoints : [];
+  const repeatedJoint = recentJoints.length >= CONFIG.SAME_JOINT_STREAK_LIMIT
+    && recentJoints.slice(-CONFIG.SAME_JOINT_STREAK_LIMIT).every(j => j === recentJoints[recentJoints.length - 1]);
+
+  if (repeatedJoint) {
+    const avoidJoint = recentJoints[recentJoints.length - 1];
+    const alternate = candidates.find(item => item.joint !== avoidJoint);
+    if (alternate) return alternate;
+  }
+
+  return candidates[0];
+}
+
 function getFormReadyFeedback(tone = 'neutral') {
   const selectedTone = normalizeCoachTone(tone);
   const preferred = poseFeedback.shoulder?.feedback?.perfect?.[selectedTone]
@@ -127,30 +165,39 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
   // Chặn frame mới trong lúc đang tạo/gửi feedback trước đó, kể cả frame chưa vào pose.
   if (session.isProcessingRealtimeFeedback) return;
 
+      const shootingPose = isInShootingPose(landmarks);
+      const graceUntil = session.shootingPoseGraceUntil || 0;
       // Đảm bảo chỉ kiểm tra cooldown 1 lần duy nhất
-      if (!isInShootingPose(landmarks).ready) {
-        const PROMPT_COOLDOWN = 7000; // 7 giây
+      if (!shootingPose.ready && now >= graceUntil) {
         const lastPromptTime = session.lastShootingPosePromptTime || 0;
         
-        if (Array.isArray(landmarks) && landmarks.length > 0 && (now - lastPromptTime > PROMPT_COOLDOWN)) {
+        if (Array.isArray(landmarks) && landmarks.length > 0 && (now - lastPromptTime > SHOOTING_POSE_PROMPT.COOLDOWN_MS)) {
+          const promptCount = (session.shootingPosePromptCount || 0) + 1;
+          const forceGrace = promptCount >= SHOOTING_POSE_PROMPT.MAX_CONSECUTIVE_PROMPTS;
           
           // 1. CẬP NHẬT COOLDOWN NGAY LẬP TỨC ĐỂ CHẶN CÁC FRAME TIẾP THEO
           sessionService.updateSession(socketId, {
-            lastShootingPosePromptTime: now
+            lastShootingPosePromptTime: now,
+            shootingPosePromptCount: forceGrace ? 0 : promptCount,
+            shootingPoseGraceUntil: forceGrace ? now + SHOOTING_POSE_PROMPT.GRACE_WINDOW_MS : 0
           });
 
-          const message = 'Raise your shooting hand above your elbow so I can analyze your form.';
+          const message = forceGrace
+            ? 'Good enough. Keep this pose steady and focus on elbow, knee, and shoulder alignment.'
+            : 'Raise your shooting wrist slightly above your elbow and keep it near shoulder level.';
           
           await enqueueAudioInstruction(socketId, {
-            type: 'shooting_pose_prompt',
+            type: forceGrace ? 'shooting_pose_grace' : 'shooting_pose_prompt',
             text: message,
             tone: coachTone,
             angles: {},
             priority: 'low',
-            dedupeKey: 'shooting_pose_prompt',
+            dedupeKey: forceGrace ? 'shooting_pose_grace' : 'shooting_pose_prompt',
             metadata: {
               timestamp: now,
-              reason: 'not_in_shooting_pose'
+              reason: forceGrace ? 'shooting_pose_grace_window' : 'not_in_shooting_pose',
+              poseReason: shootingPose.reason || 'arm_not_ready',
+              poseMetrics: shootingPose.metrics || {}
             }
           }, emitCallback);
         }
@@ -158,6 +205,12 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
         // Luôn lưu landmarks để check ổn định cho các frame sau
         sessionService.updateSession(socketId, { previousLandmarks: landmarks, coachTone });
         return;
+      }
+      if (shootingPose.ready) {
+        sessionService.updateSession(socketId, {
+          shootingPosePromptCount: 0,
+          shootingPoseGraceUntil: 0
+        });
       }
 
   const lastFeedbackTime = session.lastFeedback?.time || 0;
@@ -279,19 +332,12 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
       // Đếm số lần feedback lỗi liên tiếp
       let errorCount = session.errorFeedbackCount || 0;
       let lastErrorStatus = session.lastErrorStatus || '';
+      let correctionStreakCount = session.correctionStreakCount || 0;
       let message = '';
-      // Khai báo thứ tự ưu tiên: Nền tảng (Gối) -> Chuyển động (Khuỷu tay) -> Phụ trợ (Vai)
-      const errorPriority = [
-        { joint: 'knee', data: evalResult.kneeEval, side: evalResult.kneeEval?.side },
-        { joint: 'elbow', data: evalResult.elbowEval, side: evalResult.elbowEval?.side },
-        { joint: 'shoulder', data: evalResult.shoulderEval, side: evalResult.shoulderEval?.side }
-      ];
-      // Tìm lỗi ĐẦU TIÊN xuất hiện trong danh sách ưu tiên
-      const primaryIssue = errorPriority.find(
-        item => item.data && isActionableIssue(item.data.status)
-      );
+      const primaryIssue = choosePrimaryIssueWithAntiSpam(evalResult, session);
       let isForcePraise = false;
       if (primaryIssue) {
+        const thisDirection = normalizeIssueDirection(primaryIssue.data.status);
         // Nếu lỗi giống lần trước thì tăng count, nếu khác thì reset count
         const thisErrorStatus = `${primaryIssue.joint}:${primaryIssue.data.status}`;
         if (thisErrorStatus === lastErrorStatus) {
@@ -299,10 +345,35 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
         } else {
           errorCount = 1;
         }
-        // Nếu lỗi lặp lại quá 3 lần thì khen và cho ném
-        if (errorCount >= 3) {
+        const previousDirection = normalizeIssueDirection(session.lastIssueDirection);
+        const sameJointAsLast = session.lastIssueJoint === primaryIssue.joint;
+        const flippedDirection = sameJointAsLast && previousDirection !== 'perfect' && previousDirection !== thisDirection;
+        const recentlyFlipped = flippedDirection && (now - (session.lastIssueTime || 0) < CONFIG.ISSUE_FLIP_COOLDOWN_MS);
+        if (recentlyFlipped) {
+          sessionService.updateSession(socketId, { previousLandmarks: landmarks });
+          return;
+        }
+
+        const pendingIssueKey = session.pendingIssueKey || '';
+        const pendingIssueCount = (pendingIssueKey === thisErrorStatus)
+          ? (session.pendingIssueCount || 0) + 1
+          : 1;
+        sessionService.updateSession(socketId, {
+          pendingIssueKey: thisErrorStatus,
+          pendingIssueCount
+        });
+        if (pendingIssueCount < CONFIG.ISSUE_CONFIRM_FRAMES) {
+          sessionService.updateSession(socketId, { previousLandmarks: landmarks });
+          return;
+        }
+        correctionStreakCount += 1;
+
+        // Nếu lỗi lặp lại quá ngưỡng thì khen và cho ném để tránh "kẹt" correction vô hạn
+        if (errorCount >= 3 || correctionStreakCount >= CONFIG.MAX_CORRECTION_STREAK) {
           isForcePraise = true;
           message = getFormReadyFeedback(coachTone);
+          correctionStreakCount = 0;
+          errorCount = 0;
         } else {
           let baseMsg = getRandomFeedback(primaryIssue.joint, primaryIssue.data.status, coachTone);
           let side = primaryIssue.data?.side || primaryIssue.side;
@@ -320,14 +391,22 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
         // Lưu trạng thái lỗi hiện tại
         sessionService.updateSession(socketId, {
           errorFeedbackCount: errorCount,
-          lastErrorStatus: thisErrorStatus
+          lastErrorStatus: thisErrorStatus,
+          lastIssueJoint: primaryIssue.joint,
+          lastIssueDirection: thisDirection,
+          lastIssueTime: now,
+          correctionStreakCount
         });
       } else {
         // Nếu không còn lỗi, reset biến đếm
         errorCount = 0;
         sessionService.updateSession(socketId, {
           errorFeedbackCount: 0,
-          lastErrorStatus: ''
+          lastErrorStatus: '',
+          pendingIssueKey: '',
+          pendingIssueCount: 0,
+          lastIssueDirection: 'perfect',
+          correctionStreakCount: 0
         });
         if (shouldAllowPositiveRealtimeFeedback(shotState, evalResult, now)) {
           message = getFormReadyFeedback(coachTone);
@@ -353,6 +432,9 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
           ? shotState
           : { ...shotState, lastFormReadyAt: now };
         sessionService.updateSession(socketId, {
+          recentIssueJoints: primaryIssue
+            ? [...(Array.isArray(session.recentIssueJoints) ? session.recentIssueJoints : []), primaryIssue.joint].slice(-4)
+            : (Array.isArray(session.recentIssueJoints) ? session.recentIssueJoints.slice(-4) : []),
           shotState: shotStateUpdate,
           lastFeedback: { 
             angles: evalResult, 
@@ -396,29 +478,9 @@ async function handlePostShotAnalysis(socketId, emitCallback) {
       return;
     }
 
-    const coachTone = normalizeCoachTone(session.coachTone || 'neutral');
-    const stats = {
-      ...calculateShotStatistics(session.frameBuffer),
-      tone: coachTone
-    };
-    const { generatePostShotFeedback } = require('../services/llmService');
-    const llmResult = await generatePostShotFeedback(stats);
-
-    if (llmResult.success) {
-      await enqueueAudioInstruction(socketId, {
-        event: 'llm_post_shot_feedback',
-        type: 'post_shot_feedback',
-        text: llmResult.feedback,
-        tone: coachTone,
-        stats,
-        priority: 'high',
-        dedupeKey: `post_shot:${session.shotState?.lastReleaseAt || now}:${llmResult.feedback}`,
-        metadata: {
-          timestamp: new Date().toISOString(),
-          shotPhase: session.shotState?.phase
-        }
-      }, emitCallback, { clearBeforeEnqueue: true });
-    }
+    // Keep post-shot processing lightweight: no LLM feedback.
+    // Instead, count shots and send shot count update to FE.
+    const stats = calculateShotStatistics(session.frameBuffer);
 
     sessionService.clearFrameBuffer(socketId);
     sessionService.updateSession(socketId, {
@@ -435,6 +497,12 @@ async function handlePostShotAnalysis(socketId, emitCallback) {
       }
     });
     sessionService.incrementStats(socketId, 'shotsCompleted');
+    const updatedSession = sessionService.getSession(socketId);
+    emitCallback('shot_count_update', {
+      shotCount: updatedSession?.sessionStats?.shotsCompleted || 0,
+      timestamp: new Date().toISOString(),
+      stats
+    });
 
   } catch (error) {
     console.error('[Controller] Post-shot error:', error.message);

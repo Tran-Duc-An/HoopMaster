@@ -11,6 +11,7 @@ import com.example.hoopmaster.data.model.AudioFeedbackEvent
 import com.example.hoopmaster.data.model.ConnectedEvent
 import com.example.hoopmaster.data.model.ExerciseProgressEvent
 import com.example.hoopmaster.data.model.PostShotFeedbackEvent
+import com.example.hoopmaster.data.model.ShotCountUpdateEvent
 import com.example.hoopmaster.data.model.SocketErrorEvent
 import com.example.hoopmaster.media.AudioPlayer
 import com.example.hoopmaster.data.realtime.CoachSocket
@@ -28,6 +29,7 @@ data class TrackingUiState(
     val selectedTone: String = "neutral",
     val isConnected: Boolean = false,
     val isExerciseActive: Boolean = false,
+    val shotCount: Int = 0,
     val lastShotReleasedAt: Long? = null,
     val errorMessage: String? = null
 )
@@ -203,6 +205,11 @@ class TrackingViewModel(application: Application) : AndroidViewModel(application
                     is PostShotFeedbackEvent -> {
                         event.text?.takeIf { it.isNotBlank() }?.let { setFeedback(it) }
                         event.audioBase64?.takeIf { it.isNotBlank() }?.let { audioPlayer.playBase64Audio(it) }
+                    }
+
+                    is ShotCountUpdateEvent -> {
+                        syncState { it.copy(shotCount = event.shotCount) }
+                        setFeedback("Shots completed: ${event.shotCount}")
                     }
 
                     is SocketErrorEvent -> {

@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -92,6 +93,7 @@ import java.util.concurrent.Executors
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TrackingScreen(
+    exerciseId: Int? = null,
     onEndSession: () -> Unit,
     viewModel: TrackingViewModel = viewModel()
 ) {
@@ -128,6 +130,11 @@ fun TrackingScreen(
     LaunchedEffect(Unit) {
         if (!hasCameraPermission) {
             permissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+    LaunchedEffect(exerciseId) {
+        if (exerciseId != null) {
+            viewModel.startExercise(exerciseId = exerciseId)
         }
     }
 
@@ -183,10 +190,7 @@ fun TrackingScreen(
         }
     }
 
-    val accuracyValue = 0.78f
-    val releaseValue = ".65s"
-    val arcValue = "45°"
-    val madeShots = 12
+    val madeShots = uiStateValue.shotCount
     val totalShots = 15
     val streakValue = 3
     val analysisTitle = "Last Shot Analysis"
@@ -274,7 +278,7 @@ fun TrackingScreen(
                         CameraSelector.LENS_FACING_BACK
                     }
                 },
-                timerText = "00:59",
+                shotCount = madeShots,
                 iconSize = tokens.sizing.iconButtonSize
             )
 
@@ -282,10 +286,11 @@ fun TrackingScreen(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(
-                        top = if (compactOverlay) 76.dp else 96.dp,
+                        top = if (compactOverlay) 72.dp else 92.dp,
                         end = overlayMargin
                     ),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(HoopSpacing.Xs)
             ) {
                 GlassIconButton(
                     onClick = { showSkeleton = !showSkeleton },
@@ -298,71 +303,30 @@ fun TrackingScreen(
                     },
                     size = tokens.sizing.iconButtonSize
                 )
-            }
-
-            AccuracyMeter(
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(start = overlayMargin),
-                progress = accuracyValue,
-                label = "Accuracy",
-                meterHeight = tokens.sizing.trackingMeterHeight
-            )
-
-            Column(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = overlayMargin),
-                verticalArrangement = Arrangement.spacedBy(tokens.spacing.contentGap)
-            ) {
-                QuickStatCard(
-                    icon = Icons.Outlined.Speed,
-                    iconTint = MaterialTheme.colorScheme.tertiaryContainer,
-                    value = releaseValue,
-                    label = "Release",
-                    compact = compactOverlay
-                )
-                QuickStatCard(
-                    icon = Icons.Outlined.Architecture,
-                    iconTint = ActiveOrange,
-                    value = arcValue,
-                    label = "Arc",
-                    compact = compactOverlay
-                )
-            }
-
-            Surface(
-                modifier = Modifier
-                    .align(if (compactOverlay) Alignment.BottomEnd else Alignment.BottomStart)
-                    .padding(
-                        start = overlayMargin,
-                        end = overlayMargin,
-                        bottom = shotModeBottomPadding
-                    ),
-                shape = RoundedCornerShape(HoopRadius.Lg),
-                color = NavyShadow.copy(alpha = 0.66f),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.14f))
-            ) {
                 Column(
                     modifier = Modifier
-                        .width(if (compactOverlay) tokens.sizing.trackingControlSize * 2f else tokens.sizing.trackingControlSize * 2.4f)
-                        .padding(tokens.spacing.cardPadding),
-                    verticalArrangement = Arrangement.spacedBy(tokens.spacing.contentGap)
+                        .widthIn(max = if (compactOverlay) 188.dp else 220.dp)
+                        .padding(horizontal = HoopSpacing.Sm, vertical = HoopSpacing.Xs),
+                    verticalArrangement = Arrangement.spacedBy(HoopSpacing.Xs)
                 ) {
                     Text(
-                        text = "Shot mode",
-                        style = MaterialTheme.typography.labelMedium,
-                        letterSpacing = 1.sp,
-                        color = Color.White.copy(alpha = 0.84f)
+                        text = "Tone",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = 0.8f)
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(HoopSpacing.Sm)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(HoopSpacing.Xs)) {
                         listOf("strict", "neutral", "cheerful").forEach { tone ->
                             FilterChip(
                                 selected = viewModel.selectedTone.value == tone,
                                 onClick = {
                                     viewModel.updateTone(tone)
                                 },
-                                label = { Text(tone.replaceFirstChar { it.uppercase() }) },
+                                label = {
+                                    Text(
+                                        text = tone.replaceFirstChar { it.uppercase() },
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = ActiveOrange.copy(alpha = 0.18f),
                                     selectedLabelColor = NavyShadow,
@@ -371,28 +335,9 @@ fun TrackingScreen(
                                     labelColor = Color.White.copy(alpha = 0.82f),
                                     iconColor = Color.White.copy(alpha = 0.82f)
                                 ),
-                                modifier = Modifier.heightIn(min = tokens.sizing.buttonMinHeight)
+                                modifier = Modifier.heightIn(min = 30.dp)
                             )
                         }
-                    }
-                    Button(
-                        onClick = {
-                            viewModel.onShotReleased()
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = tokens.sizing.buttonMinHeight),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = ActiveOrange,
-                            contentColor = NavyShadow,
-                            disabledContainerColor = ActiveOrange.copy(alpha = 0.38f),
-                            disabledContentColor = NavyShadow.copy(alpha = 0.38f)
-                        ),
-                        shape = RoundedCornerShape(HoopRadius.Full)
-                    ) {
-                        Icon(Icons.Outlined.Check, contentDescription = null)
-                        Spacer(modifier = Modifier.width(HoopSpacing.Xs))
-                        Text("Shot released")
                     }
                 }
             }
@@ -417,7 +362,7 @@ fun TrackingScreen(
                 Surface(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .padding(top = 88.dp)
+                        .padding(top = if (compactOverlay) 132.dp else 144.dp)
                         .padding(horizontal = HoopSpacing.ScreenMargin),
                     color = NavyShadow.copy(alpha = 0.7f),
                     shape = RoundedCornerShape(HoopRadius.Md),
@@ -439,7 +384,7 @@ fun TrackingScreen(
 private fun TopTrackingBar(
     onClose: () -> Unit,
     onFlipCamera: () -> Unit,
-    timerText: String,
+    shotCount: Int,
     iconSize: Dp
 ) {
     Surface(
@@ -465,7 +410,7 @@ private fun TopTrackingBar(
                 size = iconSize
             )
 
-            RecordingPill(timerText = timerText)
+            CountPill(shotCount = shotCount)
 
             GlassIconButton(
                 onClick = onFlipCamera,
@@ -478,7 +423,7 @@ private fun TopTrackingBar(
 }
 
 @Composable
-private fun RecordingPill(timerText: String) {
+private fun CountPill(shotCount: Int) {
     val pillShape = RoundedCornerShape(HoopRadius.Full)
     Row(
         modifier = Modifier
@@ -488,22 +433,15 @@ private fun RecordingPill(timerText: String) {
             .padding(horizontal = HoopSpacing.Md, vertical = HoopSpacing.Sm),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .clip(CircleShape)
-                .background(ActiveOrange)
-        )
-        Spacer(modifier = Modifier.width(HoopSpacing.Sm))
         Text(
-            text = "REC",
+            text = "Count",
             fontWeight = FontWeight.Bold,
             color = ActiveOrange,
-            letterSpacing = 2.sp
+            letterSpacing = 1.sp
         )
         Spacer(modifier = Modifier.width(HoopSpacing.Md))
         Text(
-            text = timerText,
+            text = shotCount.toString(),
             style = MaterialTheme.typography.titleMedium,
             color = Color.White
         )
@@ -537,100 +475,6 @@ private fun GlassIconButton(
                 imageVector = icon,
                 contentDescription = contentDescription,
                 tint = Color.White
-            )
-        }
-    }
-}
-
-@Composable
-private fun AccuracyMeter(
-    modifier: Modifier,
-    progress: Float,
-    label: String,
-    meterHeight: Dp
-) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(
-            modifier = Modifier
-                .height(meterHeight)
-                .width(44.dp)
-                .clip(RoundedCornerShape(HoopRadius.Full))
-                .background(NavyShadow.copy(alpha = 0.64f))
-                .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(HoopRadius.Full))
-                .padding(6.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(progress)
-                    .align(Alignment.BottomCenter)
-                    .clip(RoundedCornerShape(HoopRadius.Full))
-                    .background(ActiveOrange)
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(2.dp)
-                    .align(Alignment.TopCenter)
-                    .offset(y = 38.dp)
-                    .background(Color.White.copy(alpha = 0.86f))
-            )
-        }
-        Spacer(modifier = Modifier.height(HoopSpacing.Sm))
-        Text(
-            text = "${(progress * 100).toInt()}%",
-            fontWeight = FontWeight.Bold,
-            color = ActiveOrange
-        )
-        Text(
-            text = label.uppercase(),
-            fontSize = 10.sp,
-            letterSpacing = 1.sp,
-            color = Color.White.copy(alpha = 0.78f)
-        )
-    }
-}
-
-@Composable
-private fun QuickStatCard(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    iconTint: Color,
-    value: String,
-    label: String,
-    compact: Boolean
-) {
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = NavyShadow.copy(alpha = 0.66f),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.14f))
-    ) {
-        Column(
-            modifier = Modifier.padding(
-                horizontal = if (compact) HoopSpacing.Sm else HoopSpacing.Md,
-                vertical = if (compact) HoopSpacing.Xs else HoopSpacing.Sm
-            ),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = iconTint,
-                modifier = Modifier.size(if (compact) 16.dp else 20.dp)
-            )
-            Spacer(modifier = Modifier.height(HoopSpacing.Xs))
-            Text(
-                text = value,
-                style = if (compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
-                color = Color.White
-            )
-            Text(
-                text = label.uppercase(),
-                fontSize = 10.sp,
-                letterSpacing = 1.sp,
-                color = Color.White.copy(alpha = 0.78f)
             )
         }
     }

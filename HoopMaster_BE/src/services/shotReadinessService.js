@@ -11,7 +11,8 @@ const IDX = {
 
 const DEFAULTS = {
   visibilityThreshold: 0.5,
-  wristShoulderTolerance: 0.15,
+  // Relaxed slightly to reduce false "not ready" when user is almost in set pose.
+  wristShoulderTolerance: 0.22,
   setHoldMs: parseInt(process.env.SHOT_SET_HOLD_MS, 10) || 900,
   releaseRecentMs: parseInt(process.env.SHOT_RELEASE_RECENT_MS, 10) || 3500,
   releaseWristVelocityY: Number(process.env.SHOT_RELEASE_WRIST_VELOCITY_Y || 0.035),
@@ -157,7 +158,10 @@ function getArmReadiness(landmarks, side, config) {
   const wristAboveElbow = geometry.wrist.y < geometry.elbow.y;
   const elbowAboveHip = !geometry.hip || geometry.elbow.y < geometry.hip.y;
   const wristNearShoulder = geometry.wrist.y <= geometry.shoulder.y + config.wristShoulderTolerance;
-  const ready = wristAboveElbow && elbowAboveHip && wristNearShoulder;
+  const readinessChecks = [wristAboveElbow, elbowAboveHip, wristNearShoulder];
+  const readinessScore = readinessChecks.filter(Boolean).length;
+  // Require 2/3 checks so minor movement does not drop pose readiness immediately.
+  const ready = readinessScore >= 2;
 
   return {
     ready,
@@ -166,6 +170,7 @@ function getArmReadiness(landmarks, side, config) {
       wristAboveElbow,
       elbowAboveHip,
       wristNearShoulder,
+      readinessScore,
       armLength: geometry.armLength
     },
     reason: ready ? 'arm_ready' : 'arm_not_ready'

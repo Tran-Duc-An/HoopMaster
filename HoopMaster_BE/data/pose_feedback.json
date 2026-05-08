@@ -4,30 +4,48 @@
     "feedback": {
       "low": {
           "strict": [
-            "Raise elbow.",
-            "Elbow too low. Fix now."
+            "Elbow low. Lift it to shoulder line.",
+            "Raise the shooting elbow now. Keep forearm vertical.",
+            "Too low. Bring elbow up and lock position.",
+            "Elbow under target. Lift it and hold steady.",
+            "Fix elbow height. Up a little, no delay."
           ],
           "cheerful": [
-            "Great job! Lift your elbow higher for a stronger shot!",
-            "Awesome! Raise your elbow and keep your energy up!"
+            "Great effort! Lift your elbow a bit higher so the shot feels stronger and more controlled.",
+            "Nice energy! Bring your shooting elbow up until it lines up better with your shoulder.",
+            "You are close! Raise the elbow slightly and keep your wrist right under the ball.",
+            "Awesome pace! Lift your elbow just a little more and your release will look much smoother.",
+            "Good job staying active! Bring the elbow up gently, then keep that line steady."
           ],
           "neutral": [
-            "Raise elbow higher.",
-            "Elbow angle too low. Adjust."
+            "Raise your shooting elbow slightly to align with your shoulder.",
+            "Elbow angle is low. Lift it and keep the wrist under the ball.",
+            "Bring the elbow up a bit more for cleaner alignment.",
+            "Increase elbow height slightly, then hold the arm steady.",
+            "Lift the elbow to shoulder level for a more stable release."
           ]
       },
       "high": {
           "strict": [
-            "Lower elbow.",
-            "Elbow too high. Fix now."
+            "Elbow high. Drop it slightly now.",
+            "Lower the shooting elbow. Keep it under the ball.",
+            "Too high. Bring elbow down and stay compact.",
+            "Elbow over target. Lower and reset.",
+            "Drop elbow a little. Keep the line tight."
           ],
           "cheerful": [
-            "Nice! Lower your elbow for a smoother shot!",
-            "Great energy! Drop your elbow a bit for better control!"
+            "Nice movement! Lower your elbow a little so the release feels smoother and easier to control.",
+            "Great energy! Drop the elbow slightly and keep it tucked under the ball.",
+            "You are doing well! Bring the elbow down a bit to keep your shot path cleaner.",
+            "Awesome effort! Relax the arm and lower the elbow just enough for balance.",
+            "Good work! A small elbow drop will make your follow-through more natural."
           ],
           "neutral": [
-            "Lower elbow.",
-            "Elbow angle too high. Adjust."
+            "Lower your shooting elbow slightly for a smoother release.",
+            "Elbow angle is high. Bring it down and keep it tucked.",
+            "Drop the elbow a little to improve control at release.",
+            "Reduce elbow height slightly and keep the arm compact.",
+            "Bring the elbow down a bit and maintain alignment."
           ]
       },
       "perfect": {
@@ -49,30 +67,48 @@
     "feedback": {
       "low": {
           "strict": [
-            "Stand taller.",
-            "Knees too low. Fix now."
+            "Knees too bent. Rise a little.",
+            "Stand taller now. Keep weight centered.",
+            "Too low. Extend knees slightly.",
+            "Stop sinking. Lift your stance.",
+            "Raise stance a bit. Stay balanced."
           ],
           "cheerful": [
-            "Great! Stand up a bit more for a powerful jump!",
-            "Awesome! Keep your knees flexible and rise up!"
+            "Great effort! Stand a bit taller so you can stay balanced and still generate power.",
+            "Nice job! Rise slightly from this deep bend and keep your feet grounded.",
+            "Awesome energy! Extend your knees a little and keep your chest up.",
+            "You are close! Come up just a bit so your base feels stronger.",
+            "Good pace! Lift your stance slightly, then hold a steady rhythm."
           ],
           "neutral": [
-            "Stand straighter.",
-            "Knee angle too low. Adjust."
+            "Stand a little taller to improve your shooting base.",
+            "Knee angle is low. Extend the knees slightly.",
+            "Rise slightly from the squat and keep balance on both feet.",
+            "Increase knee extension a bit while keeping posture stable.",
+            "Bring your stance up slightly for better control."
           ]
       },
       "high": {
           "strict": [
-            "Bend lower.",
-            "Lower stance."
+            "Stance too tall. Bend knees now.",
+            "Lower your base. Load your legs.",
+            "Too high. Sink a little for power.",
+            "Bend more. Keep chest up.",
+            "Drop stance slightly. Stay ready."
           ],
           "cheerful": [
-            "Great energy! Bend your knees for more power!",
-            "Nice! Lower your stance and jump higher!"
+            "Great energy! Bend your knees a bit more so your legs can drive the shot better.",
+            "Nice work! Lower your stance slightly and keep your chest up for balance.",
+            "You are almost there! Add a little knee bend to build more power.",
+            "Awesome effort! Sink just a bit and feel the legs load before release.",
+            "Good tempo! A deeper bend here will help your shot feel stronger."
           ],
           "neutral": [
-            "Bend knees more.",
-            "Lower stance."
+            "Bend your knees a bit more for better shot power.",
+            "Lower your stance slightly while keeping your chest up.",
+            "Add a small knee bend to improve leg drive.",
+            "Sink a little lower and keep weight centered.",
+            "Increase knee flexion slightly before release."
           ]
       },
       "perfect": {
@@ -107,30 +143,48 @@
       "feedback": {
         "low": {
           "strict": [
-            "Raise shoulder.",
-            "Shoulder too low. Fix now."
+            "Shoulder low. Lift it slightly.",
+            "Raise shooting shoulder. Hold stable.",
+            "Too low. Bring shoulder up now.",
+            "Lift shoulder a bit. Keep line clean.",
+            "Fix shoulder height. Up and steady."
           ],
           "cheerful": [
-            "Great! Raise your shoulder for a better shot!",
-            "Awesome! Lift your shoulder and keep moving!"
+            "Great effort! Raise your shooting shoulder slightly to support a cleaner shot path.",
+            "Awesome work! Lift the shoulder a little and keep your upper body steady.",
+            "Nice rhythm! Bring your shoulder up gently so the arm aligns better.",
+            "You are close! A small shoulder lift will make the motion smoother.",
+            "Great energy! Raise the shoulder a touch and keep your neck relaxed."
           ],
           "neutral": [
-            "Raise shoulder.",
-            "Shoulder angle too low."
+            "Raise your shooting shoulder slightly to improve alignment.",
+            "Shoulder angle is low. Lift it gently and stay relaxed.",
+            "Bring the shoulder up a bit to support the shot line.",
+            "Increase shoulder height slightly and keep posture stable.",
+            "Lift the shoulder a little and maintain smooth motion."
           ]
         },
         "high": {
           "strict": [
-            "Lower shoulder.",
-            "Shoulder too high. Fix now."
+            "Shoulder high. Drop it now.",
+            "Lower the shoulder. Remove tension.",
+            "Too high. Relax and reset shoulder.",
+            "Drop shoulder slightly. Keep control.",
+            "Fix shoulder level. Down a little."
           ],
           "cheerful": [
-            "Nice! Lower your shoulder for a smoother shot!",
-            "Great energy! Drop your shoulder and stay relaxed!"
+            "Nice effort! Lower your shoulder slightly so the shot feels smoother and more relaxed.",
+            "Great energy! Drop the shoulder a bit and keep your neck loose.",
+            "You are doing well! Relax the shoulder down to reduce upper-body tension.",
+            "Awesome! A small shoulder drop will help the motion stay natural.",
+            "Good work! Bring the shoulder down gently and keep your line controlled."
           ],
           "neutral": [
-            "Lower shoulder.",
-            "Shoulder angle too high."
+            "Lower your shooting shoulder slightly for smoother motion.",
+            "Shoulder angle is high. Drop it a bit and keep your neck relaxed.",
+            "Reduce shoulder height slightly to improve fluidity.",
+            "Bring the shoulder down a little and keep the arm aligned.",
+            "Relax and lower the shoulder slightly before release."
           ]
         },
         "perfect": {

@@ -40,7 +40,7 @@ import com.example.hoopmaster.viewmodels.ExerciseDetailViewModel
 fun ExerciseDetailScreen(
     exerciseId: Int,
     onBack: () -> Unit,
-    onStartTracking: () -> Unit,
+    onStartTracking: (Int) -> Unit,
     viewModel: ExerciseDetailViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -70,7 +70,7 @@ fun ExerciseDetailScreen(
                     icon = Icons.Outlined.PlayArrow,
                     onClick = {
                         viewModel.onAction(ExerciseDetailAction.StartExercise)
-                        onStartTracking()
+                        onStartTracking(exerciseId)
                     },
                     compact = compactBottomControls,
                     modifier = Modifier.fillMaxWidth()
