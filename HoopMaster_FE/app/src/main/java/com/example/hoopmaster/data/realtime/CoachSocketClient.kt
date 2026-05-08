@@ -7,6 +7,10 @@ import com.example.hoopmaster.data.model.CoachSocketEvent
 import com.example.hoopmaster.data.model.ConnectedEvent
 import com.example.hoopmaster.data.model.ExerciseProgressEvent
 import com.example.hoopmaster.data.model.PostShotFeedbackEvent
+import com.example.hoopmaster.data.model.ActiveExerciseSessionDto
+import com.example.hoopmaster.data.model.SessionInfoDto
+import com.example.hoopmaster.data.model.SessionInfoEvent
+import com.example.hoopmaster.data.model.SessionStatsDto
 import com.example.hoopmaster.data.model.ShotCountUpdateEvent
 import com.example.hoopmaster.data.model.SocketErrorEvent
 import io.socket.client.IO
@@ -139,6 +143,16 @@ class CoachSocketClient(
             )
         }
 
+        socket.on("session_info") { args ->
+            val payload = firstJsonObject(args)
+            emitEvent(
+                SessionInfoEvent(
+                    info = payload?.toSessionInfoDto(),
+                    raw = payload
+                )
+            )
+        }
+
         socket.on("error") { args ->
             val payload = firstJsonObject(args)
             emitEvent(
@@ -190,4 +204,56 @@ class CoachSocketClient(
     private fun String.toJsonObjectOrNull(): JSONObject? = runCatching {
         JSONObject(this)
     }.getOrNull()
+
+    private fun JSONObject.toSessionInfoDto(): SessionInfoDto {
+        val statsJson = optJSONObject("stats")
+        val exerciseJson = optJSONObject("exercise")
+        return SessionInfoDto(
+            socketId = optStringOrNull("socketId"),
+            uptime = optLongOrNull("uptime"),
+            lastActivity = optLongOrNull("lastActivity"),
+            stats = statsJson?.toSessionStatsDto(),
+            bufferSize = optIntOrNull("bufferSize"),
+            exercise = exerciseJson?.toActiveExerciseSessionDto()
+        )
+    }
+
+    private fun JSONObject.toSessionStatsDto(): SessionStatsDto = SessionStatsDto(
+        totalFrames = optIntOrNull("totalFrames"),
+        feedbackCount = optIntOrNull("feedbackCount"),
+        shotsCompleted = optIntOrNull("shotsCompleted"),
+        exercisesCompleted = optIntOrNull("exercisesCompleted")
+    )
+
+    private fun JSONObject.toActiveExerciseSessionDto(): ActiveExerciseSessionDto = ActiveExerciseSessionDto(
+        exerciseId = optIntOrNull("exerciseId"),
+        name = optStringOrNull("name"),
+        set = optIntOrNull("set"),
+        reps = optIntOrNull("reps"),
+        targetSets = optIntOrNull("targetSets"),
+        targetReps = optIntOrNull("targetReps"),
+        phase = optStringOrNull("phase"),
+        active = optBooleanOrNull("active"),
+        completed = optBooleanOrNull("completed")
+    )
+
+    private fun JSONObject.optStringOrNull(key: String): String? {
+        if (!has(key) || isNull(key)) return null
+        return optString(key).ifBlank { null }
+    }
+
+    private fun JSONObject.optIntOrNull(key: String): Int? {
+        if (!has(key) || isNull(key)) return null
+        return optInt(key)
+    }
+
+    private fun JSONObject.optLongOrNull(key: String): Long? {
+        if (!has(key) || isNull(key)) return null
+        return optLong(key)
+    }
+
+    private fun JSONObject.optBooleanOrNull(key: String): Boolean? {
+        if (!has(key) || isNull(key)) return null
+        return optBoolean(key)
+    }
 }

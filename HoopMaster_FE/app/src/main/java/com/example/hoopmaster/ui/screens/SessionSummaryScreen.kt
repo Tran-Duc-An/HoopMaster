@@ -18,12 +18,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.hoopmaster.ui.components.HoopCard
 import com.example.hoopmaster.ui.components.HoopMetricCard
-import com.example.hoopmaster.ui.components.HoopScreenScaffold
 import com.example.hoopmaster.ui.components.HoopPrimaryButton
+import com.example.hoopmaster.ui.components.HoopScreenScaffold
 import com.example.hoopmaster.ui.components.HoopStatus
 import com.example.hoopmaster.ui.components.HoopStatusPanel
 import com.example.hoopmaster.ui.responsive.ResponsiveMetricGrid
@@ -36,6 +35,7 @@ import com.example.hoopmaster.viewmodels.SessionSummaryViewModel
 
 @Composable
 fun SessionSummaryScreen(
+    socketId: String?,
     onBackHome: () -> Unit,
     viewModel: SessionSummaryViewModel = viewModel()
 ) {
@@ -44,16 +44,8 @@ fun SessionSummaryScreen(
     val tokens = rememberHoopResponsiveTokens(windowInfo)
     val compactBottomControls = windowInfo.isLandscape || windowInfo.isSmallHeight
 
-    LaunchedEffect(Unit) {
-        viewModel.onAction(
-            SessionSummaryAction.LoadSummary(
-                sessionId = null,
-                totalShots = 15,
-                madeShots = 12,
-                durationSeconds = 60,
-                lastFeedback = "Last shot looked clean."
-            )
-        )
+    LaunchedEffect(socketId) {
+        viewModel.onAction(SessionSummaryAction.LoadSummary(socketId))
     }
 
     HoopScreenScaffold(
@@ -91,27 +83,34 @@ fun SessionSummaryScreen(
             Column(verticalArrangement = Arrangement.spacedBy(tokens.spacing.contentGap)) {
                 Text("Session stats", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 ResponsiveMetricGrid(
-                    itemCount = 3,
+                    itemCount = 4,
                     windowInfo = windowInfo
                 ) { index, itemModifier ->
                     when (index) {
                         0 -> HoopMetricCard(
-                            label = "Made shots",
-                            value = "${uiState.madeShots}",
+                            label = "Shots completed",
+                            value = "${uiState.summary?.stats?.shotsCompleted ?: 0}",
                             accentColor = ActiveOrange,
                             compact = compactBottomControls,
                             modifier = itemModifier
                         )
                         1 -> HoopMetricCard(
-                            label = "Total shots",
-                            value = "${uiState.totalShots}",
+                            label = "Feedback count",
+                            value = "${uiState.summary?.stats?.feedbackCount ?: 0}",
                             accentColor = MaterialTheme.colorScheme.primary,
                             compact = compactBottomControls,
                             modifier = itemModifier
                         )
+                        2 -> HoopMetricCard(
+                            label = "Exercises done",
+                            value = "${uiState.summary?.stats?.exercisesCompleted ?: 0}",
+                            accentColor = MaterialTheme.colorScheme.secondary,
+                            compact = compactBottomControls,
+                            modifier = itemModifier
+                        )
                         else -> HoopMetricCard(
-                            label = "Duration",
-                            value = "${uiState.durationSeconds}s",
+                            label = "Uptime",
+                            value = formatUptime(uiState.summary?.uptime),
                             accentColor = MaterialTheme.colorScheme.tertiary,
                             compact = compactBottomControls,
                             modifier = itemModifier
@@ -121,17 +120,34 @@ fun SessionSummaryScreen(
             }
             HoopCard(contentPadding = PaddingValues(tokens.spacing.cardPadding)) {
                 Column(verticalArrangement = Arrangement.spacedBy(tokens.spacing.contentGap)) {
-                    Text("Feedback", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Text(uiState.lastFeedback.ifBlank { "No feedback yet." })
+                    Text("Session state", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    when {
+                        uiState.isLoading -> Text("Loading summary...")
+                        uiState.errorMessage != null -> Text(uiState.errorMessage ?: "")
+                        uiState.isMissing -> Text("No session summary found for this session.")
+                        uiState.summary == null -> Text("No session summary available.")
+                        else -> Text("Summary loaded for socket ${uiState.socketId ?: "unknown"}.")
+                    }
                 }
             }
-            if (uiState.highlight.isNotBlank()) {
+            if (uiState.errorMessage != null) {
                 HoopStatusPanel(
-                    title = "Highlight",
-                    message = uiState.highlight,
-                    status = HoopStatus.Success
+                    title = "Error",
+                    message = uiState.errorMessage ?: "",
+                    status = HoopStatus.Error
                 )
             }
         }
+    }
+}
+
+private fun formatUptime(uptimeMs: Long?): String {
+    val totalSeconds = ((uptimeMs ?: 0L) / 1000L).coerceAtLeast(0L)
+    val minutes = totalSeconds / 60L
+    val seconds = totalSeconds % 60L
+    return if (minutes > 0L) {
+        "${minutes}m ${seconds}s"
+    } else {
+        "${seconds}s"
     }
 }

@@ -77,8 +77,8 @@ fun AppNavigation() {
 
         composable(Routes.Tracking) {
             TrackingScreen(
-                onEndSession = {
-                    navController.navigate(Routes.Summary) {
+                onEndSession = { socketId ->
+                    navController.navigate(Routes.summary(socketId)) {
                         launchSingleTop = true
                     }
                 }
@@ -92,16 +92,27 @@ fun AppNavigation() {
             val exerciseId = entry.arguments?.getInt(Routes.TrackingExerciseArg)
             TrackingScreen(
                 exerciseId = exerciseId,
-                onEndSession = {
-                    navController.navigate(Routes.Summary) {
+                onEndSession = { socketId ->
+                    navController.navigate(Routes.summary(socketId)) {
                         launchSingleTop = true
                     }
                 }
             )
         }
 
-        composable(Routes.Summary) {
+        composable(
+            route = Routes.Summary,
+            arguments = listOf(
+                navArgument(Routes.SummarySocketIdArg) {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { entry ->
+            val socketId = entry.arguments?.getString(Routes.SummarySocketIdArg)
             SessionSummaryScreen(
+                socketId = socketId,
                 onBackHome = {
                     navController.navigate(Routes.Home) {
                         popUpTo(Routes.Home) { inclusive = true }

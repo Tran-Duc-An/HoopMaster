@@ -96,13 +96,6 @@ fun ProfileScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(tokens.spacing.contentGap)) {
                     Text("Profile summary", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     Text("User ${uiState.userId ?: "guest"}")
-                    if (uiState.displayName.isNotBlank()) {
-                        Text(uiState.displayName)
-                    }
-                    if (uiState.email.isNotBlank()) {
-                        Text(uiState.email)
-                    }
-                    Text("Tone ${uiState.tone}")
                 }
             }
             Column(

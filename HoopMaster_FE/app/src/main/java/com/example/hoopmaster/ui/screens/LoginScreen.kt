@@ -260,7 +260,7 @@ private fun LoginScreenContent(
 
                 if (loadingValue) {
                     Text(
-                        text = "Signing in...",
+                        text = if (isSignupMode) "Creating account..." else "Signing in...",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

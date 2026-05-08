@@ -14,6 +14,7 @@ import com.example.hoopmaster.data.model.PlanningSessionResponseDto
 import com.example.hoopmaster.data.model.PlanningSessionsResponseDto
 import com.example.hoopmaster.data.model.PlanResponseDto
 import com.example.hoopmaster.data.model.SignupRequest
+import com.example.hoopmaster.data.model.SessionInfoDto
 import com.example.hoopmaster.data.model.TrainingPlanDto
 import com.example.hoopmaster.data.model.UpdateToneRequest
 import com.example.hoopmaster.data.model.UserResponseDto
@@ -97,4 +98,9 @@ interface HoopMasterApi {
         @Query("reps") reps: Int? = null,
         @Query("restSeconds") restSeconds: Int? = null
     ): Response<ExerciseVoiceScriptDto>
+
+    @GET("api/sessions/{socketId}")
+    suspend fun getSessionInfo(
+        @Path("socketId") socketId: String
+    ): Response<SessionInfoDto>
 }

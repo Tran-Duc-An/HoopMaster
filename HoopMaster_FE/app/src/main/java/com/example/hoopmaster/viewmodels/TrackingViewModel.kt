@@ -10,7 +10,11 @@ import com.example.hoopmaster.data.model.AnglesUpdateEvent
 import com.example.hoopmaster.data.model.AudioFeedbackEvent
 import com.example.hoopmaster.data.model.ConnectedEvent
 import com.example.hoopmaster.data.model.ExerciseProgressEvent
+import com.example.hoopmaster.data.model.LiveAnglesDto
 import com.example.hoopmaster.data.model.PostShotFeedbackEvent
+import com.example.hoopmaster.data.model.SessionInfoDto
+import com.example.hoopmaster.data.model.SessionInfoEvent
+import com.example.hoopmaster.data.model.ShotStatsDto
 import com.example.hoopmaster.data.model.ShotCountUpdateEvent
 import com.example.hoopmaster.data.model.SocketErrorEvent
 import com.example.hoopmaster.media.AudioPlayer
@@ -28,8 +32,12 @@ data class TrackingUiState(
     val feedbackText: String = "Đang kết nối Server...",
     val selectedTone: String = "neutral",
     val isConnected: Boolean = false,
+    val socketId: String? = null,
     val isExerciseActive: Boolean = false,
     val shotCount: Int = 0,
+    val liveAngles: LiveAnglesDto? = null,
+    val lastShotStats: ShotStatsDto? = null,
+    val sessionInfo: SessionInfoDto? = null,
     val lastShotReleasedAt: Long? = null,
     val errorMessage: String? = null
 )
@@ -116,7 +124,17 @@ class TrackingViewModel(application: Application) : AndroidViewModel(application
 
     fun disconnect() {
         socketClient.disconnect()
-        syncState { it.copy(isConnected = false, isExerciseActive = false) }
+        syncState {
+            it.copy(
+                isConnected = false,
+                isExerciseActive = false,
+                socketId = null
+            )
+        }
+    }
+
+    fun requestSessionInfo() {
+        socketClient.requestSessionInfo()
     }
 
     private fun setFeedback(text: String) {
@@ -180,6 +198,7 @@ class TrackingViewModel(application: Application) : AndroidViewModel(application
                         syncState {
                             it.copy(
                                 isConnected = true,
+                                socketId = event.socketId,
                                 errorMessage = null
                             )
                         }
@@ -191,6 +210,10 @@ class TrackingViewModel(application: Application) : AndroidViewModel(application
                     }
 
                     is AnglesUpdateEvent -> {
+                        val parsed = event.raw?.toLiveAnglesDto()
+                        if (parsed != null) {
+                            syncState { it.copy(liveAngles = parsed) }
+                        }
                         event.raw?.optString("feedback")?.takeIf { it.isNotBlank() }?.let { setFeedback(it) }
                     }
 
@@ -203,6 +226,10 @@ class TrackingViewModel(application: Application) : AndroidViewModel(application
                     }
 
                     is PostShotFeedbackEvent -> {
+                        val parsed = event.stats?.toShotStatsDto()
+                        if (parsed != null) {
+                            syncState { it.copy(lastShotStats = parsed) }
+                        }
                         event.text?.takeIf { it.isNotBlank() }?.let { setFeedback(it) }
                         event.audioBase64?.takeIf { it.isNotBlank() }?.let { audioPlayer.playBase64Audio(it) }
                     }
@@ -210,6 +237,10 @@ class TrackingViewModel(application: Application) : AndroidViewModel(application
                     is ShotCountUpdateEvent -> {
                         syncState { it.copy(shotCount = event.shotCount) }
                         setFeedback("Shots completed: ${event.shotCount}")
+                    }
+
+                    is SessionInfoEvent -> {
+                        syncState { it.copy(sessionInfo = event.info) }
                     }
 
                     is SocketErrorEvent -> {
@@ -227,5 +258,33 @@ class TrackingViewModel(application: Application) : AndroidViewModel(application
         super.onCleared()
         socketClient.disconnect()
         audioPlayer.release()
+    }
+
+    private fun JSONObject.toLiveAnglesDto(): LiveAnglesDto {
+        return LiveAnglesDto(
+            elbowAngle = optNullableDouble("elbowAngle"),
+            shoulderAngle = optNullableDouble("shoulderAngle"),
+            kneeAngle = optNullableDouble("kneeAngle"),
+            backAngle = optNullableDouble("backAngle"),
+            shootingHand = optString("shootingHand").takeIf { it.isNotBlank() }
+        )
+    }
+
+    private fun JSONObject.toShotStatsDto(): ShotStatsDto {
+        return ShotStatsDto(
+            avgElbowAngle = optNullableDouble("avgElbowAngle"),
+            avgKneeAngle = optNullableDouble("avgKneeAngle"),
+            avgShoulderAngle = optNullableDouble("avgShoulderAngle"),
+            avgBackAngle = optNullableDouble("avgBackAngle"),
+            frameCount = if (has("frameCount") && !isNull("frameCount")) optInt("frameCount") else null,
+            shootingHand = optString("shootingHand").takeIf { it.isNotBlank() },
+            tone = optString("tone").takeIf { it.isNotBlank() }
+        )
+    }
+
+    private fun JSONObject.optNullableDouble(key: String): Double? {
+        if (!has(key) || isNull(key)) return null
+        val value = optDouble(key, Double.NaN)
+        return value.takeUnless { it.isNaN() }
     }
 }

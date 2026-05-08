@@ -9,9 +9,16 @@ object Routes {
     const val Tracking = "tracking"
     const val TrackingExerciseArg = "exerciseId"
     const val TrackingWithExercise = "tracking/{$TrackingExerciseArg}"
-    const val Summary = "summary"
+    const val SummarySocketIdArg = "socketId"
+    const val Summary = "summary?$SummarySocketIdArg={$SummarySocketIdArg}"
     const val Profile = "profile"
 
     fun exerciseDetail(exerciseId: Int): String = "exercise/$exerciseId"
     fun trackingWithExercise(exerciseId: Int): String = "tracking/$exerciseId"
+    fun summary(socketId: String?): String =
+        if (socketId.isNullOrBlank()) {
+            "summary"
+        } else {
+            "summary?$SummarySocketIdArg=$socketId"
+        }
 }

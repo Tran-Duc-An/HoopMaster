@@ -35,19 +35,19 @@ private fun HoopResponsivePreviewSurface() {
         ) { index, itemModifier ->
             when (index) {
                 0 -> HoopMetricCard(
-                    label = "Accuracy",
-                    value = "82%",
+                    label = "Exercises",
+                    value = "3",
                     modifier = itemModifier,
                     compact = windowInfo.phoneSizeClass == HoopPhoneSizeClass.Small || windowInfo.isSmallHeight
                 )
                 1 -> HoopMetricCard(
-                    label = "Makes",
+                    label = "Shots completed",
                     value = "37",
                     modifier = itemModifier,
                     compact = windowInfo.phoneSizeClass == HoopPhoneSizeClass.Small || windowInfo.isSmallHeight
                 )
                 else -> HoopMetricCard(
-                    label = "Streak",
+                    label = "Feedback count",
                     value = "9",
                     modifier = itemModifier,
                     compact = windowInfo.phoneSizeClass == HoopPhoneSizeClass.Small || windowInfo.isSmallHeight

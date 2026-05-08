@@ -19,8 +19,6 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.SportsBasketball
-import androidx.compose.material.icons.outlined.Timer
-import androidx.compose.material.icons.outlined.Whatshot
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -222,11 +220,6 @@ private fun HomeScreenContent(
                                 selected = true,
                                 onClick = {}
                             )
-                            HoopFilterChip(
-                                label = uiState.plan?.status ?: "Custom plan",
-                                selected = false,
-                                onClick = {}
-                            )
                         }
 
                         ResponsiveActionRow(windowInfo = windowInfo) {
@@ -252,29 +245,10 @@ private fun HomeScreenContent(
             item {
                 ResponsiveMetricGrid(
                     modifier = Modifier.responsiveContentWidth(windowInfo, tokens),
-                    itemCount = 3,
+                    itemCount = 1,
                     windowInfo = windowInfo
                 ) { index, itemModifier ->
                     when (index) {
-                        0 -> HoopMetricCard(
-                            label = "Streak",
-                            value = "${uiState.streakDays}",
-                            icon = Icons.Outlined.Whatshot,
-                            accentColor = ActiveOrange,
-                            compact = compact,
-                            modifier = itemModifier
-                        )
-                        1 -> HoopMetricCard(
-                            label = "Session",
-                            value = when (uiState.currentSessionState) {
-                                "active" -> "Active"
-                                "ready" -> "Ready"
-                                else -> "Idle"
-                            },
-                            icon = Icons.Outlined.Timer,
-                            compact = compact,
-                            modifier = itemModifier
-                        )
                         else -> HoopMetricCard(
                             label = "Exercises",
                             value = "${uiState.exercises.size}",
@@ -411,10 +385,9 @@ private fun ExercisePlanCard(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                Text(
-                    text = exerciseId?.toString() ?: "draft",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                HoopStatusBadge(
+                    label = if (exerciseId != null) "Ready" else "Draft",
+                    status = status
                 )
             }
 
@@ -423,10 +396,6 @@ private fun ExercisePlanCard(
                     label = category,
                     selected = true,
                     onClick = {}
-                )
-                HoopStatusBadge(
-                    label = if (exerciseId != null) "Ready" else "Draft",
-                    status = status
                 )
             }
 

@@ -10,6 +10,7 @@ import com.example.hoopmaster.data.demo.DemoCoachSocketClient
 import com.example.hoopmaster.data.demo.DemoExerciseRepository
 import com.example.hoopmaster.data.demo.DemoPlanRepository
 import com.example.hoopmaster.data.demo.DemoPlanningRepository
+import com.example.hoopmaster.data.demo.DemoSessionRepository
 import com.example.hoopmaster.data.realtime.CoachSocket
 import com.example.hoopmaster.data.realtime.CoachSocketClient
 import com.example.hoopmaster.data.repository.AuthDataSource
@@ -20,6 +21,8 @@ import com.example.hoopmaster.data.repository.PlanDataSource
 import com.example.hoopmaster.data.repository.PlanRepository
 import com.example.hoopmaster.data.repository.PlanningDataSource
 import com.example.hoopmaster.data.repository.PlanningRepository
+import com.example.hoopmaster.data.repository.SessionDataSource
+import com.example.hoopmaster.data.repository.SessionRepository
 import com.example.hoopmaster.network.RetrofitClient
 
 class AppContainer(context: Context) {
@@ -50,6 +53,12 @@ class AppContainer(context: Context) {
         DemoExerciseRepository()
     } else {
         ExerciseRepository(api)
+    }
+
+    val sessionRepository: SessionDataSource = if (DemoModeConfig.enabled) {
+        DemoSessionRepository()
+    } else {
+        SessionRepository(api)
     }
 
     fun createSocketClient(): CoachSocket = if (DemoModeConfig.enabled) {

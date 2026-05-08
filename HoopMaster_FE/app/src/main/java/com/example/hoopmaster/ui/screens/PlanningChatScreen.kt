@@ -436,16 +436,6 @@ private fun DraftPlanCard(plan: TrainingPlanDto) {
                     label = "Exercises",
                     value = plan.exercises?.size?.toString() ?: "0"
                 )
-                PlanStat(
-                    modifier = Modifier.weight(1f),
-                    label = "Source",
-                    value = plan.source ?: plan.metadata?.source ?: "draft"
-                )
-                PlanStat(
-                    modifier = Modifier.weight(1f),
-                    label = "Status",
-                    value = plan.status ?: plan.metadata?.status ?: "draft"
-                )
             }
 
             if (!plan.injuryConstraints.isNullOrEmpty()) {

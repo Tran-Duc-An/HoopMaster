@@ -17,18 +17,13 @@ data class ProfileUiState(
     val email: String = "",
     val tone: String = "neutral",
     val toneSaving: Boolean = false,
-    val editing: Boolean = false,
     val isLoading: Boolean = false,
     val errorMessage: String? = null
 )
 
 sealed interface ProfileAction {
     data class LoadProfile(val userId: String?) : ProfileAction
-    data class NameChanged(val value: String) : ProfileAction
-    data class EmailChanged(val value: String) : ProfileAction
     data class ToneChanged(val value: String) : ProfileAction
-    data object ToggleEditing : ProfileAction
-    data object SaveProfile : ProfileAction
     data object Logout : ProfileAction
 }
 
@@ -42,18 +37,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         when (action) {
             is ProfileAction.LoadProfile -> loadProfile(action.userId)
 
-            is ProfileAction.NameChanged ->
-                _uiState.update { it.copy(displayName = action.value) }
-
-            is ProfileAction.EmailChanged ->
-                _uiState.update { it.copy(email = action.value) }
-
             is ProfileAction.ToneChanged -> updateTone(action.value)
-
-            ProfileAction.ToggleEditing ->
-                _uiState.update { it.copy(editing = !it.editing) }
-
-            ProfileAction.SaveProfile -> _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
             ProfileAction.Logout -> logout()
         }

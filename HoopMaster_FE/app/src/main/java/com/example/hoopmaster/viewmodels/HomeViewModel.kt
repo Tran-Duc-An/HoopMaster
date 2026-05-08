@@ -21,8 +21,6 @@ data class HomeUiState(
     val userName: String? = null,
     val activePlanTitle: String? = null,
     val activePlanDescription: String? = null,
-    val streakDays: Int = 0,
-    val currentSessionState: String = "idle",
     val isLoading: Boolean = false,
     val errorMessage: String? = null
 )
@@ -33,7 +31,6 @@ sealed interface HomeAction {
     data class SetGreeting(val userName: String?) : HomeAction
     data class SetActivePlan(val title: String?) : HomeAction
     data class SetPlan(val plan: TrainingPlanDto?) : HomeAction
-    data class SetStreak(val days: Int) : HomeAction
     data class SelectExerciseTag(val tag: String) : HomeAction
 }
 
@@ -64,9 +61,6 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                         errorMessage = null
                     )
                 }
-
-            is HomeAction.SetStreak ->
-                _uiState.update { it.copy(streakDays = action.days, isLoading = false) }
 
             is HomeAction.SelectExerciseTag ->
                 _uiState.update { current ->

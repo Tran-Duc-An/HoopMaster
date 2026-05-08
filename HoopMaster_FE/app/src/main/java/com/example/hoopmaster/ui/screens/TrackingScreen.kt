@@ -18,13 +18,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -36,13 +34,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FlipCameraAndroid
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.outlined.Architecture
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -72,7 +67,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -94,7 +88,7 @@ import java.util.concurrent.Executors
 @Composable
 fun TrackingScreen(
     exerciseId: Int? = null,
-    onEndSession: () -> Unit,
+    onEndSession: (socketId: String?) -> Unit,
     viewModel: TrackingViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -190,15 +184,9 @@ fun TrackingScreen(
         }
     }
 
-    val madeShots = uiStateValue.shotCount
-    val totalShots = 15
-    val streakValue = 3
+    val shotCount = uiStateValue.shotCount
     val analysisTitle = "Last Shot Analysis"
-    val analysisMessage = if (uiStateValue.feedbackText.isNotBlank()) {
-        uiStateValue.feedbackText
-    } else {
-        "Perfect Arc!"
-    }
+    val analysisMessage = resolveAnalysisMessage(uiStateValue)
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background
@@ -270,7 +258,10 @@ fun TrackingScreen(
             }
 
             TopTrackingBar(
-                onClose = onEndSession,
+                onClose = {
+                    viewModel.requestSessionInfo()
+                    onEndSession(uiStateValue.socketId)
+                },
                 onFlipCamera = {
                     lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK) {
                         CameraSelector.LENS_FACING_FRONT
@@ -278,7 +269,7 @@ fun TrackingScreen(
                         CameraSelector.LENS_FACING_BACK
                     }
                 },
-                shotCount = madeShots,
+                shotCount = shotCount,
                 iconSize = tokens.sizing.iconButtonSize
             )
 
@@ -351,9 +342,8 @@ fun TrackingScreen(
                     ),
                 title = analysisTitle,
                 message = analysisMessage,
-                made = madeShots,
-                total = totalShots,
-                streak = streakValue,
+                liveAnglesText = formatLiveAngles(uiStateValue.liveAngles),
+                shotStatsText = formatShotStats(uiStateValue.lastShotStats),
                 compact = compactOverlay,
                 applyNavigationPadding = !analysisOnTop
             )
@@ -485,9 +475,8 @@ private fun LastShotAnalysisCard(
     modifier: Modifier,
     title: String,
     message: String,
-    made: Int,
-    total: Int,
-    streak: Int,
+    liveAnglesText: String?,
+    shotStatsText: String?,
     compact: Boolean,
     applyNavigationPadding: Boolean
 ) {
@@ -557,46 +546,24 @@ private fun LastShotAnalysisCard(
                 color = Color.White.copy(alpha = 0.12f)
             )
             Spacer(modifier = Modifier.height(HoopSpacing.Sm))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                StatColumn(label = "Made", value = made.toString())
-                StatColumn(label = "Total", value = total.toString())
-                StatColumn(
-                    label = "Streak",
-                    value = streak.toString(),
-                    valueColor = MaterialTheme.colorScheme.tertiary,
-                    alignEnd = true
+            if (liveAnglesText != null) {
+                Text(
+                    text = liveAnglesText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.86f)
+                )
+            }
+            if (shotStatsText != null) {
+                if (liveAnglesText != null) {
+                    Spacer(modifier = Modifier.height(HoopSpacing.Xs))
+                }
+                Text(
+                    text = shotStatsText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.86f)
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun StatColumn(
-    label: String,
-    value: String,
-    valueColor: Color = MaterialTheme.colorScheme.onSurface,
-    alignEnd: Boolean = false
-) {
-    Column(
-        horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start
-    ) {
-        Text(
-            text = label.uppercase(),
-            fontSize = 10.sp,
-            letterSpacing = 1.sp,
-            color = Color.White.copy(alpha = 0.78f),
-            textAlign = if (alignEnd) TextAlign.End else TextAlign.Start
-        )
-        Text(
-            text = value,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = valueColor
-        )
     }
 }
 
@@ -623,4 +590,42 @@ private fun CameraFallbackBackground() {
             fontWeight = FontWeight.Medium
         )
     }
+}
+
+private fun resolveAnalysisMessage(uiState: com.example.hoopmaster.viewmodels.TrackingUiState): String {
+    return uiState.feedbackText.takeIf { it.isNotBlank() }
+        ?: "Waiting for shot feedback"
+}
+
+private fun formatLiveAngles(liveAngles: com.example.hoopmaster.data.model.LiveAnglesDto?): String? {
+    if (liveAngles == null) return null
+    val parts = listOfNotNull(
+        liveAngles.elbowAngle.toAnglePart("Elbow"),
+        liveAngles.shoulderAngle.toAnglePart("Shoulder"),
+        liveAngles.kneeAngle.toAnglePart("Knee"),
+        liveAngles.backAngle.toAnglePart("Back")
+    )
+    return parts.takeIf { it.isNotEmpty() }?.joinToString(" • ")
+}
+
+private fun formatShotStats(stats: com.example.hoopmaster.data.model.ShotStatsDto?): String? {
+    if (stats == null) return null
+    val parts = listOfNotNull(
+        stats.avgElbowAngle.toAnglePart("Elbow"),
+        stats.avgShoulderAngle.toAnglePart("Shoulder"),
+        stats.avgKneeAngle.toAnglePart("Knee"),
+        stats.avgBackAngle.toAnglePart("Back"),
+        stats.frameCount.toFramesPart("Frames")
+    )
+    return parts.takeIf { it.isNotEmpty() }?.joinToString(" • ")
+}
+
+private fun Double?.toAnglePart(label: String): String? {
+    if (this == null || this.isNaN()) return null
+    return "$label ${String.format("%.1f°", this)}"
+}
+
+private fun Int?.toFramesPart(label: String): String? {
+    if (this == null || this <= 0) return null
+    return "$label $this"
 }
