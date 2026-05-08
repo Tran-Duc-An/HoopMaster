@@ -13,7 +13,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class AuthUiState(
+    val username: String = "",
     val email: String = "",
+    val name: String = "",
     val password: String = "",
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
@@ -21,7 +23,9 @@ data class AuthUiState(
 )
 
 sealed interface AuthAction {
+    data class UsernameChanged(val value: String) : AuthAction
     data class EmailChanged(val value: String) : AuthAction
+    data class NameChanged(val value: String) : AuthAction
     data class PasswordChanged(val value: String) : AuthAction
     data object LoginClicked : AuthAction
     data object SignupClicked : AuthAction
@@ -37,7 +41,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     )
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
+    var username = mutableStateOf(_uiState.value.username)
     var email = mutableStateOf(_uiState.value.email)
+    var name = mutableStateOf(_uiState.value.name)
     var password = mutableStateOf(_uiState.value.password)
     var isLoading = mutableStateOf(_uiState.value.isLoading)
     var errorMessage = mutableStateOf(_uiState.value.errorMessage)
@@ -45,9 +51,17 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onAction(action: AuthAction) {
         when (action) {
+            is AuthAction.UsernameChanged -> {
+                username.value = action.value
+                syncState { it.copy(username = action.value) }
+            }
             is AuthAction.EmailChanged -> {
                 email.value = action.value
                 syncState { it.copy(email = action.value) }
+            }
+            is AuthAction.NameChanged -> {
+                name.value = action.value
+                syncState { it.copy(name = action.value) }
             }
             is AuthAction.PasswordChanged -> {
                 password.value = action.value
@@ -71,7 +85,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             syncState {
                 it.copy(
+                    username = username.value,
                     email = email.value,
+                    name = name.value,
                     password = password.value,
                     isLoading = true,
                     errorMessage = null
@@ -80,14 +96,14 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
             val result = if (isSignup) {
                 authRepository.signup(
-                    username = email.value.substringBefore("@").ifBlank { email.value },
+                    username = username.value,
                     email = email.value,
                     password = password.value,
-                    name = null
+                    name = name.value.ifBlank { null }
                 )
             } else {
                 authRepository.login(
-                    usernameOrEmail = email.value,
+                    usernameOrEmail = username.value,
                     password = password.value
                 )
             }
@@ -108,9 +124,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                         it.copy(
                             isLoading = false,
                             errorMessage = if (isSignup) {
-                                "Đăng ký thất bại, email có thể đã tồn tại!"
+                                "Đăng ký thất bại, username hoặc email có thể đã tồn tại!"
                             } else {
-                                "Sai email hoặc mật khẩu!"
+                                "Sai username/email hoặc mật khẩu!"
                             }
                         )
                     }
@@ -122,7 +138,9 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private fun syncState(transform: (AuthUiState) -> AuthUiState) {
         val next = transform(_uiState.value)
         _uiState.value = next
+        username.value = next.username
         email.value = next.email
+        name.value = next.name
         password.value = next.password
         isLoading.value = next.isLoading
         errorMessage.value = next.errorMessage

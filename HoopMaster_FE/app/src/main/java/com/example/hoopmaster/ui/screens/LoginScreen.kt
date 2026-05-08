@@ -55,7 +55,9 @@ fun LoginScreen(
 ) {
     var isSignupMode by rememberSaveable { mutableStateOf(false) }
     val logoId = R.drawable.hoopmaster_logo
+    val usernameValue = viewModel.username.value
     val emailValue = viewModel.email.value
+    val nameValue = viewModel.name.value
     val passwordValue = viewModel.password.value
     val loadingValue = viewModel.isLoading.value
     val errorValue = viewModel.errorMessage.value
@@ -67,8 +69,12 @@ fun LoginScreen(
         isSignupMode = isSignupMode,
         onSignupModeChange = { isSignupMode = it },
         logoId = logoId,
+        usernameValue = usernameValue,
+        onUsernameChange = { viewModel.username.value = it },
         emailValue = emailValue,
         onEmailChange = { viewModel.email.value = it },
+        nameValue = nameValue,
+        onNameChange = { viewModel.name.value = it },
         passwordValue = passwordValue,
         onPasswordChange = { viewModel.password.value = it },
         loadingValue = loadingValue,
@@ -90,8 +96,12 @@ private fun LoginScreenContent(
     isSignupMode: Boolean,
     onSignupModeChange: (Boolean) -> Unit,
     logoId: Int,
+    usernameValue: String,
+    onUsernameChange: (String) -> Unit,
     emailValue: String,
     onEmailChange: (String) -> Unit,
+    nameValue: String,
+    onNameChange: (String) -> Unit,
     passwordValue: String,
     onPasswordChange: (String) -> Unit,
     loadingValue: Boolean,
@@ -193,12 +203,30 @@ private fun LoginScreenContent(
                     verticalArrangement = Arrangement.spacedBy(tokens.spacing.contentGap)
                 ) {
                     HoopOutlinedTextField(
-                        value = emailValue,
-                        onValueChange = onEmailChange,
-                        label = "Email",
-                        placeholder = "name@school.com",
+                        value = usernameValue,
+                        onValueChange = onUsernameChange,
+                        label = if (isSignupMode) "Username" else "Username or email",
+                        placeholder = if (isSignupMode) "curry30" else "curry30 or name@school.com",
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    if (isSignupMode) {
+                        HoopOutlinedTextField(
+                            value = emailValue,
+                            onValueChange = onEmailChange,
+                            label = "Email",
+                            placeholder = "name@school.com",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        HoopOutlinedTextField(
+                            value = nameValue,
+                            onValueChange = onNameChange,
+                            label = "Name",
+                            placeholder = "Stephen Curry",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
 
                     HoopOutlinedTextField(
                         value = passwordValue,
