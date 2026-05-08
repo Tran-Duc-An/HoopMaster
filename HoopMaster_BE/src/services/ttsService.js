@@ -52,12 +52,12 @@ async function _generateAudioBase64(input, provider = getProvider()) {
 
   switch (getProvider(provider)) {
     case 'elevenlabs':
-      return generateElevenLabsTTS(normalized.text);
+      return generateElevenLabsTTS(normalized);
     case 'google':
       return generateGoogleTTS(normalized.ssml || textToSSML(normalized.text, normalized.intent));
     case 'local':
     case 'kokoro':
-      return generateLocalTTS(normalized.text, normalized.intent, normalized.emphasisWords);
+      return generateLocalTTS(normalized);
     case 'mock':
     default:
       return generateMockAudioBase64(normalized.text);
@@ -85,7 +85,14 @@ function normalizeInput(input) {
       intent,
       emphasisWords: Array.isArray(input.emphasisWords)
         ? input.emphasisWords
-        : extractEmphasisWords(text, intent)
+        : extractEmphasisWords(text, intent),
+      voice: input.voice,
+      language: input.language,
+      engine: input.engine,
+      format: input.format,
+      rate: input.rate,
+      pitch: input.pitch,
+      volume: input.volume
     };
   }
 
@@ -111,19 +118,23 @@ function generateMockAudioBase64(text = '') {
   return `data:audio/wav;base64,${header}`;
 }
 
-async function generateLocalTTS(text, intent = 'neutral', emphasisWords = []) {
+async function generateLocalTTS(input) {
+  const normalized = normalizeInput(input);
   const endpoint = process.env.LOCAL_TTS_URL || 'http://localhost:8000/api/v1/tts';
-  const audioFormat = process.env.LOCAL_TTS_FORMAT || 'wav';
+  const audioFormat = normalized.format || process.env.LOCAL_TTS_FORMAT || 'wav';
   const response = await axios.post(
     endpoint,
     {
-      text,
-      intent,
-      emphasis_words: emphasisWords,
+      text: normalized.text,
+      intent: normalized.intent,
+      emphasis_words: normalized.emphasisWords,
       format: audioFormat,
-      voice: process.env.LOCAL_TTS_VOICE || undefined,
-      engine: process.env.LOCAL_TTS_ENGINE || undefined,
-      language: process.env.LOCAL_TTS_LANGUAGE || undefined
+      voice: normalized.voice || process.env.LOCAL_TTS_VOICE || undefined,
+      engine: normalized.engine || process.env.LOCAL_TTS_ENGINE || undefined,
+      language: normalized.language || process.env.LOCAL_TTS_LANGUAGE || undefined,
+      rate: normalized.rate,
+      pitch: normalized.pitch,
+      volume: normalized.volume
     },
     {
       timeout: parseInt(process.env.LOCAL_TTS_TIMEOUT_MS, 10) || 60000,
@@ -175,24 +186,113 @@ async function generateGoogleTTS(ssml) {
   return `data:audio/mp3;base64,${response.data.audioContent}`;
 }
 
-async function generateElevenLabsTTS(text) {
+function clampNumber(value, fallback, min, max) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.min(max, Math.max(min, numeric));
+}
+
+function elevenLabsFormatParam(format = process.env.ELEVENLABS_OUTPUT_FORMAT || 'mp3') {
+  const normalized = String(format || 'mp3').toLowerCase();
+  if (normalized === 'mp3') return 'mp3_44100_128';
+  if (normalized === 'pcm') return 'pcm_44100';
+  if (normalized === 'ulaw' || normalized === 'mulaw') return 'ulaw_8000';
+  if (normalized.includes('_')) return normalized;
+  return 'mp3_44100_128';
+}
+
+function mediaTypeForElevenLabsFormat(format = process.env.ELEVENLABS_OUTPUT_FORMAT || 'mp3') {
+  const normalized = String(format || 'mp3').toLowerCase();
+  if (normalized.startsWith('pcm')) return 'audio/pcm';
+  if (normalized.startsWith('ulaw') || normalized.startsWith('mulaw')) return 'audio/basic';
+  return 'audio/mpeg';
+}
+
+function parseRateMultiplier(value, fallback = 1) {
+  if (typeof value === 'number') return clampNumber(value, fallback, 0.7, 1.2);
+  if (typeof value !== 'string') return fallback;
+  return clampNumber(value.replace(/[^\d.-]/g, ''), fallback, 0.7, 1.2);
+}
+
+function voiceSettingsForElevenLabs(input) {
+  const intentConfig = TTS_INTENTS[input.intent] || TTS_INTENTS.neutral;
+  const intentRate = intentConfig?.ssmlModifiers?.rate;
+  const rate = parseRateMultiplier(input.rate, parseRateMultiplier(intentRate, 1));
+  const volume = clampNumber(input.volume, 1, 0.5, 1.5);
+  const styleDefault = input.intent === 'cheerful' || input.intent === 'up' ? 0.35 : 0;
+
+  return {
+    stability: clampNumber(process.env.ELEVENLABS_STABILITY, 0.5, 0, 1),
+    similarity_boost: clampNumber(process.env.ELEVENLABS_SIMILARITY_BOOST, 0.75, 0, 1),
+    style: clampNumber(process.env.ELEVENLABS_STYLE, styleDefault, 0, 1),
+    use_speaker_boost: process.env.ELEVENLABS_USE_SPEAKER_BOOST !== 'false' || volume > 1.05,
+    speed: rate
+  };
+}
+
+function buildElevenLabsText(input) {
+  const normalized = normalizeInput(input);
+  const emphasized = emphasizeWords(normalized.text, normalized.emphasisWords);
+  const intent = normalized.intent || 'neutral';
+
+  if (intent === 'strict') return ensureTerminalPunctuation(emphasized, '.');
+  if (intent === 'cheerful' || intent === 'up') return ensureTerminalPunctuation(emphasized, '!');
+  if (intent === 'down' || intent === 'focus') return ensureTerminalPunctuation(emphasized, '.');
+  return emphasized;
+}
+
+function emphasizeWords(text = '', emphasisWords = []) {
+  const cleaned = [...new Set((emphasisWords || []).map(word => String(word).trim()).filter(Boolean))];
+  if (!text || cleaned.length === 0) return text;
+
+  return cleaned.reduce((result, word) => {
+    const pattern = new RegExp(`\\b${escapeRegExp(word)}\\b`, 'gi');
+    return result.replace(pattern, match => match.toUpperCase());
+  }, text);
+}
+
+function ensureTerminalPunctuation(text, mark) {
+  const trimmed = String(text || '').trim();
+  if (!trimmed) return trimmed;
+  if (/[.!?]$/.test(trimmed)) return trimmed;
+  return `${trimmed}${mark}`;
+}
+
+function buildElevenLabsRequest(input) {
+  const normalized = normalizeInput(input);
+  const voiceId = normalized.voice || process.env.ELEVENLABS_VOICE_ID || 'ErXwobaYiN019PkySvjV';
+  const format = normalized.format || process.env.ELEVENLABS_OUTPUT_FORMAT || 'mp3';
+  const body = {
+    text: buildElevenLabsText(normalized),
+    model_id: normalized.engine || process.env.ELEVENLABS_MODEL || 'eleven_multilingual_v2',
+    voice_settings: voiceSettingsForElevenLabs(normalized)
+  };
+
+  const languageCode = normalized.language || process.env.ELEVENLABS_LANGUAGE;
+  if (languageCode) {
+    body.language_code = languageCode.split(/[-_]/)[0];
+  }
+
+  return {
+    voiceId,
+    format,
+    outputFormat: elevenLabsFormatParam(format),
+    mediaType: mediaTypeForElevenLabsFormat(format),
+    body
+  };
+}
+
+async function generateElevenLabsTTS(input) {
   const API_KEY = process.env.TTS_API_KEY;
   if (!API_KEY) throw new Error('ElevenLabs API key not configured');
 
-  const voiceId = process.env.ELEVENLABS_VOICE_ID || 'ErXwobaYiN019PkySvjV';
+  const request = buildElevenLabsRequest(input);
   const response = await axios.post(
-    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-    {
-      text,
-      model_id: process.env.ELEVENLABS_MODEL || 'eleven_multilingual_v2',
-      voice_settings: {
-        stability: Number(process.env.ELEVENLABS_STABILITY || 0.5),
-        similarity_boost: Number(process.env.ELEVENLABS_SIMILARITY_BOOST || 0.75)
-      }
-    },
+    `https://api.elevenlabs.io/v1/text-to-speech/${request.voiceId}?output_format=${request.outputFormat}`,
+    request.body,
     {
       headers: {
-        Accept: 'audio/mpeg',
+        Accept: request.mediaType,
         'xi-api-key': API_KEY,
         'Content-Type': 'application/json'
       },
@@ -201,7 +301,7 @@ async function generateElevenLabsTTS(text) {
     }
   );
 
-  return `data:audio/mpeg;base64,${Buffer.from(response.data).toString('base64')}`;
+  return `data:${request.mediaType};base64,${Buffer.from(response.data).toString('base64')}`;
 }
 
 async function synthesizeSpeech(text, intent = 'neutral') {
@@ -268,7 +368,10 @@ function validateConfig() {
       provider,
       hasApiKey: !!process.env.TTS_API_KEY,
       localUrl: process.env.LOCAL_TTS_URL || 'http://localhost:8000/api/v1/tts',
-      localFormat: process.env.LOCAL_TTS_FORMAT || 'wav'
+      localFormat: process.env.LOCAL_TTS_FORMAT || 'wav',
+      elevenLabsVoiceId: process.env.ELEVENLABS_VOICE_ID || 'ErXwobaYiN019PkySvjV',
+      elevenLabsModel: process.env.ELEVENLABS_MODEL || 'eleven_multilingual_v2',
+      elevenLabsFormat: process.env.ELEVENLABS_OUTPUT_FORMAT || 'mp3'
     }
   };
 }
@@ -281,5 +384,8 @@ module.exports = {
   validateConfig,
   escapeXML,
   generateMockAudioBase64,
-  extractEmphasisWords
+  extractEmphasisWords,
+  buildElevenLabsRequest,
+  buildElevenLabsText,
+  emphasizeWords
 };
