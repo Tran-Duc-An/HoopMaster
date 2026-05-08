@@ -34,7 +34,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FlipCameraAndroid
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -278,16 +277,49 @@ fun TrackingScreen(
                     .align(Alignment.TopEnd)
                     .padding(
                         top = if (compactOverlay) 80.dp else 104.dp,
+                        start = overlayMargin,
                         end = overlayMargin
                     ),
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(HoopSpacing.Sm)
             ) {
                 Row(
-                    modifier = Modifier.widthIn(max = 344.dp),
-                    horizontalArrangement = Arrangement.spacedBy(HoopSpacing.Xs),
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(HoopSpacing.Xs),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        listOf("strict", "neutral", "cheerful").forEach { tone ->
+                            FilterChip(
+                                selected = viewModel.selectedTone.value == tone,
+                                onClick = {
+                                    viewModel.updateTone(tone)
+                                },
+                                label = {
+                                    Text(
+                                        text = tone.replaceFirstChar { it.uppercase() },
+                                        style = MaterialTheme.typography.labelSmall,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = ActiveOrange.copy(alpha = 0.18f),
+                                    selectedLabelColor = NavyShadow,
+                                    selectedLeadingIconColor = NavyShadow,
+                                    containerColor = Color.White.copy(alpha = 0.04f),
+                                    labelColor = Color.White.copy(alpha = 0.82f),
+                                    iconColor = Color.White.copy(alpha = 0.82f)
+                                ),
+                                modifier = Modifier
+                                    .heightIn(min = 30.dp)
+                                    .widthIn(min = if (tone == "cheerful") 84.dp else 72.dp)
+                            )
+                        }
+                    }
                     GlassIconButton(
                         onClick = { showSkeleton = !showSkeleton },
                         icon = if (showSkeleton) Icons.Default.Visibility else Icons.Default.VisibilityOff,
@@ -299,33 +331,6 @@ fun TrackingScreen(
                         },
                         size = tokens.sizing.iconButtonSize
                     )
-                    listOf("strict", "neutral", "cheerful").forEach { tone ->
-                        FilterChip(
-                            selected = viewModel.selectedTone.value == tone,
-                            onClick = {
-                                viewModel.updateTone(tone)
-                            },
-                            label = {
-                                Text(
-                                    text = tone.replaceFirstChar { it.uppercase() },
-                                    style = MaterialTheme.typography.labelSmall,
-                                    maxLines = 1,
-                                    softWrap = false
-                                )
-                            },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = ActiveOrange.copy(alpha = 0.18f),
-                                selectedLabelColor = NavyShadow,
-                                selectedLeadingIconColor = NavyShadow,
-                                containerColor = Color.White.copy(alpha = 0.04f),
-                                labelColor = Color.White.copy(alpha = 0.82f),
-                                iconColor = Color.White.copy(alpha = 0.82f)
-                            ),
-                            modifier = Modifier
-                                .heightIn(min = 30.dp)
-                                .widthIn(min = if (tone == "cheerful") 84.dp else 72.dp)
-                        )
-                    }
                 }
             }
 
@@ -512,27 +517,6 @@ private fun LastShotAnalysisCard(
                         fontWeight = FontWeight.Bold,
                         color = ActiveOrange
                     )
-                }
-                Surface(
-                    shape = CircleShape,
-                    color = ActiveOrange.copy(alpha = 0.14f),
-                    border = androidx.compose.foundation.BorderStroke(
-                        2.dp,
-                        ActiveOrange.copy(alpha = 0.68f)
-                    )
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(if (compact) 44.dp else 56.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Check,
-                            contentDescription = null,
-                            tint = ActiveOrange,
-                            modifier = Modifier.size(if (compact) 22.dp else 28.dp)
-                        )
-                    }
                 }
             }
             Spacer(modifier = Modifier.height(HoopSpacing.Sm))
