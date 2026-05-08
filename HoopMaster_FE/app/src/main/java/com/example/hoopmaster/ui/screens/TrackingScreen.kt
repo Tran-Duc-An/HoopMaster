@@ -277,58 +277,54 @@ fun TrackingScreen(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(
-                        top = if (compactOverlay) 72.dp else 92.dp,
+                        top = if (compactOverlay) 80.dp else 104.dp,
                         end = overlayMargin
                     ),
                 horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(HoopSpacing.Xs)
+                verticalArrangement = Arrangement.spacedBy(HoopSpacing.Sm)
             ) {
-                GlassIconButton(
-                    onClick = { showSkeleton = !showSkeleton },
-                    icon = if (showSkeleton) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                    contentDescription = "Toggle skeleton",
-                    containerColor = if (showSkeleton) {
-                        ActiveOrange.copy(alpha = 0.2f)
-                    } else {
-                        NavyShadow.copy(alpha = 0.62f)
-                    },
-                    size = tokens.sizing.iconButtonSize
-                )
-                Column(
-                    modifier = Modifier
-                        .widthIn(max = if (compactOverlay) 188.dp else 220.dp)
-                        .padding(horizontal = HoopSpacing.Sm, vertical = HoopSpacing.Xs),
-                    verticalArrangement = Arrangement.spacedBy(HoopSpacing.Xs)
+                Row(
+                    modifier = Modifier.widthIn(max = 344.dp),
+                    horizontalArrangement = Arrangement.spacedBy(HoopSpacing.Xs),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Tone",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White.copy(alpha = 0.8f)
+                    GlassIconButton(
+                        onClick = { showSkeleton = !showSkeleton },
+                        icon = if (showSkeleton) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                        contentDescription = "Toggle skeleton",
+                        containerColor = if (showSkeleton) {
+                            ActiveOrange.copy(alpha = 0.2f)
+                        } else {
+                            NavyShadow.copy(alpha = 0.62f)
+                        },
+                        size = tokens.sizing.iconButtonSize
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(HoopSpacing.Xs)) {
-                        listOf("strict", "neutral", "cheerful").forEach { tone ->
-                            FilterChip(
-                                selected = viewModel.selectedTone.value == tone,
-                                onClick = {
-                                    viewModel.updateTone(tone)
-                                },
-                                label = {
-                                    Text(
-                                        text = tone.replaceFirstChar { it.uppercase() },
-                                        style = MaterialTheme.typography.labelSmall
-                                    )
-                                },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = ActiveOrange.copy(alpha = 0.18f),
-                                    selectedLabelColor = NavyShadow,
-                                    selectedLeadingIconColor = NavyShadow,
-                                    containerColor = Color.White.copy(alpha = 0.04f),
-                                    labelColor = Color.White.copy(alpha = 0.82f),
-                                    iconColor = Color.White.copy(alpha = 0.82f)
-                                ),
-                                modifier = Modifier.heightIn(min = 30.dp)
-                            )
-                        }
+                    listOf("strict", "neutral", "cheerful").forEach { tone ->
+                        FilterChip(
+                            selected = viewModel.selectedTone.value == tone,
+                            onClick = {
+                                viewModel.updateTone(tone)
+                            },
+                            label = {
+                                Text(
+                                    text = tone.replaceFirstChar { it.uppercase() },
+                                    style = MaterialTheme.typography.labelSmall,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = ActiveOrange.copy(alpha = 0.18f),
+                                selectedLabelColor = NavyShadow,
+                                selectedLeadingIconColor = NavyShadow,
+                                containerColor = Color.White.copy(alpha = 0.04f),
+                                labelColor = Color.White.copy(alpha = 0.82f),
+                                iconColor = Color.White.copy(alpha = 0.82f)
+                            ),
+                            modifier = Modifier
+                                .heightIn(min = 30.dp)
+                                .widthIn(min = if (tone == "cheerful") 84.dp else 72.dp)
+                        )
                     }
                 }
             }
