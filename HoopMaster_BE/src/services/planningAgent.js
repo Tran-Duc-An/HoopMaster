@@ -1,8 +1,9 @@
 const User = require('../models/userModel');
-const { addMessage, getHistory } = require('./conversationService');
+const { addMessage, getHistory, normalizeSessionId } = require('./conversationService');
 const { synthesizeSpeech } = require('./ttsService');
 const exerciseService = require('./exerciseService');
 const trainingPlanService = require('./trainingPlanService');
+const { callMistralAPI } = require('./mistralService');
 
 const REQUIRED_FIELDS = ['goals', 'injuries', 'level', 'weeklyAvailability'];
 
@@ -180,11 +181,11 @@ function getMissingFields(profile) {
 
 function buildQuestion(missingFields) {
   const first = missingFields[0];
-  if (first === 'goals') return 'Mục tiêu chính của bạn là gì: cải thiện form ném, tăng thể lực, tăng linh hoạt, hay khởi động/phòng chấn thương?';
-  if (first === 'injuries') return 'Bạn có tiền sử chấn thương hoặc vùng đang đau nào không? Ví dụ: gối, cổ chân, vai, cổ tay, lưng. Nếu không có, hãy nói rõ là không có chấn thương.';
-  if (first === 'level') return 'Trình độ hiện tại của bạn là beginner, intermediate hay advanced?';
-  if (first === 'weeklyAvailability') return 'Bạn có thể tập bao nhiêu buổi mỗi tuần và mỗi buổi khoảng bao nhiêu phút?';
-  return 'Bạn cho mình thêm mục tiêu, chấn thương, trình độ và lịch tập để mình lập plan phù hợp nhé.';
+  if (first === 'goals') return 'What is your main goal: shooting accuracy, strength, mobility, warm-up, or injury prevention?';
+  if (first === 'injuries') return 'Do you have any injuries or painful areas? For example: knee, ankle, shoulder, wrist, or back. If none, please say no injuries.';
+  if (first === 'level') return 'What is your current level: beginner, intermediate, or advanced?';
+  if (first === 'weeklyAvailability') return 'How many sessions can you train per week, and about how many minutes per session?';
+  return 'Please share your goals, injuries, level, and schedule so I can build the right plan for you.';
 }
 
 function selectExercises(profile) {
@@ -225,35 +226,51 @@ function selectExercises(profile) {
 
 function buildExerciseReason(exercise, profile) {
   const goals = profile.goals || [];
-  if (exercise.category === 'warmup') return 'Chuẩn bị khớp và cơ trước khi vào bài chính.';
-  if (exercise.category === 'stretching') return 'Tăng linh hoạt và giảm căng cơ sau hoặc trước buổi tập nhẹ.';
+  if (exercise.category === 'warmup') return 'Prepares joints and muscles before the main workout.';
+  if (exercise.category === 'stretching') return 'Improves mobility and helps reduce muscle tightness.';
   if (exercise.category === 'strength' && goals.includes('shooting_accuracy')) {
-    return 'Tăng sức mạnh thân trên để giữ form ném ổn định hơn.';
+    return 'Builds upper-body strength to support a more stable shooting form.';
   }
-  if (exercise.category === 'strength') return 'Tăng nền tảng thể lực cho vận động bóng rổ.';
-  return 'Phù hợp với mục tiêu tập luyện hiện tại.';
+  if (exercise.category === 'strength') return 'Builds foundational strength for basketball movement.';
+  return 'Aligned with your current training goals.';
 }
 
 function buildSafetyNote(exercise, injuries) {
-  if (!injuries.length) return 'Dừng lại nếu thấy đau bất thường.';
+  if (!injuries.length) return 'Stop immediately if you feel unusual pain.';
   if (exercise.category === 'strength' && injuries.some(area => ['wrist', 'shoulder'].includes(area))) {
-    return 'Giảm biên độ hoặc bỏ bài này nếu cổ tay/vai đau.';
+    return 'Reduce range of motion or skip this exercise if wrist or shoulder pain appears.';
   }
   if (injuries.includes('knee') && exercise.category !== 'stretching') {
-    return 'Giữ gối thẳng hàng với mũi chân, không ép sâu nếu đau.';
+    return 'Keep knees aligned with toes and avoid deep ranges if pain increases.';
   }
-  return `Điều chỉnh nhẹ vì bạn có tiền sử: ${injuries.join(', ')}.`;
+  return `Adjust intensity carefully due to your injury history: ${injuries.join(', ')}.`;
+}
+
+function toTitleCase(text) {
+  return text
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+function buildSpecificPlanTitle(profile) {
+  const level = profile.level && profile.level !== 'unknown' ? toTitleCase(profile.level) : 'Personalized';
+  const primaryGoal = profile.goals?.[0] ? toTitleCase(profile.goals[0]) : 'Basketball Development';
+  const daysPerWeek = profile.weeklyAvailability || 3;
+  const duration = profile.sessionDurationMinutes || 30;
+  return `${level} ${primaryGoal} Program - ${daysPerWeek} Days/Week (${duration} min/session)`;
 }
 
 function buildPlanPayload(userId, profile) {
   const primaryGoal = profile.goals?.[0] || 'general_training';
   const injuries = (profile.injuries || []).filter(injury => injury.active !== false).map(injury => injury.area);
+  const title = buildSpecificPlanTitle(profile);
   return {
     userId,
     source: 'personalized',
     status: 'draft',
-    title: 'Personalized Basketball Training Plan',
-    description: 'Generated from planning chat based on goals, level, injuries, and availability.',
+    title,
+    description: `Focused ${toTitleCase(primaryGoal)} plan generated from your profile, schedule, and injury constraints.`,
     goal: primaryGoal,
     injuryConstraints: injuries,
     exercises: selectExercises(profile),
@@ -266,27 +283,201 @@ function buildPlanPayload(userId, profile) {
   };
 }
 
-async function planningChat(userId, { text, audioBase64 }) {
+function extractJsonObject(rawText = '') {
+  const trimmed = rawText.trim();
+  if (!trimmed) return null;
+
+  const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  const jsonCandidate = fencedMatch ? fencedMatch[1] : trimmed;
+
+  try {
+    return JSON.parse(jsonCandidate);
+  } catch (_) {
+    const start = jsonCandidate.indexOf('{');
+    const end = jsonCandidate.lastIndexOf('}');
+    if (start >= 0 && end > start) {
+      return JSON.parse(jsonCandidate.slice(start, end + 1));
+    }
+    throw new Error('LLM output is not valid JSON');
+  }
+}
+
+function buildExerciseCatalogSummary(catalog) {
+  return catalog.map(ex => ({
+    id: ex.id,
+    name: ex.name,
+    category: ex.category,
+    pose: ex.pose,
+    defaultSets: ex.target?.sets || (ex.category === 'strength' ? 3 : 2),
+    defaultReps: ex.target?.reps || ex.count || null,
+    defaultDuration: ex.duration || null,
+    description: ex.description
+  }));
+}
+
+function coercePositiveInteger(value, fallback) {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) return fallback;
+  return parsed;
+}
+
+function buildPlanningPrompt(profile, catalog) {
+  const catalogSummary = buildExerciseCatalogSummary(catalog);
+  return `You are an expert basketball strength and skill coach.
+
+Task:
+Generate ONE personalized basketball training plan in ENGLISH and return STRICT JSON ONLY.
+
+User profile:
+${JSON.stringify(profile, null, 2)}
+
+Exercise catalog (you must only use these exercises):
+${JSON.stringify(catalogSummary, null, 2)}
+
+Rules:
+1) Output JSON only (no markdown, no extra text).
+2) Use exactly 4 exercises from the catalog.
+3) Keep structure exactly:
+{
+  "title": "string",
+  "description": "string",
+  "goal": "string",
+  "exercises": [
+    {
+      "exerciseId": number,
+      "sets": number,
+      "reps": number|null,
+      "duration": "string|null",
+      "reason": "string",
+      "safetyNotes": "string"
+    }
+  ]
+}
+4) Title must be specific (not generic), include level + primary goal + frequency.
+5) All text must be English.
+6) Respect injury constraints in safetyNotes and selection.
+7) goal should be one of: shooting_accuracy, strength, mobility, warmup, conditioning, general_training.`;
+}
+
+function normalizeLlmPlan(userId, profile, llmPlan, catalog) {
+  if (!llmPlan || typeof llmPlan !== 'object') {
+    throw new Error('LLM plan payload is empty');
+  }
+
+  const catalogById = new Map(catalog.map(ex => [Number(ex.id), ex]));
+  const rawExercises = Array.isArray(llmPlan.exercises) ? llmPlan.exercises.slice(0, 4) : [];
+  if (rawExercises.length === 0) {
+    throw new Error('LLM returned no exercises');
+  }
+
+  const usedIds = new Set();
+  const normalizedExercises = rawExercises
+    .map((item) => {
+      const exerciseId = Number(item.exerciseId);
+      const exercise = catalogById.get(exerciseId);
+      if (!exercise || usedIds.has(exerciseId)) return null;
+      usedIds.add(exerciseId);
+
+      const defaultSets = exercise.target?.sets || (exercise.category === 'strength' ? 3 : 2);
+      const defaultReps = exercise.target?.reps || exercise.count;
+      const resolvedReps = item.reps === null ? null : coercePositiveInteger(item.reps, defaultReps);
+
+      return {
+        exerciseId: exercise.id,
+        name: exercise.name,
+        category: exercise.category,
+        pose: exercise.pose,
+        description: exercise.description,
+        sets: coercePositiveInteger(item.sets, defaultSets),
+        reps: exercise.duration ? undefined : resolvedReps,
+        duration: typeof item.duration === 'string' && item.duration.trim()
+          ? item.duration.trim()
+          : (exercise.duration || undefined),
+        reason: typeof item.reason === 'string' && item.reason.trim()
+          ? item.reason.trim()
+          : buildExerciseReason(exercise, profile),
+        safetyNotes: typeof item.safetyNotes === 'string' && item.safetyNotes.trim()
+          ? item.safetyNotes.trim()
+          : buildSafetyNote(
+            exercise,
+            (profile.injuries || []).filter(injury => injury.active !== false).map(injury => injury.area)
+          )
+      };
+    })
+    .filter(Boolean)
+    .map((exercise, index) => ({ ...exercise, order: index + 1 }));
+
+  if (normalizedExercises.length < 3) {
+    throw new Error('LLM returned insufficient valid exercises');
+  }
+
+  const primaryGoal = profile.goals?.[0] || 'general_training';
+  const injuries = (profile.injuries || []).filter(injury => injury.active !== false).map(injury => injury.area);
+
+  return {
+    userId,
+    source: 'personalized',
+    status: 'draft',
+    title: typeof llmPlan.title === 'string' && llmPlan.title.trim()
+      ? llmPlan.title.trim()
+      : buildSpecificPlanTitle(profile),
+    description: typeof llmPlan.description === 'string' && llmPlan.description.trim()
+      ? llmPlan.description.trim()
+      : `Focused ${toTitleCase(primaryGoal)} plan generated from your profile, schedule, and injury constraints.`,
+    goal: typeof llmPlan.goal === 'string' && llmPlan.goal.trim() ? llmPlan.goal.trim() : primaryGoal,
+    injuryConstraints: injuries,
+    exercises: normalizedExercises,
+    schedule: {
+      daysPerWeek: profile.weeklyAvailability,
+      sessionDurationMinutes: profile.sessionDurationMinutes || 30
+    },
+    createdBy: 'agent',
+    metadata: {
+      profileSnapshot: profile,
+      generation: { mode: 'llm_mistral' }
+    }
+  };
+}
+
+async function buildPlanPayloadWithLlm(userId, profile) {
+  const catalog = exerciseService.getAllExercises();
+  if (!catalog.length) throw new Error('Exercise catalog is empty');
+
+  const prompt = buildPlanningPrompt(profile, catalog);
+  const rawResponse = await callMistralAPI(prompt);
+  const llmPlan = extractJsonObject(rawResponse);
+  return normalizeLlmPlan(userId, profile, llmPlan, catalog);
+}
+
+async function planningChat(userId, { text, audioBase64, sessionId }) {
+  const startedAt = Date.now();
+  const normalizedSessionId = normalizeSessionId(sessionId);
   const userText = text || '';
   if (!userText && !audioBase64) throw new Error('No input text or audio');
   if (audioBase64 && !text) throw new Error('Audio input is not supported yet');
 
+  console.log(`[PlanningChat] Start userId=${userId} sessionId=${normalizedSessionId} textLength=${userText.length} hasAudio=${Boolean(audioBase64)}`);
   const user = await User.findById(userId);
   if (!user) throw new Error('User not found');
 
-  await addMessage(userId, 'planning', 'user', userText);
+  await addMessage(userId, 'planning', 'user', userText, normalizedSessionId);
+  console.log(`[PlanningChat] Saved user message userId=${userId} sessionId=${normalizedSessionId}`);
 
   if (isConfirmIntent(userText)) {
+    console.log(`[PlanningChat] Confirm intent detected userId=${userId}`);
     const latestDraft = await trainingPlanService.getLatestDraftPlan(userId);
     if (latestDraft) {
+      console.log(`[PlanningChat] Found latest draft planId=${latestDraft._id} userId=${userId}`);
       const result = await confirmPlanningPlan(userId, latestDraft._id);
-      await addMessage(userId, 'planning', 'assistant', result.reply);
+      await addMessage(userId, 'planning', 'assistant', result.reply, normalizedSessionId);
       const ttsResult = await synthesizeSpeech(result.reply, user.tone || 'neutral');
+      console.log(`[PlanningChat] Confirm flow completed userId=${userId} planId=${latestDraft._id} elapsedMs=${Date.now() - startedAt}`);
       return {
         ...result,
         audioBase64: ttsResult.audioBase64
       };
     }
+    console.log(`[PlanningChat] Confirm intent but no draft found userId=${userId}`);
   }
 
   const profilePatch = extractProfilePatch(userText);
@@ -294,12 +485,15 @@ async function planningChat(userId, { text, audioBase64 }) {
   user.trainingProfile = mergedProfile;
   user.updatedAt = new Date();
   await user.save();
+  console.log(`[PlanningChat] Saved merged training profile userId=${userId}`);
 
   const missingFields = getMissingFields(mergedProfile);
   if (missingFields.length > 0) {
+    console.log(`[PlanningChat] Missing profile fields userId=${userId} fields=${missingFields.join(',')}`);
     const reply = buildQuestion(missingFields);
-    await addMessage(userId, 'planning', 'assistant', reply);
+    await addMessage(userId, 'planning', 'assistant', reply, normalizedSessionId);
     const ttsResult = await synthesizeSpeech(reply, user.tone || 'neutral');
+    console.log(`[PlanningChat] Question response sent userId=${userId} elapsedMs=${Date.now() - startedAt}`);
     return {
       type: 'question',
       reply,
@@ -310,11 +504,24 @@ async function planningChat(userId, { text, audioBase64 }) {
     };
   }
 
-  const planPayload = buildPlanPayload(userId, mergedProfile);
+  let planPayload;
+  try {
+    console.log(`[PlanningChat] LLM invocation status=START userId=${userId}`);
+    planPayload = await buildPlanPayloadWithLlm(userId, mergedProfile);
+    console.log(`[PlanningChat] LLM invocation status=SUCCESS userId=${userId} exercises=${planPayload.exercises.length}`);
+  } catch (llmError) {
+    console.error(`[PlanningChat] LLM invocation status=FAILED userId=${userId}:`, llmError.message);
+    planPayload = buildPlanPayload(userId, mergedProfile);
+    console.log(`[PlanningChat] Fallback rule-based plan generated userId=${userId} exercises=${planPayload.exercises.length}`);
+  }
+
+  console.log(`[PlanningChat] Creating draft plan userId=${userId} exercises=${planPayload.exercises.length}`);
   const plan = await trainingPlanService.createPlan(userId, planPayload);
-  const reply = 'Mình đã tạo một giáo án cá nhân hóa dạng draft. Nếu bạn đồng ý, hãy xác nhận để lưu làm giáo án active cho lần tập sau.';
-  await addMessage(userId, 'planning', 'assistant', reply);
+  console.log(`[PlanningChat] Draft plan created userId=${userId} planId=${plan._id} status=${plan.status}`);
+  const reply = `I created a specific draft plan: "${plan.title}". If it looks good, confirm to save it as your active plan.`;
+  await addMessage(userId, 'planning', 'assistant', reply, normalizedSessionId);
   const ttsResult = await synthesizeSpeech(reply, user.tone || 'neutral');
+  console.log(`[PlanningChat] Draft response sent userId=${userId} elapsedMs=${Date.now() - startedAt}`);
 
   return {
     type: 'plan_draft',
@@ -327,16 +534,18 @@ async function planningChat(userId, { text, audioBase64 }) {
 }
 
 async function confirmPlanningPlan(userId, planId) {
+  console.log(`[PlanningChat] Activating plan userId=${userId} planId=${planId}`);
   const plan = await trainingPlanService.activatePlan(userId, planId);
+  console.log(`[PlanningChat] Plan activated userId=${userId} planId=${planId} status=${plan.status}`);
   return {
     type: 'saved_plan',
-    reply: 'Giáo án cá nhân hóa đã được lưu và đặt làm active.',
+    reply: 'Your personalized plan has been saved and set as active.',
     plan
   };
 }
 
-async function getPlanningHistory(userId, limit = 10) {
-  return getHistory(userId, 'planning', limit);
+async function getPlanningHistory(userId, limit = 10, sessionId = 'default') {
+  return getHistory(userId, 'planning', limit, normalizeSessionId(sessionId));
 }
 
 module.exports = {

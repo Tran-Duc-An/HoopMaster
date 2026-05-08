@@ -3,6 +3,7 @@ const TrainingPlan = require('../models/trainingPlanModel');
 const createPlan = async (userId, planData) => {
   const source = planData.source || 'personalized';
   const status = planData.status || 'draft';
+  console.log(`[TrainingPlanService] createPlan start userId=${userId} source=${source} status=${status}`);
 
   // Keep only a few personalized plans per user; default catalog is not affected.
   const count = await TrainingPlan.countDocuments({ userId, source: 'personalized' });
@@ -15,6 +16,7 @@ const createPlan = async (userId, planData) => {
 
   const plan = new TrainingPlan({ userId, ...planData, source, status });
   await plan.save();
+  console.log(`[TrainingPlanService] createPlan success userId=${userId} planId=${plan._id} status=${plan.status}`);
   return plan;
 };
 
@@ -40,6 +42,7 @@ const getPlanById = async (userId, planId) => {
 };
 
 const activatePlan = async (userId, planId) => {
+  console.log(`[TrainingPlanService] activatePlan start userId=${userId} planId=${planId}`);
   const plan = await getPlanById(userId, planId);
   if (!plan) throw new Error('Training plan not found');
 
@@ -52,6 +55,7 @@ const activatePlan = async (userId, planId) => {
   plan.activatedAt = new Date();
   plan.updatedAt = new Date();
   await plan.save();
+  console.log(`[TrainingPlanService] activatePlan success userId=${userId} planId=${plan._id} status=${plan.status}`);
   return plan;
 };
 

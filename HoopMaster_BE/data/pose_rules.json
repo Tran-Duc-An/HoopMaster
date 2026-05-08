@@ -1,22 +1,22 @@
 {
   "shooting": {
     "elbow": {
-      "min": 60,
-      "max": 145,
+      "min": 50,
+      "max": 155,
       "ideal": 100,
       "landmarks": { "point1": "shoulder", "point2": "elbow", "point3": "wrist" },
       "intent": { "tooLow": "up", "tooHigh": "down", "perfect": "focus" }
     },
     "knee": {
-      "min": 75,
-      "max": 180,
-      "ideal": 130,
+      "min": 65,
+      "max": 160,
+      "ideal": 140,
       "landmarks": { "point1": "hip", "point2": "knee", "point3": "ankle" },
       "intent": { "tooLow": "up", "tooHigh": "down", "perfect": "focus" }
     },
     "shoulder": {
-      "min": 20,
-      "max": 150,
+      "min": 10,
+      "max": 160,
       "ideal": 80,
       "landmarks": { "point1": "hip", "point2": "shoulder", "point3": "elbow" },
       "intent": { "tooLow": "up", "tooHigh": "down", "perfect": "focus" }

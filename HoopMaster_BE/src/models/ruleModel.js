@@ -24,7 +24,7 @@ try {
  * Cấu hình Tolerance (Độ chấp nhận sai số)
  * Nếu góc nằm trong khoảng [ideal - tolerance, ideal + tolerance] thì coi là hoàn hảo
  */
-const ANGLE_TOLERANCE = parseInt(process.env.ANGLE_TOLERANCE) || 5;
+const ANGLE_TOLERANCE = parseInt(process.env.ANGLE_TOLERANCE) || 18;
 
 /**
  * Intent Mapping cho TTS Service

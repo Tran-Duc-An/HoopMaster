@@ -81,7 +81,9 @@ function calculateAngle3D(point1, point2, point3) {
     const angleRadians = Math.acos(cosineAngle);
     const angleDegrees = angleRadians * (180 / Math.PI);
 
-    return Math.round(angleDegrees * 100) / 100; // Làm tròn 2 chữ số thập phân
+    // Đảm bảo góc nằm trong khoảng 0-180 độ
+    let clampedAngle = Math.max(0, Math.min(180, Math.round(angleDegrees * 100) / 100));
+    return clampedAngle;
   } catch (error) {
     console.error('[PoseService] Error calculating angle:', error.message);
     return null;
@@ -115,7 +117,9 @@ function calculateAngle2D(point1, point2, point3) {
       angleDiff = 360 - angleDiff;
     }
     
-    return Math.round(angleDiff * 100) / 100;
+    // Đảm bảo góc nằm trong khoảng 0-180 độ
+    let clampedAngle = Math.max(0, Math.min(180, Math.round(angleDiff * 100) / 100));
+    return clampedAngle;
   } catch (error) {
     console.error('[PoseService] Error calculating 2D angle:', error.message);
     return null;

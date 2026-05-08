@@ -276,56 +276,72 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
     }
 
     if (shouldSendFeedback) {
-      // LOGIC MỚI: CHỈ SỬA 1 LỖI MỖI LẦN (Single-issue focus)
+      // Đếm số lần feedback lỗi liên tiếp
+      let errorCount = session.errorFeedbackCount || 0;
+      let lastErrorStatus = session.lastErrorStatus || '';
       let message = '';
-      
       // Khai báo thứ tự ưu tiên: Nền tảng (Gối) -> Chuyển động (Khuỷu tay) -> Phụ trợ (Vai)
       const errorPriority = [
         { joint: 'knee', data: evalResult.kneeEval, side: evalResult.kneeEval?.side },
         { joint: 'elbow', data: evalResult.elbowEval, side: evalResult.elbowEval?.side },
         { joint: 'shoulder', data: evalResult.shoulderEval, side: evalResult.shoulderEval?.side }
       ];
-
       // Tìm lỗi ĐẦU TIÊN xuất hiện trong danh sách ưu tiên
       const primaryIssue = errorPriority.find(
         item => item.data && isActionableIssue(item.data.status)
       );
-
+      let isForcePraise = false;
       if (primaryIssue) {
-        // Nếu có lỗi, chỉ lấy đúng 1 câu feedback của lỗi đó
-        let baseMsg = getRandomFeedback(primaryIssue.joint, primaryIssue.data.status, coachTone);
-        // Bổ sung chi tiết bên trái/phải nếu có
-        let side = primaryIssue.data?.side || primaryIssue.side;
-        if (!side && evalResult.shootingHand && primaryIssue.joint !== 'knee') {
-          // Ưu tiên tay thuận nếu không có side
-          side = evalResult.shootingHand === 'right' ? 'right' : 'left';
+        // Nếu lỗi giống lần trước thì tăng count, nếu khác thì reset count
+        const thisErrorStatus = `${primaryIssue.joint}:${primaryIssue.data.status}`;
+        if (thisErrorStatus === lastErrorStatus) {
+          errorCount += 1;
+        } else {
+          errorCount = 1;
         }
-        if (side && baseMsg && /elbow|shoulder/i.test(primaryIssue.joint)) {
-          // Thay thế "your elbow" thành "your right/left elbow" nếu có
-          baseMsg = baseMsg.replace(/your (elbow|shoulder)\b/i, `your ${side} $1`);
-          // Nếu không có "your ...", thêm vào đầu câu
-          if (!/your (right|left) (elbow|shoulder)\b/i.test(baseMsg)) {
-            baseMsg = `${baseMsg.charAt(0).toUpperCase() + baseMsg.slice(1)}`;
+        // Nếu lỗi lặp lại quá 3 lần thì khen và cho ném
+        if (errorCount >= 3) {
+          isForcePraise = true;
+          message = getFormReadyFeedback(coachTone);
+        } else {
+          let baseMsg = getRandomFeedback(primaryIssue.joint, primaryIssue.data.status, coachTone);
+          let side = primaryIssue.data?.side || primaryIssue.side;
+          if (!side && evalResult.shootingHand && primaryIssue.joint !== 'knee') {
+            side = evalResult.shootingHand === 'right' ? 'right' : 'left';
           }
+          if (side && baseMsg && /elbow|shoulder/i.test(primaryIssue.joint)) {
+            baseMsg = baseMsg.replace(/your (elbow|shoulder)\b/i, `your ${side} $1`);
+            if (!/your (right|left) (elbow|shoulder)\b/i.test(baseMsg)) {
+              baseMsg = `${baseMsg.charAt(0).toUpperCase() + baseMsg.slice(1)}`;
+            }
+          }
+          message = baseMsg;
         }
-        message = baseMsg;
+        // Lưu trạng thái lỗi hiện tại
+        sessionService.updateSession(socketId, {
+          errorFeedbackCount: errorCount,
+          lastErrorStatus: thisErrorStatus
+        });
       } else {
-        // Form is set and all tracked joints are perfect. This is not post-shot praise.
+        // Nếu không còn lỗi, reset biến đếm
+        errorCount = 0;
+        sessionService.updateSession(socketId, {
+          errorFeedbackCount: 0,
+          lastErrorStatus: ''
+        });
         if (shouldAllowPositiveRealtimeFeedback(shotState, evalResult, now)) {
           message = getFormReadyFeedback(coachTone);
         }
       }
-
       if (message) {
-        // Tính toán Dynamic Cooldown dựa trên độ dài chuỗi trả về
         const estimatedAudioDuration = (message.length * 80) + 1500; 
         const cooldownToUse = Math.max(CONFIG.MIN_FEEDBACK_INTERVAL, estimatedAudioDuration);
         await enqueueAudioInstruction(socketId, {
-          type: primaryIssue ? 'form_correction' : 'form_ready',
+          type: (primaryIssue && !isForcePraise) ? 'form_correction' : 'form_ready',
           text: message,
           tone: coachTone,
           angles: evalResult,
-          priority: primaryIssue ? 'normal' : 'low',
+          priority: (primaryIssue && !isForcePraise) ? 'normal' : 'low',
           dedupeKey: `${primaryIssue?.joint || 'good'}:${currentPoseStatus}:${message}`,
           metadata: {
             timestamp: now,
@@ -333,10 +349,9 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
             shotPhase: shotState.phase
           }
         }, emitCallback);
-        const shotStateUpdate = primaryIssue
+        const shotStateUpdate = (primaryIssue && !isForcePraise)
           ? shotState
           : { ...shotState, lastFormReadyAt: now };
-        // Cập nhật session sau khi đã phát Voice
         sessionService.updateSession(socketId, {
           shotState: shotStateUpdate,
           lastFeedback: { 
@@ -344,7 +359,7 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
             time: now, 
             message: message,
             poseStatus: currentPoseStatus,
-            cooldown: cooldownToUse // Lưu thời gian chờ động vào đây
+            cooldown: cooldownToUse
           },
           previousLandmarks: landmarks
         });
@@ -352,7 +367,6 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
         sessionService.updateSession(socketId, { previousLandmarks: landmarks });
       }
     } else {
-      // Lưu landmarks cho frame sau đối chiếu ổn định
       sessionService.updateSession(socketId, { previousLandmarks: landmarks });
     }
 
