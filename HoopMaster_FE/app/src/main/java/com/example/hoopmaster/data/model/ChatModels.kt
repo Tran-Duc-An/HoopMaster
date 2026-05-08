@@ -2,11 +2,34 @@ package com.example.hoopmaster.data.model
 
 data class PlanningMessageRequest(
     val text: String? = null,
-    val audioBase64: String? = null
+    val audioBase64: String? = null,
+    val sessionId: String? = null
 )
 
 data class ConfirmPlanRequest(
     val planId: String? = null
+)
+
+data class PlanningSessionRequest(
+    val sessionId: String? = null
+)
+
+data class PlanningSessionDto(
+    val sessionId: String? = null,
+    val createdAt: String? = null,
+    val messageCount: Int? = null,
+    val lastMessageAt: String? = null
+)
+
+data class PlanningSessionResponseDto(
+    val sessionId: String? = null,
+    val createdAt: String? = null,
+    val raw: Map<String, Any?>? = null
+)
+
+data class PlanningSessionsResponseDto(
+    val sessions: List<PlanningSessionDto>? = null,
+    val raw: Map<String, Any?>? = null
 )
 
 data class PlanningProfileDto(

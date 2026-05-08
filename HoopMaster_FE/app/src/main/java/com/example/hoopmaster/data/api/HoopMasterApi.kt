@@ -9,6 +9,9 @@ import com.example.hoopmaster.data.model.PlansResponseDto
 import com.example.hoopmaster.data.model.PlanningChatResponseDto
 import com.example.hoopmaster.data.model.PlanningHistoryResponseDto
 import com.example.hoopmaster.data.model.PlanningMessageRequest
+import com.example.hoopmaster.data.model.PlanningSessionRequest
+import com.example.hoopmaster.data.model.PlanningSessionResponseDto
+import com.example.hoopmaster.data.model.PlanningSessionsResponseDto
 import com.example.hoopmaster.data.model.PlanResponseDto
 import com.example.hoopmaster.data.model.SignupRequest
 import com.example.hoopmaster.data.model.TrainingPlanDto
@@ -49,8 +52,20 @@ interface HoopMasterApi {
 
     @GET("api/users/{id}/planning-chat/history")
     suspend fun getPlanningHistory(
-        @Path("id") id: String
+        @Path("id") id: String,
+        @Query("sessionId") sessionId: String? = null
     ): Response<PlanningHistoryResponseDto>
+
+    @POST("api/users/{id}/planning-chat/sessions")
+    suspend fun createPlanningSession(
+        @Path("id") id: String,
+        @Body request: PlanningSessionRequest = PlanningSessionRequest()
+    ): Response<PlanningSessionResponseDto>
+
+    @GET("api/users/{id}/planning-chat/sessions")
+    suspend fun getPlanningSessions(
+        @Path("id") id: String
+    ): Response<PlanningSessionsResponseDto>
 
     @GET("api/users/{id}/plans/active")
     suspend fun getActivePlan(

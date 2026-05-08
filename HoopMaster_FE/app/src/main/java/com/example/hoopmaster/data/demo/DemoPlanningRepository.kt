@@ -2,10 +2,13 @@ package com.example.hoopmaster.data.demo
 
 import com.example.hoopmaster.data.model.PlanningChatResponseDto
 import com.example.hoopmaster.data.model.PlanningHistoryResponseDto
+import com.example.hoopmaster.data.model.PlanningSessionDto
+import com.example.hoopmaster.data.model.PlanningSessionResponseDto
+import com.example.hoopmaster.data.model.PlanningSessionsResponseDto
 import com.example.hoopmaster.data.repository.PlanningDataSource
 
 class DemoPlanningRepository : PlanningDataSource {
-    override suspend fun sendMessage(userId: String, text: String): Result<PlanningChatResponseDto> {
+    override suspend fun sendMessage(userId: String, text: String, sessionId: String): Result<PlanningChatResponseDto> {
         val response = DemoFixtures.planningReply(text).let {
             it.copy(plan = it.plan?.copy(userId = userId), planDraft = it.planDraft?.copy(userId = userId))
         }
@@ -16,7 +19,21 @@ class DemoPlanningRepository : PlanningDataSource {
         return Result.success(DemoFixtures.confirmedPlan(planId).copy(plan = DemoFixtures.activePlan().copy(id = planId, userId = userId, status = "active")))
     }
 
-    override suspend fun getHistory(userId: String): Result<PlanningHistoryResponseDto> {
+    override suspend fun getHistory(userId: String, sessionId: String): Result<PlanningHistoryResponseDto> {
         return Result.success(PlanningHistoryResponseDto(history = DemoFixtures.planningHistory()))
+    }
+
+    override suspend fun createSession(userId: String): Result<PlanningSessionResponseDto> {
+        return Result.success(PlanningSessionResponseDto(sessionId = "planning-${System.currentTimeMillis()}"))
+    }
+
+    override suspend fun getSessions(userId: String): Result<PlanningSessionsResponseDto> {
+        return Result.success(
+            PlanningSessionsResponseDto(
+                sessions = listOf(
+                    PlanningSessionDto(sessionId = "default", messageCount = DemoFixtures.planningHistory().size)
+                )
+            )
+        )
     }
 }

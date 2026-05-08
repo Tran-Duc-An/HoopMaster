@@ -14,12 +14,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Send
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -40,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.hoopmaster.data.model.TrainingPlanDto
 import com.example.hoopmaster.ui.components.HoopCard
+import com.example.hoopmaster.ui.components.HoopFilterChip
 import com.example.hoopmaster.ui.components.HoopOutlinedTextField
 import com.example.hoopmaster.ui.components.HoopScreenScaffold
 import com.example.hoopmaster.ui.components.HoopStatus
@@ -57,6 +60,7 @@ import com.example.hoopmaster.ui.theme.HoopRadius
 import com.example.hoopmaster.ui.theme.NavyShadow
 import com.example.hoopmaster.viewmodels.PlanningChatAction
 import com.example.hoopmaster.viewmodels.PlanningChatEntry
+import com.example.hoopmaster.viewmodels.PlanningChatSession
 import com.example.hoopmaster.viewmodels.PlanningChatViewModel
 
 @Composable
@@ -71,7 +75,7 @@ fun PlanningChatScreen(
     val canConfirm = !uiState.isLoading && uiState.draftPlan != null
 
     LaunchedEffect(Unit) {
-        viewModel.loadHistory()
+        viewModel.loadSessions()
     }
 
     HoopScreenScaffold(
@@ -112,6 +116,16 @@ fun PlanningChatScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(tokens.spacing.contentGap)
         ) {
+            item {
+                SessionSelector(
+                    sessions = uiState.sessions,
+                    activeSessionId = uiState.activeSessionId,
+                    isLoading = uiState.isLoading,
+                    onSelectSession = { viewModel.onAction(PlanningChatAction.SelectSession(it)) },
+                    onCreateSession = { viewModel.onAction(PlanningChatAction.CreateSession) }
+                )
+            }
+
             when {
                 uiState.errorMessage != null -> item {
                     HoopStatusPanel(
@@ -165,6 +179,72 @@ fun PlanningChatScreen(
                 item {
                     DraftPlanCard(plan = draftPlan)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SessionSelector(
+    sessions: List<PlanningChatSession>,
+    activeSessionId: String,
+    isLoading: Boolean,
+    onSelectSession: (String) -> Unit,
+    onCreateSession: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Chat sessions",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = sessionLabel(activeSessionId),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Button(
+                onClick = onCreateSession,
+                enabled = !isLoading,
+                shape = RoundedCornerShape(HoopRadius.Full),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = ActiveOrange,
+                    contentColor = NavyShadow,
+                    disabledContainerColor = ActiveOrange.copy(alpha = 0.38f),
+                    disabledContentColor = NavyShadow.copy(alpha = 0.38f)
+                )
+            ) {
+                androidx.compose.material3.Icon(
+                    imageVector = Icons.Outlined.Add,
+                    contentDescription = null
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(text = "New")
+            }
+        }
+
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = 0.dp)
+        ) {
+            items(sessions) { session ->
+                HoopFilterChip(
+                    label = sessionChipLabel(session),
+                    selected = session.sessionId == activeSessionId,
+                    enabled = !isLoading,
+                    onClick = { onSelectSession(session.sessionId) }
+                )
             }
         }
     }
@@ -414,8 +494,20 @@ private fun statusForMessage(message: String): HoopStatus {
     return when {
         message.startsWith("Saved ", ignoreCase = true) -> HoopStatus.Success
         message.equals("Draft ready", ignoreCase = true) -> HoopStatus.Active
+        message.equals("New chat ready", ignoreCase = true) -> HoopStatus.Success
         else -> HoopStatus.Info
     }
+}
+
+private fun sessionChipLabel(session: PlanningChatSession): String {
+    val base = sessionLabel(session.sessionId)
+    return if (session.messageCount > 0) "$base (${session.messageCount})" else base
+}
+
+private fun sessionLabel(sessionId: String): String {
+    if (sessionId == "default") return "Default chat"
+    val parts = sessionId.split("-")
+    return parts.drop(1).firstOrNull()?.takeIf { it.isNotBlank() }?.let { "Chat $it" } ?: "Chat"
 }
 
 private fun planStatusLabel(plan: TrainingPlanDto): String {
