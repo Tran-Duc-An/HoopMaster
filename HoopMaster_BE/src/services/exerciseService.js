@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const exercisesPath = path.join(__dirname, '../../data/exercises.json');
+const DEFAULT_PLAN_EXERCISE_IDS = [1, 2];
 
 function loadExercises() {
   try {
@@ -101,7 +102,10 @@ function getCategories() {
 }
 
 function getDefaultPlan() {
-  const exercises = loadExercises().map((exercise, index) => ({
+  const allExercises = loadExercises();
+  const defaultExercises = allExercises.filter(exercise => DEFAULT_PLAN_EXERCISE_IDS.includes(exercise.id));
+
+  const exercises = defaultExercises.map((exercise, index) => ({
     exerciseId: exercise.id,
     name: exercise.name,
     category: exercise.category,
@@ -121,8 +125,8 @@ function getDefaultPlan() {
   return {
     source: 'default',
     status: 'active',
-    title: 'Default Basketball Training Plan',
-    description: 'Default warmup, strength, and mobility exercises.',
+    title: 'Default Basketball Warmup Plan',
+    description: 'Safe baseline warmup exercises for every session.',
     exercises
   };
 }

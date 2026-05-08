@@ -1,4 +1,4 @@
-const { planningChat } = require('../src/services/planningAgent');
+const { planningChat, extractProfilePatch } = require('../src/services/planningAgent');
 const User = require('../src/models/userModel');
 const trainingPlanService = require('../src/services/trainingPlanService');
 
@@ -82,5 +82,11 @@ describe('planningAgent', () => {
 
   it('throws when text and audio are both missing', async () => {
     await expect(planningChat('user123', {})).rejects.toThrow('No input text or audio');
+  });
+
+  it('parses "sessions per week" phrasing for weekly availability', () => {
+    const patch = extractProfilePatch('3 sessions per week and 45mins per session');
+    expect(patch.weeklyAvailability).toBe(3);
+    expect(patch.sessionDurationMinutes).toBe(45);
   });
 });

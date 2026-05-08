@@ -60,6 +60,9 @@ import com.example.hoopmaster.ui.theme.ActiveOrange
 import com.example.hoopmaster.ui.theme.HoopSpacing
 import com.example.hoopmaster.ui.theme.NavyShadow
 import com.example.hoopmaster.viewmodels.HomeViewModel
+import com.example.hoopmaster.viewmodels.HomeViewModel.Companion.EXERCISE_TAG_DEFAULT
+import com.example.hoopmaster.viewmodels.HomeViewModel.Companion.EXERCISE_TAG_PERSONAL
+import com.example.hoopmaster.viewmodels.HomeAction
 
 @Composable
 fun HomeScreen(
@@ -91,6 +94,7 @@ fun HomeScreen(
 
     HomeScreenContent(
         uiState = uiState,
+        onSelectExerciseTag = { tag -> viewModel.onAction(HomeAction.SelectExerciseTag(tag)) },
         onPersonalizePlan = onPersonalizePlan,
         onStartShooting = onStartShooting,
         onOpenExercise = onOpenExercise,
@@ -103,6 +107,7 @@ fun HomeScreen(
 @Composable
 private fun HomeScreenContent(
     uiState: com.example.hoopmaster.viewmodels.HomeUiState,
+    onSelectExerciseTag: (String) -> Unit,
     onPersonalizePlan: () -> Unit,
     onStartShooting: () -> Unit,
     onOpenExercise: (Int) -> Unit,
@@ -177,6 +182,11 @@ private fun HomeScreenContent(
                                 modifier = Modifier.weight(1f),
                                 verticalArrangement = Arrangement.spacedBy(HoopSpacing.Xs)
                             ) {
+                                Text(
+                                    text = "Active plan",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                                 Text(
                                     text = uiState.activePlanTitle ?: "Active plan",
                                     style = MaterialTheme.typography.titleLarge,
@@ -296,12 +306,30 @@ private fun HomeScreenContent(
 
             if (uiState.exercises.isNotEmpty()) {
                 item {
-                    Text(
-                        text = "Exercises",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.responsiveContentWidth(windowInfo, tokens)
-                    )
+                    Column(
+                        modifier = Modifier.responsiveContentWidth(windowInfo, tokens),
+                        verticalArrangement = Arrangement.spacedBy(HoopSpacing.Sm)
+                    ) {
+                        Text(
+                            text = "Plan exercises",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(HoopSpacing.Sm)) {
+                            HoopFilterChip(
+                                label = "Default",
+                                selected = uiState.selectedExerciseTag == EXERCISE_TAG_DEFAULT,
+                                onClick = { onSelectExerciseTag(EXERCISE_TAG_DEFAULT) },
+                                enabled = uiState.defaultExercises.isNotEmpty()
+                            )
+                            HoopFilterChip(
+                                label = "Personal",
+                                selected = uiState.selectedExerciseTag == EXERCISE_TAG_PERSONAL,
+                                onClick = { onSelectExerciseTag(EXERCISE_TAG_PERSONAL) },
+                                enabled = uiState.personalExercises.isNotEmpty()
+                            )
+                        }
+                    }
                 }
                 items(uiState.exercises) { exercise ->
                     ExercisePlanCard(

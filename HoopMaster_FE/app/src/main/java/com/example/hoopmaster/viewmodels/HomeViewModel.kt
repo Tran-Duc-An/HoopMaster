@@ -15,6 +15,9 @@ import kotlinx.coroutines.flow.update
 data class HomeUiState(
     val plan: TrainingPlanDto? = null,
     val exercises: List<PlanExerciseDto> = emptyList(),
+    val defaultExercises: List<PlanExerciseDto> = emptyList(),
+    val personalExercises: List<PlanExerciseDto> = emptyList(),
+    val selectedExerciseTag: String = HomeViewModel.EXERCISE_TAG_PERSONAL,
     val userName: String? = null,
     val activePlanTitle: String? = null,
     val activePlanDescription: String? = null,
@@ -31,6 +34,7 @@ sealed interface HomeAction {
     data class SetActivePlan(val title: String?) : HomeAction
     data class SetPlan(val plan: TrainingPlanDto?) : HomeAction
     data class SetStreak(val days: Int) : HomeAction
+    data class SelectExerciseTag(val tag: String) : HomeAction
 }
 
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
@@ -63,6 +67,15 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
             is HomeAction.SetStreak ->
                 _uiState.update { it.copy(streakDays = action.days, isLoading = false) }
+
+            is HomeAction.SelectExerciseTag ->
+                _uiState.update { current ->
+                    val nextTag = if (action.tag == EXERCISE_TAG_DEFAULT) EXERCISE_TAG_DEFAULT else EXERCISE_TAG_PERSONAL
+                    current.copy(
+                        selectedExerciseTag = nextTag,
+                        exercises = if (nextTag == EXERCISE_TAG_DEFAULT) current.defaultExercises else current.personalExercises
+                    )
+                }
         }
     }
 
@@ -85,14 +98,31 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 )
             }
 
+            val defaultPlanResult = container.planRepository.getDefaultPlan()
+            val personalPlanResult = if (userId.isNullOrBlank()) {
+                Result.success(null)
+            } else {
+                container.planRepository.getPlans(userId, source = "personalized", status = null)
+                    .map { plans -> plans.firstOrNull() }
+            }
+
             planResult.fold(
                 onSuccess = { plan ->
+                    val defaultExercises = defaultPlanResult.getOrNull()?.exercises.orEmpty()
+                    val personalExercises = personalPlanResult.getOrNull()?.exercises.orEmpty()
+                    val preferredTag = when {
+                        personalExercises.isNotEmpty() -> EXERCISE_TAG_PERSONAL
+                        else -> EXERCISE_TAG_DEFAULT
+                    }
                     _uiState.update {
                         it.copy(
                             plan = plan,
                             activePlanTitle = plan.title,
                             activePlanDescription = plan.description,
-                            exercises = plan.exercises.orEmpty(),
+                            defaultExercises = defaultExercises,
+                            personalExercises = personalExercises,
+                            selectedExerciseTag = preferredTag,
+                            exercises = if (preferredTag == EXERCISE_TAG_DEFAULT) defaultExercises else personalExercises,
                             isLoading = false,
                             errorMessage = null
                         )
@@ -117,5 +147,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             },
             onFailure = { container.planRepository.getDefaultPlan() }
         )
+    }
+
+    companion object {
+        const val EXERCISE_TAG_DEFAULT = "default"
+        const val EXERCISE_TAG_PERSONAL = "personal"
     }
 }

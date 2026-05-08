@@ -6,6 +6,8 @@ const trainingPlanService = require('./trainingPlanService');
 const { callMistralAPI } = require('./mistralService');
 
 const REQUIRED_FIELDS = ['goals', 'injuries', 'level', 'weeklyAvailability'];
+const MIN_PERSONAL_EXERCISES = 1;
+const MAX_PERSONAL_EXERCISES = 2;
 
 const GOAL_KEYWORDS = [
   { key: 'shooting_accuracy', words: ['shoot', 'shot', 'shooting', '3-point', 'three point', 'nem', 'ném', 'accuracy'] },
@@ -32,6 +34,15 @@ const LEVEL_KEYWORDS = [
 
 function normalizeText(text = '') {
   return text.toString().trim().toLowerCase();
+}
+
+function safeNormalizeSessionId(sessionId) {
+  if (typeof normalizeSessionId === 'function') {
+    return normalizeSessionId(sessionId);
+  }
+  if (!sessionId || typeof sessionId !== 'string') return 'default';
+  const trimmed = sessionId.trim();
+  return trimmed || 'default';
 }
 
 function isConfirmIntent(text = '') {
@@ -95,7 +106,9 @@ function extractSeverity(text) {
 }
 
 function extractAvailability(text) {
-  const match = text.match(/(\d+)\s*(day|days|buoi|buổi|ngay|ngày|lan|lần)/i);
+  const match = text.match(
+    /(\d+)\s*(day|days|session|sessions|buoi|buổi|buoi tap|buổi tập|ngay|ngày|lan|lần)(?:\s*(per|\/)\s*week|\s*mot\s*tuan|\s*mỗi\s*tuần)?/i
+  );
   if (!match) return undefined;
   const value = Number(match[1]);
   if (!Number.isInteger(value) || value < 1 || value > 7) return undefined;
@@ -179,7 +192,20 @@ function getMissingFields(profile) {
   });
 }
 
-function buildQuestion(missingFields) {
+function getProfileClarifications(profile) {
+  const clarifications = [];
+  const activeInjuries = (profile.injuries || []).filter(injury => injury.active !== false);
+  if (activeInjuries.length > 0) {
+    const hasUnknownSeverity = activeInjuries.some(injury => !injury.severity || injury.severity === 'unknown');
+    if (hasUnknownSeverity) clarifications.push('injury_details');
+  }
+  return clarifications;
+}
+
+function buildQuestion(missingFields, clarifications = []) {
+  if (clarifications.includes('injury_details')) {
+    return 'Thanks for sharing your injury. Which area hurts most (for example left/right knee), how painful is it (mild/moderate/severe), and which movements make it worse?';
+  }
   const first = missingFields[0];
   if (first === 'goals') return 'What is your main goal: shooting accuracy, strength, mobility, warm-up, or injury prevention?';
   if (first === 'injuries') return 'Do you have any injuries or painful areas? For example: knee, ankle, shoulder, wrist, or back. If none, please say no injuries.';
@@ -188,8 +214,61 @@ function buildQuestion(missingFields) {
   return 'Please share your goals, injuries, level, and schedule so I can build the right plan for you.';
 }
 
-function selectExercises(profile) {
+function buildFollowUpPrompt(profile, missingFields, clarifications, latestUserMessage) {
+  return `You are a basketball rehab-aware coach assistant.
+
+Goal:
+Generate EXACTLY ONE concise follow-up question in English to collect missing planning info.
+
+Rules:
+1) Return only one question sentence (no markdown, no bullets).
+2) Ask for only the highest-priority missing detail.
+3) If injury is mentioned (especially knee/ankle/wrist/shoulder/back), ask a deeper injury triage question:
+   - side/location,
+   - pain severity (mild/moderate/severe),
+   - painful movements/triggers.
+4) Keep under 28 words.
+5) Tone: supportive and practical.
+
+Latest user message:
+${latestUserMessage || ''}
+
+Current profile snapshot:
+${JSON.stringify(profile, null, 2)}
+
+Missing fields:
+${JSON.stringify(missingFields)}
+
+Clarifications needed:
+${JSON.stringify(clarifications)}
+`;
+}
+
+async function buildQuestionWithLlm(profile, missingFields, clarifications, latestUserMessage) {
+  const fallback = buildQuestion(missingFields, clarifications);
+  try {
+    const prompt = buildFollowUpPrompt(profile, missingFields, clarifications, latestUserMessage);
+    const rawResponse = await callMistralAPI(prompt);
+    const candidate = (rawResponse || '').replace(/[`"]/g, '').trim();
+    if (!candidate) return fallback;
+    if (!candidate.endsWith('?')) {
+      return `${candidate.replace(/[.!]+$/, '')}?`;
+    }
+    return candidate;
+  } catch (error) {
+    console.error('[PlanningChat] LLM follow-up question failed:', error.message);
+    return fallback;
+  }
+}
+
+function getDefaultExerciseIds() {
+  const defaultPlan = exerciseService.getDefaultPlan();
+  return new Set((defaultPlan?.exercises || []).map(ex => Number(ex.exerciseId)).filter(Number.isFinite));
+}
+
+function selectExercises(profile, options = {}) {
   const catalog = exerciseService.getAllExercises();
+  const excludeExerciseIds = options.excludeExerciseIds || new Set();
   const activeInjuries = (profile.injuries || []).filter(injury => injury.active !== false).map(injury => injury.area);
   const goals = profile.goals || [];
 
@@ -202,6 +281,7 @@ function selectExercises(profile) {
 
   const avoidStrength = activeInjuries.some(area => ['wrist', 'shoulder'].includes(area));
   const ordered = catalog
+    .filter(exercise => !excludeExerciseIds.has(Number(exercise.id)))
     .filter(exercise => !(avoidStrength && exercise.category === 'strength'))
     .sort((a, b) => {
       const aIndex = categoryPriority.indexOf(a.category);
@@ -209,7 +289,7 @@ function selectExercises(profile) {
       return (aIndex === -1 ? 99 : aIndex) - (bIndex === -1 ? 99 : bIndex);
     });
 
-  return ordered.slice(0, 4).map((exercise, index) => ({
+  return ordered.slice(0, MAX_PERSONAL_EXERCISES).map((exercise, index) => ({
     exerciseId: exercise.id,
     name: exercise.name,
     category: exercise.category,
@@ -265,6 +345,7 @@ function buildPlanPayload(userId, profile) {
   const primaryGoal = profile.goals?.[0] || 'general_training';
   const injuries = (profile.injuries || []).filter(injury => injury.active !== false).map(injury => injury.area);
   const title = buildSpecificPlanTitle(profile);
+  const defaultExerciseIds = getDefaultExerciseIds();
   return {
     userId,
     source: 'personalized',
@@ -273,7 +354,7 @@ function buildPlanPayload(userId, profile) {
     description: `Focused ${toTitleCase(primaryGoal)} plan generated from your profile, schedule, and injury constraints.`,
     goal: primaryGoal,
     injuryConstraints: injuries,
-    exercises: selectExercises(profile),
+    exercises: selectExercises(profile, { excludeExerciseIds: defaultExerciseIds }),
     schedule: {
       daysPerWeek: profile.weeklyAvailability,
       sessionDurationMinutes: profile.sessionDurationMinutes || 30
@@ -321,7 +402,7 @@ function coercePositiveInteger(value, fallback) {
   return parsed;
 }
 
-function buildPlanningPrompt(profile, catalog) {
+function buildPlanningPrompt(profile, catalog, defaultExerciseIds) {
   const catalogSummary = buildExerciseCatalogSummary(catalog);
   return `You are an expert basketball strength and skill coach.
 
@@ -336,7 +417,9 @@ ${JSON.stringify(catalogSummary, null, 2)}
 
 Rules:
 1) Output JSON only (no markdown, no extra text).
-2) Use exactly 4 exercises from the catalog.
+2) Use ONLY 1 or 2 exercises from the catalog.
+3) Never use exercises with IDs in this default set: ${JSON.stringify([...defaultExerciseIds])}.
+4) You MUST prioritize user injury safety in both selection and safetyNotes. If injuries include knee/ankle, avoid deep knee-flexion stress; if wrist/shoulder, avoid high-load upper-body pushing.
 3) Keep structure exactly:
 {
   "title": "string",
@@ -353,10 +436,10 @@ Rules:
     }
   ]
 }
-4) Title must be specific (not generic), include level + primary goal + frequency.
-5) All text must be English.
-6) Respect injury constraints in safetyNotes and selection.
-7) goal should be one of: shooting_accuracy, strength, mobility, warmup, conditioning, general_training.`;
+5) Title must be specific (not generic), include level + primary goal + frequency.
+6) All text must be English.
+7) Respect injury constraints in safetyNotes and selection.
+8) goal should be one of: shooting_accuracy, strength, mobility, warmup, conditioning, general_training.`;
 }
 
 function normalizeLlmPlan(userId, profile, llmPlan, catalog) {
@@ -365,7 +448,7 @@ function normalizeLlmPlan(userId, profile, llmPlan, catalog) {
   }
 
   const catalogById = new Map(catalog.map(ex => [Number(ex.id), ex]));
-  const rawExercises = Array.isArray(llmPlan.exercises) ? llmPlan.exercises.slice(0, 4) : [];
+  const rawExercises = Array.isArray(llmPlan.exercises) ? llmPlan.exercises.slice(0, MAX_PERSONAL_EXERCISES) : [];
   if (rawExercises.length === 0) {
     throw new Error('LLM returned no exercises');
   }
@@ -407,7 +490,7 @@ function normalizeLlmPlan(userId, profile, llmPlan, catalog) {
     .filter(Boolean)
     .map((exercise, index) => ({ ...exercise, order: index + 1 }));
 
-  if (normalizedExercises.length < 3) {
+  if (normalizedExercises.length < MIN_PERSONAL_EXERCISES) {
     throw new Error('LLM returned insufficient valid exercises');
   }
 
@@ -440,18 +523,37 @@ function normalizeLlmPlan(userId, profile, llmPlan, catalog) {
 }
 
 async function buildPlanPayloadWithLlm(userId, profile) {
-  const catalog = exerciseService.getAllExercises();
+  const defaultExerciseIds = getDefaultExerciseIds();
+  const catalog = exerciseService
+    .getAllExercises()
+    .filter(exercise => !defaultExerciseIds.has(Number(exercise.id)));
   if (!catalog.length) throw new Error('Exercise catalog is empty');
 
-  const prompt = buildPlanningPrompt(profile, catalog);
+  const prompt = buildPlanningPrompt(profile, catalog, defaultExerciseIds);
   const rawResponse = await callMistralAPI(prompt);
   const llmPlan = extractJsonObject(rawResponse);
   return normalizeLlmPlan(userId, profile, llmPlan, catalog);
 }
 
+async function buildSessionProfile(userId, sessionId, currentUserText) {
+  const history = await getHistory(userId, 'planning', 100, sessionId);
+  const sessionUserMessages = history
+    .filter(message => message.role === 'user')
+    .map(message => message.content || '');
+
+  if (currentUserText && sessionUserMessages.length === 0) {
+    sessionUserMessages.push(currentUserText);
+  }
+
+  return sessionUserMessages.reduce((profile, content) => {
+    const patch = extractProfilePatch(content);
+    return mergeProfile(profile, patch);
+  }, {});
+}
+
 async function planningChat(userId, { text, audioBase64, sessionId }) {
   const startedAt = Date.now();
-  const normalizedSessionId = normalizeSessionId(sessionId);
+  const normalizedSessionId = safeNormalizeSessionId(sessionId);
   const userText = text || '';
   if (!userText && !audioBase64) throw new Error('No input text or audio');
   if (audioBase64 && !text) throw new Error('Audio input is not supported yet');
@@ -480,17 +582,15 @@ async function planningChat(userId, { text, audioBase64, sessionId }) {
     console.log(`[PlanningChat] Confirm intent but no draft found userId=${userId}`);
   }
 
-  const profilePatch = extractProfilePatch(userText);
-  const mergedProfile = mergeProfile(user.trainingProfile || {}, profilePatch);
-  user.trainingProfile = mergedProfile;
-  user.updatedAt = new Date();
-  await user.save();
-  console.log(`[PlanningChat] Saved merged training profile userId=${userId}`);
+  const mergedProfile = await buildSessionProfile(userId, normalizedSessionId, userText);
+  console.log(`[PlanningChat] Built session profile userId=${userId} sessionId=${normalizedSessionId}`);
 
   const missingFields = getMissingFields(mergedProfile);
-  if (missingFields.length > 0) {
-    console.log(`[PlanningChat] Missing profile fields userId=${userId} fields=${missingFields.join(',')}`);
-    const reply = buildQuestion(missingFields);
+  const clarifications = getProfileClarifications(mergedProfile);
+  if (missingFields.length > 0 || clarifications.length > 0) {
+    const requiredItems = [...missingFields, ...clarifications];
+    console.log(`[PlanningChat] Missing profile fields userId=${userId} fields=${requiredItems.join(',')}`);
+    const reply = await buildQuestionWithLlm(mergedProfile, missingFields, clarifications, userText);
     await addMessage(userId, 'planning', 'assistant', reply, normalizedSessionId);
     const ttsResult = await synthesizeSpeech(reply, user.tone || 'neutral');
     console.log(`[PlanningChat] Question response sent userId=${userId} elapsedMs=${Date.now() - startedAt}`);
@@ -499,7 +599,7 @@ async function planningChat(userId, { text, audioBase64, sessionId }) {
       reply,
       audioBase64: ttsResult.audioBase64,
       collectedProfile: mergedProfile,
-      missingFields,
+      missingFields: requiredItems,
       planDraft: null
     };
   }
@@ -545,7 +645,7 @@ async function confirmPlanningPlan(userId, planId) {
 }
 
 async function getPlanningHistory(userId, limit = 10, sessionId = 'default') {
-  return getHistory(userId, 'planning', limit, normalizeSessionId(sessionId));
+  return getHistory(userId, 'planning', limit, safeNormalizeSessionId(sessionId));
 }
 
 module.exports = {
