@@ -1,130 +1,108 @@
 package com.example.hoopmaster.viewmodels
 
 import android.app.Application
+import android.media.MediaPlayer
+import android.util.Base64
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
-import com.example.hoopmaster.core.di.AppContainer
-import com.example.hoopmaster.data.model.AnglesUpdateEvent
-import com.example.hoopmaster.data.model.AudioFeedbackEvent
-import com.example.hoopmaster.data.model.ConnectedEvent
-import com.example.hoopmaster.data.model.ExerciseProgressEvent
-import com.example.hoopmaster.data.model.PostShotFeedbackEvent
-import com.example.hoopmaster.data.model.SocketErrorEvent
-import com.example.hoopmaster.media.AudioPlayer
-import com.example.hoopmaster.data.realtime.CoachSocket
+import com.example.hoopmaster.network.SessionManager
+import com.example.hoopmaster.network.WebSocketManager
 import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarkerResult
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
-
-data class TrackingUiState(
-    val poseResult: PoseLandmarkerResult? = null,
-    val feedbackText: String = "Đang kết nối Server...",
-    val selectedTone: String = "neutral",
-    val isConnected: Boolean = false,
-    val isExerciseActive: Boolean = false,
-    val lastShotReleasedAt: Long? = null,
-    val errorMessage: String? = null
-)
-
-sealed interface TrackingAction {
-    data object Connect : TrackingAction
-    data object StartExercise : TrackingAction
-    data class OnPoseDetected(val result: PoseLandmarkerResult) : TrackingAction
-    data object OnShotReleased : TrackingAction
-    data object StopExercise : TrackingAction
-    data object Disconnect : TrackingAction
-    data class ToneChanged(val tone: String) : TrackingAction
-}
+import java.io.File
+import java.io.FileOutputStream
 
 class TrackingViewModel(application: Application) : AndroidViewModel(application) {
-    private val container = AppContainer(application)
-    private val socketClient: CoachSocket = container.createSocketClient()
 
+    // Các State để UI (Compose) tự động cập nhật
     val poseResult = mutableStateOf<PoseLandmarkerResult?>(null)
     val feedbackText = mutableStateOf("Đang kết nối Server...")
     val selectedTone = mutableStateOf("neutral")
 
-    private val _uiState = MutableStateFlow(
-        TrackingUiState(
-            feedbackText = feedbackText.value,
-            selectedTone = selectedTone.value,
-            isConnected = false
-        )
-    )
-    val uiState: StateFlow<TrackingUiState> = _uiState.asStateFlow()
+    private val sessionManager = SessionManager(application)
+    private var webSocketManager: WebSocketManager? = null
 
-    private val audioPlayer = AudioPlayer(application.applicationContext)
+    // Thêm MediaPlayer để phát âm thanh phản hồi từ AI
+    private var mediaPlayer: MediaPlayer? = null
+
+    // Bộ kiểm soát tần suất gửi dữ liệu (Throttle)
     private var lastSendTime = 0L
-    private val sendInterval = 100L
+    private val SEND_INTERVAL = 100L // Gửi tối đa 10 khung hình/giây để tránh nghẽn mạng
 
     init {
-        observeSocketEvents()
-        connect()
+        // Khởi tạo Socket.IO Manager
+        webSocketManager = WebSocketManager(
+            onConnected = { message ->
+                feedbackText.value = message
+            },
+            onFeedbackReceived = { text, audioBase64 ->
+                // 1. Hiện chữ lên màn hình
+                if (text.isNotEmpty()) {
+                    feedbackText.value = text
+                }
+                // 2. Phát âm thanh nếu có chuỗi Base64
+                if (!audioBase64.isNullOrEmpty()) {
+                    playAudioFromBase64(audioBase64)
+                }
+            }
+        )
+
+        // Lấy User ID đã đăng nhập và bắt đầu kết nối
+        webSocketManager?.connect(sessionManager.getUserId())
     }
 
-    fun onAction(action: TrackingAction) {
-        when (action) {
-            TrackingAction.Connect -> connect()
-            TrackingAction.StartExercise -> startExercise()
-            is TrackingAction.OnPoseDetected -> onPoseDetected(action.result)
-            TrackingAction.OnShotReleased -> onShotReleased()
-            TrackingAction.StopExercise -> stopExercise()
-            TrackingAction.Disconnect -> disconnect()
-            is TrackingAction.ToneChanged -> updateTone(action.tone)
+    // Hàm chuyển đổi và phát âm thanh từ chuỗi Base64
+    private fun playAudioFromBase64(base64String: String) {
+        try {
+            val cleanBase64 = if (base64String.contains(",")) {
+                base64String.substringAfter(",")
+            } else {
+                base64String
+            }
+
+            Log.d("AudioPlayer", "Đã nhận chuỗi Base64 có độ dài: ${cleanBase64.length}")
+
+            // Nếu chuỗi quá ngắn, chắc chắn không phải file Audio thật
+            if (cleanBase64.length < 100) {
+                Log.e("AudioPlayer", "Chuỗi Base64 quá ngắn, Backend chưa tạo được âm thanh!")
+                return
+            }
+
+            val audioBytes = Base64.decode(cleanBase64, Base64.DEFAULT)
+            Log.d("AudioPlayer", "Đã dịch thành mảng byte có kích thước: ${audioBytes.size} bytes")
+
+            val tempFile = File.createTempFile("ai_coach_feedback", ".mp3", getApplication<Application>().cacheDir)
+            tempFile.deleteOnExit()
+
+            val fos = FileOutputStream(tempFile)
+            fos.write(audioBytes)
+            fos.close()
+
+            mediaPlayer?.release()
+            mediaPlayer = MediaPlayer().apply {
+                setOnErrorListener { mp, what, extra ->
+                    Log.e("AudioPlayer", "MediaPlayer lỗi phát nhạc! What: $what, Extra: $extra")
+                    true
+                }
+
+                setDataSource(tempFile.absolutePath)
+                prepare()
+                start()
+                Log.d("AudioPlayer", "Đang phát âm thanh thành công!")
+            }
+        } catch (e: Exception) {
+            Log.e("AudioPlayer", "Lỗi Exception khi phát nhạc: ${e.message}")
         }
     }
 
-    fun connect() {
-        socketClient.connect(container.sessionStore.getUserId())
-    }
-
-    fun startExercise(
-        exerciseId: Int? = null,
-        sets: Int? = null,
-        reps: Int? = null,
-        restSeconds: Int? = null
-    ) {
-        syncState { it.copy(isExerciseActive = true) }
-        if (exerciseId != null) {
-            socketClient.startExercise(exerciseId, sets, reps, restSeconds)
-        }
-    }
-
-    fun onPoseDetected(result: PoseLandmarkerResult) {
-        poseResult.value = result
-        syncState { it.copy(poseResult = result) }
-        streamPoseToServer(result)
-    }
-
-    fun onShotReleased() {
-        socketClient.sendShotReleased()
-        syncState { it.copy(lastShotReleasedAt = System.currentTimeMillis()) }
-    }
-
-    fun stopExercise() {
-        socketClient.stopExercise()
-        syncState { it.copy(isExerciseActive = false) }
-    }
-
-    fun disconnect() {
-        socketClient.disconnect()
-        syncState { it.copy(isConnected = false, isExerciseActive = false) }
-    }
-
-    private fun setFeedback(text: String) {
-        feedbackText.value = text
-        syncState { it.copy(feedbackText = text) }
-    }
-
+    // Hàm đóng gói tọa độ khung xương MediaPipe và bắn lên Backend
     fun streamPoseToServer(result: PoseLandmarkerResult, mirrorX: Boolean = false) {
         val currentTime = System.currentTimeMillis()
-        if (currentTime - lastSendTime < sendInterval) return
+
+        // 1. Kiểm soát tần suất gửi
+        if (currentTime - lastSendTime < SEND_INTERVAL) return
         lastSendTime = currentTime
 
         if (result.landmarks().isEmpty()) return
@@ -132,6 +110,7 @@ class TrackingViewModel(application: Application) : AndroidViewModel(application
         val landmarks = result.landmarks()[0]
         val jsonArray = JSONArray()
 
+        // Lặp qua 33 điểm khớp trên cơ thể
         landmarks.forEachIndexed { index, landmark ->
             val transformedX = if (mirrorX) 1f - landmark.x() else landmark.x()
             val point = JSONObject().apply {
@@ -139,86 +118,38 @@ class TrackingViewModel(application: Application) : AndroidViewModel(application
                 put("x", transformedX)
                 put("y", landmark.y())
                 put("z", landmark.z())
-                put("visibility", landmark.visibility().orElse(0f))
+                put("visibility", landmark.visibility().orElse(0f)) // Đã đổi thành visibility
             }
             jsonArray.put(point)
         }
 
+        // 2. TẠO PAYLOAD PHẲNG (Khớp 100% với Backend)
         val payload = JSONObject().apply {
-            put("landmarks", jsonArray)
-            put("exerciseType", "shooting")
+            put("landmarks", jsonArray)        // Backend gọi: const { landmarks } = poseData;
+            put("exerciseType", "shooting")    // Backend gọi: const { exerciseType } = poseData;
             put("tone", selectedTone.value)
             put("timestamp", currentTime)
             put("action", "pose_data")
         }
 
-        socketClient.sendPoseData(payload)
+        // Gọi Manager để đẩy data qua mạng
+        webSocketManager?.sendPoseData(payload)
     }
 
+    // Hàm cập nhật thái độ (tone) của AI Coach khi người dùng chọn trên màn hình
     fun updateTone(tone: String) {
-        selectedTone.value = tone
-        syncState { it.copy(selectedTone = tone) }
-    }
-
-    private fun syncState(transform: (TrackingUiState) -> TrackingUiState) {
-        val next = transform(_uiState.value)
-        _uiState.value = next
-        poseResult.value = next.poseResult
-        feedbackText.value = next.feedbackText
-        selectedTone.value = next.selectedTone
-    }
-
-    private fun observeSocketEvents() {
-        viewModelScope.launch {
-            socketClient.events.collect { event ->
-                when (event) {
-                    is ConnectedEvent -> {
-                        val message = event.message?.takeIf { it.isNotBlank() } ?: "Đã kết nối!"
-                        setFeedback(message)
-                        syncState {
-                            it.copy(
-                                isConnected = true,
-                                errorMessage = null
-                            )
-                        }
-                    }
-
-                    is AudioFeedbackEvent -> {
-                        event.text?.takeIf { it.isNotBlank() }?.let { setFeedback(it) }
-                        event.audioBase64?.takeIf { it.isNotBlank() }?.let { audioPlayer.playBase64Audio(it) }
-                    }
-
-                    is AnglesUpdateEvent -> {
-                        event.raw?.optString("feedback")?.takeIf { it.isNotBlank() }?.let { setFeedback(it) }
-                    }
-
-                    is ExerciseProgressEvent -> {
-                        val active = event.raw?.optBoolean("isActive")
-                        if (active != null) {
-                            syncState { it.copy(isExerciseActive = active) }
-                        }
-                        event.raw?.optString("message")?.takeIf { it.isNotBlank() }?.let { setFeedback(it) }
-                    }
-
-                    is PostShotFeedbackEvent -> {
-                        event.text?.takeIf { it.isNotBlank() }?.let { setFeedback(it) }
-                        event.audioBase64?.takeIf { it.isNotBlank() }?.let { audioPlayer.playBase64Audio(it) }
-                    }
-
-                    is SocketErrorEvent -> {
-                        val message = event.message?.takeIf { it.isNotBlank() } ?: "Socket error"
-                        syncState { it.copy(isConnected = false, errorMessage = message) }
-                        setFeedback(message)
-                        Log.e("TrackingViewModel", "socket error: $message")
-                    }
-                }
-            }
+        selectedTone.value = when (tone) {
+            "neutral", "cheerful", "strict" -> tone
+            else -> "neutral"
         }
     }
 
+    // Hàm dọn dẹp bộ nhớ khi tắt app hoặc chuyển màn hình
     override fun onCleared() {
         super.onCleared()
-        socketClient.disconnect()
-        audioPlayer.release()
+        webSocketManager?.disconnect()
+        // Dọn dẹp MediaPlayer để không bị rò rỉ bộ nhớ (memory leak)
+        mediaPlayer?.release()
+        mediaPlayer = null
     }
 }

@@ -1,13 +1,12 @@
 package com.example.hoopmaster.network
 
-import com.example.hoopmaster.core.config.AppConfig
-import com.example.hoopmaster.data.api.HoopMasterApi
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 
 object RetrofitClient {
-    private val BASE_URL = AppConfig.API_BASE_URL
+    // 10.0.2.2 là địa chỉ IP trỏ về localhost của máy tính khi dùng Emulator
+    private const val BASE_URL = "http://10.0.2.2:3000/"
 
     val instance: Retrofit by lazy {
         Retrofit.Builder()
@@ -18,9 +17,5 @@ object RetrofitClient {
 
     val apiService: ApiService by lazy {
         instance.create(ApiService::class.java)
-    }
-
-    val hoopMasterApi: HoopMasterApi by lazy {
-        instance.create(HoopMasterApi::class.java)
     }
 }
