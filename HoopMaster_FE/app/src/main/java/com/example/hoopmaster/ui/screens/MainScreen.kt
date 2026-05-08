@@ -21,14 +21,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -39,15 +37,7 @@ import com.example.hoopmaster.R
 
 @Composable
 fun MainScreen(onNavigateToTracking: () -> Unit) {
-    val context = LocalContext.current
-    val logoId = remember(context) {
-        val drawableId = context.resources.getIdentifier("hoopmaster_logo", "drawable", context.packageName)
-        if (drawableId != 0) {
-            drawableId
-        } else {
-            context.resources.getIdentifier("hoopmaster_logo_foreground", "mipmap", context.packageName)
-        }
-    }
+    val logoId = R.drawable.hoopmaster_logo
 
     val surfaceLow = Color(0xFF1C1B1C)
     val surfaceHigh = Color(0xFF2A2A2B)
