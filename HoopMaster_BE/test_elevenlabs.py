@@ -1,6 +1,6 @@
 import requests
 
-API_KEY = "sk_fe44c882f4ecc0753ea4f55e4aa42df505441713a965efe4"
+API_KEY = "sk_dce188aa000f2ca365ab5136452d207e09407ba09efc9daf"
 url = "https://api.elevenlabs.io/v1/text-to-speech/ErXwobaYiN019PkySvjV/stream"
 headers = {
     "xi-api-key": API_KEY,

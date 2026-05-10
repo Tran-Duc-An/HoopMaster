@@ -371,7 +371,7 @@ function validateConfig() {
       localFormat: process.env.LOCAL_TTS_FORMAT || 'wav',
       elevenLabsVoiceId: process.env.ELEVENLABS_VOICE_ID || 'ErXwobaYiN019PkySvjV',
       elevenLabsModel: process.env.ELEVENLABS_MODEL || 'eleven_multilingual_v2',
-      elevenLabsFormat: process.env.ELEVENLABS_OUTPUT_FORMAT || 'mp3'
+      elevenLabsFormat: process.env.ELEVENLABS_OUTPUT_FORMAT || 'wav'
     }
   };
 }

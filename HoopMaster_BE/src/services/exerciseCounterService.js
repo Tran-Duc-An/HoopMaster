@@ -129,12 +129,24 @@ function processPoseCounter(runtime, landmarks, now) {
   }
 
   if (angle <= counter.downThreshold) {
-    updated.phase = findPhaseKey(updated.exercise, ['down', 'left', 'low']) || 'down';
+    const downPhaseKey = findPhaseKey(updated.exercise, ['down', 'left', 'low']) || 'down';
+    // Emit cue riêng cho phase down (lower body) - incrementRep không ảnh hưởng
+    if (updated.phase !== downPhaseKey) {
+      const downPhase = (updated.exercise.counting?.phases || []).find(p => p.key === downPhaseKey);
+      if (downPhase?.cue) {
+        updated.nextCue = buildCue('phase', downPhase.cue, {
+          exerciseId: updated.exerciseId,
+          phase: downPhase.key
+        });
+      }
+    }
+    updated.phase = downPhaseKey;
     updated.hasReachedBottom = true;
   } else if (angle >= counter.upThreshold) {
     const countPhase = updated.exercise.counting?.countOnPhase || 'top';
     updated.phase = countPhase;
     if (updated.hasReachedBottom) {
+      // incrementRep sẽ set nextCue = rep cue, không cần emit phase cue riêng cho up
       updated = incrementRep(updated, now);
       updated.hasReachedBottom = false;
     }
@@ -224,14 +236,12 @@ function calculateJointAngle(landmarks, joint) {
 }
 
 function buildRepCue(exercise, rep) {
+  // Không nối tất cả phase cues - mỗi phase đã được emit cue riêng qua phase transition
+  // của processTimedCadence (cho timed_cadence) hoặc qua processPoseCounter.
+  // Chỉ emit số rep + repTemplate để tránh TTS đọc 1 câu dài liền mạch.
   const template = exercise.voiceCues?.repTemplate;
   if (template) return template.replace('{rep}', String(rep));
-
-  const phaseText = (exercise.counting?.phases || [])
-    .map(phase => phase.cue)
-    .filter(Boolean)
-    .join('. ');
-  return `${phaseText}. Rep ${rep}.`;
+  return `Rep ${rep}.`;
 }
 
 function buildCue(type, text, metadata = {}) {
