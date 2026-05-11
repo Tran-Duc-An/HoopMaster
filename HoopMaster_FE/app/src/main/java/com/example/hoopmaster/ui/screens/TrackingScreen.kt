@@ -17,6 +17,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -116,7 +117,6 @@ fun TrackingScreen(
 
     var lensFacing by remember { mutableIntStateOf(CameraSelector.LENS_FACING_BACK) }
     var showSkeleton by remember { mutableStateOf(true) }
-    var poseInitError by remember { mutableStateOf<String?>(null) }
     var hasCameraPermission by remember {
         mutableStateOf(
             ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
@@ -162,9 +162,6 @@ fun TrackingScreen(
                                     mirrorX = lensFacing == CameraSelector.LENS_FACING_FRONT
                                 )
                             },
-                            onError = { message ->
-                                poseInitError = message
-                            }
                         )
                     )
                 }
@@ -218,6 +215,8 @@ fun TrackingScreen(
         TrackingTopHud(
             uiState = uiStateValue,
             showSkeleton = showSkeleton,
+            selectedTone = viewModel.selectedTone.value,
+            onToneSelected = viewModel::updateTone,
             onToggleSkeleton = { showSkeleton = !showSkeleton },
             onFlipCamera = {
                 lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK) {
@@ -236,15 +235,6 @@ fun TrackingScreen(
                 .padding(horizontal = 20.dp, vertical = 18.dp)
         )
 
-        ToneControlStrip(
-            selectedTone = viewModel.selectedTone.value,
-            onToneSelected = viewModel::updateTone,
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .statusBarsPadding()
-                .padding(top = 84.dp, start = 20.dp, end = 20.dp)
-        )
-
         TelemetryHud(
             liveAngles = uiStateValue.liveAngles,
             stats = uiStateValue.lastShotStats,
@@ -260,16 +250,6 @@ fun TrackingScreen(
                 .navigationBarsPadding()
                 .padding(horizontal = 20.dp, vertical = 18.dp)
         )
-
-        poseInitError?.let { error ->
-            HudErrorBanner(
-                message = error,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .statusBarsPadding()
-                    .padding(top = 132.dp, start = 20.dp, end = 20.dp)
-            )
-        }
     }
 }
 
@@ -306,29 +286,41 @@ private fun CameraGradeOverlay() {
 private fun TrackingTopHud(
     uiState: TrackingUiState,
     showSkeleton: Boolean,
+    selectedTone: String,
+    onToneSelected: (String) -> Unit,
     onToggleSkeleton: () -> Unit,
     onFlipCamera: () -> Unit,
     onEnd: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
+    Column(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Top
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        EndButton(onClick = onEnd)
-        MakesPill(
-            shotCount = uiState.shotCount,
-            target = uiState.sessionInfo?.exercise?.targetReps ?: 30
-        )
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            EndButton(onClick = onEnd)
+            MakesPill(
+                shotCount = uiState.shotCount,
+                target = uiState.sessionInfo?.exercise?.targetReps ?: 30
+            )
             HudCircleButton(
                 icon = Icons.Filled.FlipCameraAndroid,
                 contentDescription = "Flip camera",
                 onClick = onFlipCamera
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ToneControlStrip(
+                selectedTone = selectedTone,
+                onToneSelected = onToneSelected
             )
             HudCircleButton(
                 icon = if (showSkeleton) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
@@ -359,11 +351,6 @@ private fun EndButton(onClick: () -> Unit) {
             contentDescription = null,
             tint = OnErrorContainer,
             modifier = Modifier.size(24.dp)
-        )
-        Text(
-            text = "END",
-            style = technicalLabel(14),
-            color = OnErrorContainer
         )
     }
 }
@@ -435,7 +422,7 @@ private fun ToneControlStrip(
     modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier,
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -641,6 +628,7 @@ private fun TelemetryCard(
     Row(
         modifier = modifier
             .width(154.dp)
+            .height(IntrinsicSize.Min)
             .clip(RoundedCornerShape(10.dp))
             .background(SurfaceLowest.copy(alpha = 0.70f))
             .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(10.dp)),
@@ -713,6 +701,7 @@ private fun BottomCoachPanel(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .height(IntrinsicSize.Min)
                 .clip(RoundedCornerShape(18.dp))
                 .background(Surface.copy(alpha = 0.82f))
                 .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(18.dp))
