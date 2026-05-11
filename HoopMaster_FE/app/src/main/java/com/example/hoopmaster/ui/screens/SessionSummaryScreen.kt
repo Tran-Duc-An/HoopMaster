@@ -356,12 +356,12 @@ private fun SummaryMetricCard(
             .border(1.dp, Color.White.copy(alpha = 0.04f), RoundedCornerShape(18.dp))
             .padding(18.dp)
     ) {
-        MetricRingAccent(
-            accent = accent,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .size(112.dp)
-        )
+//        MetricRingAccent(
+//            accent = accent,
+//            modifier = Modifier
+//                .align(Alignment.BottomEnd)
+//                .size(112.dp)
+//        )
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.SpaceBetween
@@ -419,33 +419,33 @@ private fun SummaryMetricCard(
     }
 }
 
-@Composable
-private fun MetricRingAccent(
-    accent: Color,
-    modifier: Modifier = Modifier
-) {
-    Canvas(modifier = modifier) {
-        val stroke = 9.dp.toPx()
-        drawArc(
-            color = SurfaceHigh.copy(alpha = 0.36f),
-            startAngle = 0f,
-            sweepAngle = 360f,
-            useCenter = false,
-            topLeft = Offset(stroke / 2f, stroke / 2f),
-            size = Size(size.width - stroke, size.height - stroke),
-            style = Stroke(stroke, cap = StrokeCap.Round)
-        )
-        drawArc(
-            color = accent.copy(alpha = 0.86f),
-            startAngle = -86f,
-            sweepAngle = 82f,
-            useCenter = false,
-            topLeft = Offset(stroke / 2f, stroke / 2f),
-            size = Size(size.width - stroke, size.height - stroke),
-            style = Stroke(stroke, cap = StrokeCap.Round)
-        )
-    }
-}
+//@Composable
+//private fun MetricRingAccent(
+//    accent: Color,
+//    modifier: Modifier = Modifier
+//) {
+//    Canvas(modifier = modifier) {
+//        val stroke = 9.dp.toPx()
+//        drawArc(
+//            color = SurfaceHigh.copy(alpha = 0.36f),
+//            startAngle = 0f,
+//            sweepAngle = 360f,
+//            useCenter = false,
+//            topLeft = Offset(stroke / 2f, stroke / 2f),
+//            size = Size(size.width - stroke, size.height - stroke),
+//            style = Stroke(stroke, cap = StrokeCap.Round)
+//        )
+//        drawArc(
+//            color = accent.copy(alpha = 0.86f),
+//            startAngle = -86f,
+//            sweepAngle = 82f,
+//            useCenter = false,
+//            topLeft = Offset(stroke / 2f, stroke / 2f),
+//            size = Size(size.width - stroke, size.height - stroke),
+//            style = Stroke(stroke, cap = StrokeCap.Round)
+//        )
+//    }
+//}
 
 @Composable
 private fun AccuracyChartCard(
