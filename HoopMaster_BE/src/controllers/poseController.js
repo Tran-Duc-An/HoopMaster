@@ -466,44 +466,43 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
 async function handlePostShotAnalysis(socketId, emitCallback) {
   try {
     const session = sessionService.getSession(socketId);
-    if (!session || session.frameBuffer.length === 0) return;
     const now = Date.now();
-
-    if (!shouldRunPostShotAnalysis(session, now)) {
-      console.log('[Controller] Ignoring premature shot_released:', {
-        socketId,
-        phase: session.shotState?.phase,
-        frameCount: session.frameBuffer.length
-      });
-      return;
-    }
-
-    // Keep post-shot processing lightweight: no LLM feedback.
-    // Instead, count shots and send shot count update to FE.
-    const stats = calculateShotStatistics(session.frameBuffer);
-
-    sessionService.clearFrameBuffer(socketId);
-    sessionService.updateSession(socketId, {
-      shotInProgress: false,
-      lastFeedback: null,
-      previousLandmarks: null,
-      shotState: {
-        ...session.shotState,
-        phase: 'not_ready',
-        enteredPhaseAt: now,
-        lastReleaseAt: null,
-        lastFormReadyAt: null,
-        reason: 'post_shot_complete'
-      }
-    });
     sessionService.incrementStats(socketId, 'shotsCompleted');
+    let stats = {};
+    let llmFeedback = '';
+    if (session && session.frameBuffer.length > 0) {
+      stats = calculateShotStatistics(session.frameBuffer);
+      sessionService.clearFrameBuffer(socketId);
+      sessionService.updateSession(socketId, {
+        shotInProgress: false,
+        lastFeedback: null,
+        previousLandmarks: null,
+        shotState: {
+          ...session.shotState,
+          phase: 'not_ready',
+          enteredPhaseAt: now,
+          lastReleaseAt: null,
+          lastFormReadyAt: null,
+          reason: 'post_shot_complete'
+        }
+      });
+      // Gọi LLM để lấy nhận xét tổng quan
+      try {
+        const { generatePostShotFeedback } = require('../services/llmService');
+        const llmResult = await generatePostShotFeedback(stats);
+        llmFeedback = llmResult?.feedback || '';
+      } catch (llmErr) {
+        console.error('[Controller] LLM feedback error:', llmErr.message);
+        llmFeedback = 'Không thể sinh nhận xét tổng quan.';
+      }
+    }
     const updatedSession = sessionService.getSession(socketId);
     emitCallback('shot_count_update', {
       shotCount: updatedSession?.sessionStats?.shotsCompleted || 0,
       timestamp: new Date().toISOString(),
-      stats
+      stats,
+      llmFeedback
     });
-
   } catch (error) {
     console.error('[Controller] Post-shot error:', error.message);
   }

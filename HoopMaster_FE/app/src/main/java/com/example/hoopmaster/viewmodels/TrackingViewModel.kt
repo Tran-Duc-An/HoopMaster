@@ -39,7 +39,8 @@ data class TrackingUiState(
     val lastShotStats: ShotStatsDto? = null,
     val sessionInfo: SessionInfoDto? = null,
     val lastShotReleasedAt: Long? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val llmFeedback: String? = null
 )
 
 sealed interface TrackingAction {
@@ -235,7 +236,10 @@ class TrackingViewModel(application: Application) : AndroidViewModel(application
                     }
 
                     is ShotCountUpdateEvent -> {
-                        syncState { it.copy(shotCount = event.shotCount) }
+                        syncState { it.copy(
+                            shotCount = event.shotCount,
+                            llmFeedback = event.llmFeedback
+                        ) }
                         setFeedback("Shots completed: ${event.shotCount}")
                     }
 

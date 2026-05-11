@@ -243,6 +243,32 @@ fun TrackingScreen(
                 .padding(horizontal = 20.dp)
         )
 
+
+        // Hiển thị nhận xét tổng quan từ LLM nếu có
+        uiStateValue.llmFeedback?.takeIf { it.isNotBlank() }?.let { feedback ->
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 18.dp)
+                    .background(
+                        color = Color(0xFF2C1C17).copy(alpha = 0.92f),
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                    .padding(18.dp)
+            ) {
+                Text(
+                    text = feedback,
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+
         BottomCoachPanel(
             uiState = uiStateValue,
             modifier = Modifier
