@@ -261,8 +261,8 @@ private fun PlanningTopBar(onBack: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .statusBarsPadding()
             .background(SurfaceLowest.copy(alpha = 0.88f))
+            .statusBarsPadding()
             .border(1.dp, OutlineVariant.copy(alpha = 0.26f))
             .padding(horizontal = 20.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.SpaceBetween,

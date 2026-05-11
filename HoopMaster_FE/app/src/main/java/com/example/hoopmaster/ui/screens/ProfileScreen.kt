@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -36,6 +35,7 @@ import androidx.compose.material.icons.outlined.ManageAccounts
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Mood
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.SportsBasketball
@@ -191,8 +191,8 @@ private fun ProfileTopBar() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .statusBarsPadding()
             .background(SurfaceLowest.copy(alpha = 0.90f))
+            .statusBarsPadding()
             .border(1.dp, OutlineVariant.copy(alpha = 0.28f))
             .padding(horizontal = 20.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -563,7 +563,6 @@ private fun ProfileBottomNav(
             .height(92.dp)
             .background(SurfaceLowest.copy(alpha = 0.94f))
             .border(1.dp, OutlineVariant.copy(alpha = 0.22f))
-            .navigationBarsPadding()
             .padding(horizontal = 20.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -571,7 +570,7 @@ private fun ProfileBottomNav(
         BottomNavItem(label = "Home", icon = Icons.Filled.Home, selected = false, onClick = onHome)
         BottomNavItem(label = "Training", icon = Icons.Outlined.SportsBasketball, selected = false, enabled = false, onClick = {})
         BottomNavItem(label = "Analytics", icon = Icons.Outlined.Insights, selected = false, enabled = false, onClick = {})
-        BottomNavItem(label = "Profile", icon = Icons.Filled.Person, selected = true, onClick = {})
+        BottomNavItem(label = "Profile", icon = Icons.Outlined.Person, selected = true, onClick = {})
     }
 }
 

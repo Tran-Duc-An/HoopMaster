@@ -224,8 +224,8 @@ private fun DetailTopBar(onBack: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .statusBarsPadding()
             .background(SurfaceLowest.copy(alpha = 0.90f))
+            .statusBarsPadding()
             .border(1.dp, OutlineVariant.copy(alpha = 0.26f))
             .padding(horizontal = 20.dp, vertical = 16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,

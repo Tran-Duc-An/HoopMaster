@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -288,6 +289,7 @@ private fun HomeTopBar(onOpenProfile: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .background(SurfaceLowest.copy(alpha = 0.88f))
+            .statusBarsPadding()
             .border(width = 1.dp, color = OutlineVariant.copy(alpha = 0.30f))
             .padding(horizontal = 20.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
