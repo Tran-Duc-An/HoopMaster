@@ -19,7 +19,7 @@ const connectDB = require('./models/connectDB');
 const PORT = process.env.PORT || 3000;
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS 
   ? process.env.ALLOWED_ORIGINS.split(',') 
-  : ['http://localhost:3000', 'http://localhost:5173'];
+  : ['http://localhost:3000', 'http://localhost:5173', 'http://192.168.1.7:3000', 'http://192.168.1.7:5173'];
 
 // Initialize Express
 const app = express();
@@ -103,9 +103,9 @@ server.listen(PORT, () => {
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`Allowed origins: ${ALLOWED_ORIGINS.join(', ')}`);
   console.log('\nEndpoints:');
-  console.log(`  - Health: http://localhost:${PORT}/health`);
+  console.log(`  - Health: http://localhost:${PORT}/health or http://192.168.1.7:${PORT}/health`);
   console.log(`  - Sessions: http://localhost:${PORT}/api/sessions`);
-  console.log(`  - WebSocket: ws://localhost:${PORT}`);
+  console.log(`  - WebSocket: ws://localhost:${PORT} or ws://192.168.1.7:${PORT}`);
   console.log('\nService Status:');
   
   const ttsConfig = validateTTS();

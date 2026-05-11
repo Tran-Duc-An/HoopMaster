@@ -12,7 +12,7 @@ class WebSocketManager(
     private var mSocket: Socket? = null
 
     // Đảm bảo IP này đúng với IP máy tính chạy Node.js
-    private val SOCKET_URL = "http://10.122.3.182:3000"
+    private val SOCKET_URL = "http://192.168.1.7:3000"
 
     fun connect(userId: String?) {
         if (mSocket?.connected() == true) return

@@ -138,7 +138,8 @@ class CoachSocketClient(
             emitEvent(
                 ShotCountUpdateEvent(
                     shotCount = payload?.optInt("shotCount", 0) ?: 0,
-                    stats = payload?.optJSONObject("stats") ?: payload
+                    stats = payload?.optJSONObject("stats") ?: payload,
+                    llmFeedback = payload?.optString("llmFeedback")
                 )
             )
         }

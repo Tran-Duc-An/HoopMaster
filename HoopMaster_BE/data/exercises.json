@@ -233,8 +233,13 @@
       ]
     },
     "tracking": {
-      "type": "timed_cadence",
-      "primaryJoints": ["hip", "knee", "ankle"]
+      "type": "pose_counter",
+      "primaryJoints": ["hip", "knee", "ankle"],
+      "counter": {
+        "joint": "knee",
+        "downThreshold": 100,
+        "upThreshold": 155
+      }
     }
   },
   {
@@ -277,8 +282,13 @@
       ]
     },
     "tracking": {
-      "type": "timed_cadence",
-      "primaryJoints": ["ankle", "knee"]
+      "type": "pose_counter",
+      "primaryJoints": ["ankle", "knee"],
+      "counter": {
+        "joint": "ankle",
+        "downThreshold": 70,
+        "upThreshold": 110
+      }
     }
   }
 ]

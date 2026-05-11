@@ -56,7 +56,8 @@ data class PostShotFeedbackEvent(
 data class ShotCountUpdateEvent(
     override val type: String? = "shot_count_update",
     val shotCount: Int = 0,
-    val stats: JSONObject? = null
+    val stats: JSONObject? = null,
+    val llmFeedback: String? = null
 ) : CoachSocketEvent
 
 data class SessionInfoEvent(

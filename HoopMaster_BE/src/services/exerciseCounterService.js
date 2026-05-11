@@ -2,6 +2,9 @@ const exerciseService = require('./exerciseService');
 const { calculateAngle3D } = require('./poseService');
 
 const LANDMARKS = {
+  nose: 0,
+  leftEar: 7,
+  rightEar: 8,
   leftShoulder: 11,
   rightShoulder: 12,
   leftElbow: 13,
@@ -13,7 +16,11 @@ const LANDMARKS = {
   leftKnee: 25,
   rightKnee: 26,
   leftAnkle: 27,
-  rightAnkle: 28
+  rightAnkle: 28,
+  leftHeel: 29,
+  rightHeel: 30,
+  leftFootIndex: 31,
+  rightFootIndex: 32
 };
 
 const JOINT_POINTS = {
@@ -24,6 +31,14 @@ const JOINT_POINTS = {
   knee: [
     ['leftHip', 'leftKnee', 'leftAnkle'],
     ['rightHip', 'rightKnee', 'rightAnkle']
+  ],
+  hip: [
+    ['leftShoulder', 'leftHip', 'leftKnee'],
+    ['rightShoulder', 'rightHip', 'rightKnee']
+  ],
+  ankle: [
+    ['leftKnee', 'leftAnkle', 'leftFootIndex'],
+    ['rightKnee', 'rightAnkle', 'rightFootIndex']
   ]
 };
 
