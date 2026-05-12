@@ -46,7 +46,6 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
@@ -254,7 +253,7 @@ private fun TrophyMark() {
             val center = Offset(size.width / 2f, size.height / 2f)
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(Secondary.copy(alpha = 0.22f), Color.Transparent),
+                    colors = listOf(Secondary.copy(alpha = 0.22f), Transparent),
                     center = center,
                     radius = size.minDimension * 0.48f
                 ),
@@ -304,7 +303,7 @@ private fun SummaryMetricCard(
     label: String,
     value: String,
     icon: ImageVector,
-    accent: Color,
+    accent: androidx.compose.ui.graphics.Color,
     footer: String,
     modifier: Modifier = Modifier,
     footerPositive: Boolean = false,

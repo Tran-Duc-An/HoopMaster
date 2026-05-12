@@ -40,7 +40,6 @@ import androidx.compose.material.icons.filled.FlipCameraAndroid
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -57,12 +56,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -82,26 +77,11 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.hoopmaster.data.model.LiveAnglesDto
 import com.example.hoopmaster.data.model.ShotStatsDto
+import com.example.hoopmaster.ui.theme.*
 import com.example.hoopmaster.utils.PoseAnalyzer
 import com.example.hoopmaster.viewmodels.TrackingUiState
 import com.example.hoopmaster.viewmodels.TrackingViewModel
 import java.util.concurrent.Executors
-
-private val AthleticBackground = Color(0xFFFCF9F8)
-private val SurfaceLowest = Color(0xFFFFFFFF)
-private val Surface = Color(0xFFF0EDEC)
-private val SurfaceHigh = Color(0xFFEBE7E7)
-private val SurfaceHighest = Color(0xFFE5E2E1)
-private val Primary = Color(0xFFB02F00)
-private val PrimaryContainer = Color(0xFFFF5722)
-private val Secondary = Color(0xFF1B6D24)
-private val OnSurface = Color(0xFF1C1B1B)
-private val OnSurfaceVariant = Color(0xFF5B4039)
-private val Outline = Color(0xFF907067)
-private val OutlineVariant = Color(0xFFE4BEB4)
-private val ErrorContainer = Color(0xFFFFDAD6)
-private val OnErrorContainer = Color(0xFF93000A)
-private val OnPrimaryContainer = Color(0xFF541200)
 
 @Composable
 fun TrackingScreen(
@@ -139,6 +119,7 @@ fun TrackingScreen(
     }
 
     val previewView = remember { PreviewView(context) }
+    var analysisImageSize by remember { mutableStateOf(480 to 640) }
 
     LaunchedEffect(lensFacing, hasCameraPermission) {
         if (hasCameraPermission) {
@@ -155,9 +136,9 @@ fun TrackingScreen(
                         executor,
                         PoseAnalyzer(
                             context,
-                            onPoseDetected = { result, _, _ ->
-                                viewModel.poseResult.value = result
-                                viewModel.streamPoseToServer(
+                            onPoseDetected = { result, width, height ->
+                                analysisImageSize = width to height
+                                viewModel.onPoseDetected(
                                     result,
                                     mirrorX = lensFacing == CameraSelector.LENS_FACING_FRONT
                                 )
@@ -187,7 +168,7 @@ fun TrackingScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(InverseSurface)
     ) {
         if (hasCameraPermission) {
             AndroidView(
@@ -206,18 +187,14 @@ fun TrackingScreen(
         if (hasCameraPermission && showSkeleton) {
             PoseSkeletonOverlay(
                 uiState = uiStateValue,
-                lensFacing = lensFacing
+                lensFacing = lensFacing,
+                imageWidth = analysisImageSize.first,
+                imageHeight = analysisImageSize.second
             )
         }
 
-        TrackingFrameOverlay()
-
         TrackingTopHud(
             uiState = uiStateValue,
-            showSkeleton = showSkeleton,
-            selectedTone = viewModel.selectedTone.value,
-            onToneSelected = viewModel::updateTone,
-            onToggleSkeleton = { showSkeleton = !showSkeleton },
             onFlipCamera = {
                 lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK) {
                     CameraSelector.LENS_FACING_FRONT
@@ -266,6 +243,10 @@ fun TrackingScreen(
 
         BottomCoachPanel(
             uiState = uiStateValue,
+            selectedTone = viewModel.selectedTone.value,
+            onToneSelected = viewModel::updateTone,
+            showSkeleton = showSkeleton,
+            onToggleSkeleton = { showSkeleton = !showSkeleton },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
@@ -279,21 +260,21 @@ private fun CameraGradeOverlay() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.22f))
+            .background(InverseSurface.copy(alpha = 0.22f))
     )
     Canvas(modifier = Modifier.fillMaxSize()) {
         drawRect(
             brush = Brush.verticalGradient(
                 colors = listOf(
-                    Color.Black.copy(alpha = 0.20f),
-                    Color.Transparent,
+                    InverseSurface.copy(alpha = 0.20f),
+                    Transparent,
                     AthleticBackground.copy(alpha = 0.64f)
                 )
             )
         )
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(Primary.copy(alpha = 0.12f), Color.Transparent),
+                colors = listOf(Primary.copy(alpha = 0.12f), Transparent),
                 center = Offset(size.width * 0.50f, size.height * 0.10f),
                 radius = size.width * 0.65f
             ),
@@ -306,10 +287,6 @@ private fun CameraGradeOverlay() {
 @Composable
 private fun TrackingTopHud(
     uiState: TrackingUiState,
-    showSkeleton: Boolean,
-    selectedTone: String,
-    onToneSelected: (String) -> Unit,
-    onToggleSkeleton: () -> Unit,
     onFlipCamera: () -> Unit,
     onEnd: () -> Unit,
     modifier: Modifier = Modifier
@@ -334,23 +311,6 @@ private fun TrackingTopHud(
                 onClick = onFlipCamera
             )
         }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            ToneControlStrip(
-                selectedTone = selectedTone,
-                onToneSelected = onToneSelected
-            )
-            HudCircleButton(
-                icon = if (showSkeleton) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                contentDescription = "Toggle skeleton",
-                onClick = onToggleSkeleton,
-                size = 44.dp,
-                active = showSkeleton
-            )
-        }
     }
 }
 
@@ -361,7 +321,7 @@ private fun EndButton(onClick: () -> Unit) {
             .height(56.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(ErrorContainer.copy(alpha = 0.88f))
-            .border(1.dp, Color(0xFFFFB4AB).copy(alpha = 0.34f), RoundedCornerShape(12.dp))
+            .border(1.dp, ErrorContainer.copy(alpha = 0.34f), RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -477,10 +437,10 @@ private fun ToneChip(
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(999.dp))
-            .background(if (selected) Primary.copy(alpha = 0.16f) else Color.Transparent)
+            .background(if (selected) Primary.copy(alpha = 0.16f) else Transparent)
             .border(
                 width = 1.dp,
-                color = if (selected) Primary.copy(alpha = 0.55f) else Color.Transparent,
+                color = if (selected) Primary.copy(alpha = 0.55f) else Transparent,
                 shape = RoundedCornerShape(999.dp)
             )
             .clickable(onClick = onClick)
@@ -498,32 +458,66 @@ private fun ToneChip(
 @Composable
 private fun PoseSkeletonOverlay(
     uiState: TrackingUiState,
-    lensFacing: Int
+    lensFacing: Int,
+    imageWidth: Int,
+    imageHeight: Int
 ) {
     val poseResult = uiState.poseResult ?: return
     if (poseResult.landmarks().isEmpty()) return
 
     Canvas(modifier = Modifier.fillMaxSize()) {
         val landmarks = poseResult.landmarks()[0]
-        fun displayX(x: Float): Float {
-            return if (lensFacing == CameraSelector.LENS_FACING_FRONT) 1f - x else x
+        val sourceAspect = imageWidth.coerceAtLeast(1).toFloat() / imageHeight.coerceAtLeast(1).toFloat()
+        val canvasAspect = size.width / size.height
+        val displayedWidth: Float
+        val displayedHeight: Float
+        val offsetX: Float
+        val offsetY: Float
+
+        if (canvasAspect > sourceAspect) {
+            displayedWidth = size.width
+            displayedHeight = size.width / sourceAspect
+            offsetX = 0f
+            offsetY = (size.height - displayedHeight) / 2f
+        } else {
+            displayedHeight = size.height
+            displayedWidth = size.height * sourceAspect
+            offsetX = (size.width - displayedWidth) / 2f
+            offsetY = 0f
+        }
+
+        fun landmarkOffset(index: Int): Offset {
+            val landmark = landmarks[index]
+            val x = if (lensFacing == CameraSelector.LENS_FACING_FRONT) 1f - landmark.x() else landmark.x()
+            return Offset(
+                x = offsetX + x * displayedWidth,
+                y = offsetY + landmark.y() * displayedHeight
+            )
         }
         val connections = listOf(
+            Pair(0, 1), Pair(1, 2), Pair(2, 3), Pair(3, 7),
+            Pair(0, 4), Pair(4, 5), Pair(5, 6), Pair(6, 8),
+            Pair(9, 10),
             Pair(11, 12), Pair(11, 13), Pair(13, 15),
+            Pair(15, 17), Pair(15, 19), Pair(15, 21), Pair(17, 19),
             Pair(12, 14), Pair(14, 16),
+            Pair(16, 18), Pair(16, 20), Pair(16, 22), Pair(18, 20),
             Pair(11, 23), Pair(12, 24), Pair(23, 24),
             Pair(23, 25), Pair(25, 27),
-            Pair(24, 26), Pair(26, 28)
+            Pair(24, 26), Pair(26, 28),
+            Pair(27, 29), Pair(28, 30), Pair(29, 31), Pair(30, 32),
+            Pair(27, 31), Pair(28, 32)
         )
         connections.forEach { (start, end) ->
+            if (start !in landmarks.indices || end !in landmarks.indices) return@forEach
             val startPoint = landmarks[start]
             val endPoint = landmarks[end]
             if (startPoint.visibility().orElse(0f) > 0.5f && endPoint.visibility().orElse(0f) > 0.5f) {
                 drawLine(
                     color = Secondary.copy(alpha = 0.82f),
-                    start = Offset(displayX(startPoint.x()) * size.width, startPoint.y() * size.height),
-                    end = Offset(displayX(endPoint.x()) * size.width, endPoint.y() * size.height),
-                    strokeWidth = 4f,
+                    start = landmarkOffset(start),
+                    end = landmarkOffset(end),
+                    strokeWidth = 5f,
                     cap = StrokeCap.Round
                 )
             }
@@ -533,76 +527,10 @@ private fun PoseSkeletonOverlay(
                 drawCircle(
                     color = if (index in listOf(13, 14, 15, 16)) Primary else Secondary,
                     radius = 7f,
-                    center = Offset(displayX(landmark.x()) * size.width, landmark.y() * size.height)
+                    center = landmarkOffset(index)
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun TrackingFrameOverlay() {
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val frameWidth = size.width * 0.68f
-        val frameHeight = size.height * 0.46f
-        val left = (size.width - frameWidth) / 2f
-        val top = size.height * 0.27f
-        val right = left + frameWidth
-        val bottom = top + frameHeight
-        val corner = 30.dp.toPx()
-        val line = 2.dp.toPx()
-
-        drawRoundRect(
-            color = Color.White.copy(alpha = 0.16f),
-            topLeft = Offset(left, top),
-            size = Size(frameWidth, frameHeight),
-            cornerRadius = CornerRadius(10.dp.toPx(), 10.dp.toPx()),
-            style = Stroke(width = 1.dp.toPx())
-        )
-        listOf(
-            Pair(Offset(left, top + corner), Offset(left, top)),
-            Pair(Offset(left, top), Offset(left + corner, top)),
-            Pair(Offset(right - corner, top), Offset(right, top)),
-            Pair(Offset(right, top), Offset(right, top + corner)),
-            Pair(Offset(left, bottom - corner), Offset(left, bottom)),
-            Pair(Offset(left, bottom), Offset(left + corner, bottom)),
-            Pair(Offset(right - corner, bottom), Offset(right, bottom)),
-            Pair(Offset(right, bottom), Offset(right, bottom - corner))
-        ).forEach { (start, end) ->
-            drawLine(
-                color = Primary,
-                start = start,
-                end = end,
-                strokeWidth = line,
-                cap = StrokeCap.Square
-            )
-        }
-        drawCircle(
-            color = Primary.copy(alpha = 0.82f),
-            radius = 8.dp.toPx(),
-            center = Offset(left + frameWidth * 0.32f, top + frameHeight * 0.27f)
-        )
-        drawCircle(
-            color = Secondary.copy(alpha = 0.90f),
-            radius = 8.dp.toPx(),
-            center = Offset(left + frameWidth * 0.78f, top + frameHeight * 0.42f)
-        )
-        drawLine(
-            color = Primary.copy(alpha = 0.62f),
-            start = Offset(left + frameWidth * 0.32f, top + frameHeight * 0.27f),
-            end = Offset(left + frameWidth * 0.48f, top + frameHeight * 0.34f),
-            strokeWidth = 2.dp.toPx(),
-            pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 10f)),
-            cap = StrokeCap.Round
-        )
-        drawLine(
-            color = Secondary.copy(alpha = 0.62f),
-            start = Offset(left + frameWidth * 0.48f, top + frameHeight * 0.34f),
-            end = Offset(left + frameWidth * 0.78f, top + frameHeight * 0.42f),
-            strokeWidth = 2.dp.toPx(),
-            pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 10f)),
-            cap = StrokeCap.Round
-        )
     }
 }
 
@@ -643,7 +571,7 @@ private fun TelemetryHud(
 private fun TelemetryCard(
     label: String,
     value: String,
-    accent: Color,
+    accent: androidx.compose.ui.graphics.Color,
     warning: Boolean,
     alignEnd: Boolean,
     modifier: Modifier = Modifier
@@ -654,7 +582,7 @@ private fun TelemetryCard(
             .height(IntrinsicSize.Min)
             .clip(RoundedCornerShape(10.dp))
             .background(SurfaceLowest.copy(alpha = 0.70f))
-            .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(10.dp)),
+            .border(1.dp, SurfaceLowest.copy(alpha = 0.12f), RoundedCornerShape(10.dp)),
         horizontalArrangement = if (alignEnd) Arrangement.End else Arrangement.Start
     ) {
         if (!alignEnd) {
@@ -710,6 +638,10 @@ private fun TelemetryCard(
 @Composable
 private fun BottomCoachPanel(
     uiState: TrackingUiState,
+    selectedTone: String,
+    onToneSelected: (String) -> Unit,
+    showSkeleton: Boolean,
+    onToggleSkeleton: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -717,17 +649,30 @@ private fun BottomCoachPanel(
         horizontalAlignment = Alignment.End,
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        AiActiveBadge(
-            connected = uiState.isConnected,
-            active = uiState.isExerciseActive
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ToneControlStrip(
+                selectedTone = selectedTone,
+                onToneSelected = onToneSelected
+            )
+            HudCircleButton(
+                icon = if (showSkeleton) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                contentDescription = "Toggle skeleton",
+                onClick = onToggleSkeleton,
+                size = 44.dp,
+                active = showSkeleton
+            )
+        }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(IntrinsicSize.Min)
-                .clip(RoundedCornerShape(18.dp))
+                .clip(RoundedCornerShape(12.dp))
                 .background(Surface.copy(alpha = 0.82f))
-                .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(18.dp))
+                .border(1.dp, SurfaceLowest.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
         ) {
             Box(
                 modifier = Modifier
@@ -738,40 +683,26 @@ private fun BottomCoachPanel(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(18.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.Top
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(58.dp)
-                        .clip(CircleShape)
-                        .background(SurfaceHighest),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.RecordVoiceOver,
-                        contentDescription = null,
-                        tint = Primary,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
                 Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
                     Text(
                         text = resolveAnalysisTitle(uiState),
-                        style = athleticHeadline(29, italic = false).copy(lineHeight = 32.sp),
+                        style = athleticHeadline(20, italic = false).copy(lineHeight = 23.sp),
                         color = OnSurface,
-                        maxLines = 2,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = resolveAnalysisMessage(uiState),
-                        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp, lineHeight = 26.sp),
+                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, lineHeight = 20.sp),
                         color = OnSurfaceVariant,
-                        maxLines = 4,
+                        maxLines = 3,
                         overflow = TextOverflow.Ellipsis
                     )
                     val details = listOfNotNull(
@@ -781,48 +712,15 @@ private fun BottomCoachPanel(
                     if (details.isNotBlank()) {
                         Text(
                             text = details,
-                            style = technicalLabel(10),
+                            style = technicalLabel(9),
                             color = Outline,
-                            maxLines = 2,
+                            maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun AiActiveBadge(
-    connected: Boolean,
-    active: Boolean
-) {
-    val accent = if (connected) PrimaryContainer else Outline
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(999.dp))
-            .background(SurfaceHighest.copy(alpha = 0.86f))
-            .border(1.dp, OutlineVariant.copy(alpha = 0.55f), RoundedCornerShape(999.dp))
-            .padding(horizontal = 14.dp, vertical = 7.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(10.dp)
-                .clip(CircleShape)
-                .background(accent)
-        )
-        Text(
-            text = when {
-                connected && active -> "AI ACTIVE"
-                connected -> "AI READY"
-                else -> "AI OFFLINE"
-            },
-            style = technicalLabel(12),
-            color = OnSurface
-        )
     }
 }
 
@@ -867,7 +765,7 @@ private fun BasketballFallbackMark() {
     Canvas(
         modifier = Modifier
             .size(190.dp)
-            .background(Color.Transparent)
+            .background(Transparent)
     ) {
         val strokeWidth = 4.dp.toPx()
         val radius = size.minDimension / 2f - strokeWidth

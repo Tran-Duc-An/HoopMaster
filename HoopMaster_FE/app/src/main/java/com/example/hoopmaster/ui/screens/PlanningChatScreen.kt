@@ -53,7 +53,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -232,7 +231,7 @@ private fun ChatBackground(modifier: Modifier = Modifier) {
         )
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(PrimaryContainer.copy(alpha = 0.11f), Color.Transparent),
+                colors = listOf(PrimaryContainer.copy(alpha = 0.11f), Transparent),
                 center = Offset(size.width * 0.50f, size.height * 0.18f),
                 radius = size.width * 0.85f
             ),
@@ -612,9 +611,9 @@ private fun DraftPlanCard(
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Primary,
-                contentColor = Color(0xFF3B0900),
+                contentColor = OnPrimaryContainer,
                 disabledContainerColor = Primary.copy(alpha = 0.35f),
-                disabledContentColor = Color(0xFF3B0900).copy(alpha = 0.50f)
+                disabledContentColor = OnPrimaryContainer.copy(alpha = 0.50f)
             ),
             elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
         ) {
@@ -649,7 +648,7 @@ private fun DurationMetric(plan: TrainingPlanDto) {
 private fun PlanMetricTile(
     label: String,
     value: String,
-    valueColor: Color,
+    valueColor: androidx.compose.ui.graphics.Color,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -668,7 +667,7 @@ private fun PlanMetricTile(
 @Composable
 private fun DrillPreviewRow(
     exercise: PlanExerciseDto,
-    accent: Color
+    accent: androidx.compose.ui.graphics.Color
 ) {
     val name = exercise.name ?: exercise.exercise?.name ?: "Training module"
     Row(
@@ -760,9 +759,9 @@ private fun PlanningInputBar(
                 unfocusedTextColor = OnSurface,
                 disabledTextColor = OnSurface.copy(alpha = 0.42f),
                 cursorColor = Primary,
-                focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent,
-                disabledIndicatorColor = Color.Transparent
+                focusedIndicatorColor = Transparent,
+                unfocusedIndicatorColor = Transparent,
+                disabledIndicatorColor = Transparent
             )
         )
         Box(

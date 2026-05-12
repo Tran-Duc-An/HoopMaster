@@ -44,7 +44,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -64,21 +63,8 @@ import com.example.hoopmaster.ui.responsive.HoopResponsiveTokens
 import com.example.hoopmaster.ui.responsive.HoopWindowInfo
 import com.example.hoopmaster.ui.responsive.rememberHoopResponsiveTokens
 import com.example.hoopmaster.ui.responsive.rememberHoopWindowInfo
+import com.example.hoopmaster.ui.theme.*
 import com.example.hoopmaster.viewmodels.AuthViewModel
-
-private val AthleticBackground = Color(0xFFFCF9F8)
-private val SurfaceLowest = Color(0xFFFFFFFF)
-private val SurfaceLow = Color(0xFFF6F3F2)
-private val Surface = Color(0xFFF0EDEC)
-private val SurfaceHigh = Color(0xFFEBE7E7)
-private val SurfaceBright = Color(0xFFFCF9F8)
-private val Primary = Color(0xFFB02F00)
-private val PrimaryContainer = Color(0xFFFF5722)
-private val OnPrimaryContainer = Color(0xFF541200)
-private val OnSurface = Color(0xFF1C1B1B)
-private val OnSurfaceVariant = Color(0xFF5B4039)
-private val Outline = Color(0xFF907067)
-private val OutlineVariant = Color(0xFFE4BEB4)
 
 @Composable
 fun LoginScreen(
@@ -270,7 +256,7 @@ private fun AuthBackground(modifier: Modifier = Modifier) {
         )
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(Primary.copy(alpha = 0.12f), Color.Transparent),
+                colors = listOf(Primary.copy(alpha = 0.12f), Transparent),
                 center = Offset(size.width * 0.52f, size.height * 0.10f),
                 radius = size.width * 0.70f
             ),
@@ -327,7 +313,7 @@ private fun BrandHeader(compact: Boolean) {
 @Composable
 private fun BasketballMark(
     modifier: Modifier,
-    color: Color
+    color: androidx.compose.ui.graphics.Color
 ) {
     Canvas(modifier = modifier) {
         val strokeWidth = 4.dp.toPx()
@@ -413,7 +399,7 @@ private fun AuthModeTab(
         modifier = modifier
             .height(56.dp)
             .clip(RoundedCornerShape(8.dp))
-            .background(if (selected) PrimaryContainer else Color.Transparent)
+            .background(if (selected) PrimaryContainer else Transparent)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {

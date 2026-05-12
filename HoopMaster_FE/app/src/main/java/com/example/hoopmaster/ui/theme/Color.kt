@@ -33,6 +33,7 @@ val Outline = Color(0xFF907067)
 val OutlineVariant = Color(0xFFE4BEB4)
 val SurfaceVariant = Color(0xFFE5E2E1)
 val SurfaceTint = Primary
+val Transparent = Color.Transparent
 
 val Success = Secondary
 val OnSuccess = OnSecondary

@@ -107,10 +107,10 @@ class TrackingViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun onPoseDetected(result: PoseLandmarkerResult) {
+    fun onPoseDetected(result: PoseLandmarkerResult, mirrorX: Boolean = false) {
         poseResult.value = result
         syncState { it.copy(poseResult = result) }
-        streamPoseToServer(result)
+        streamPoseToServer(result, mirrorX)
     }
 
     fun onShotReleased() {

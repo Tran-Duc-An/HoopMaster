@@ -49,7 +49,6 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
@@ -65,24 +64,10 @@ import com.example.hoopmaster.ui.responsive.HoopWindowInfo
 import com.example.hoopmaster.ui.responsive.rememberHoopResponsiveTokens
 import com.example.hoopmaster.ui.responsive.rememberHoopWindowInfo
 import com.example.hoopmaster.ui.responsive.responsiveContentWidth
+import com.example.hoopmaster.ui.theme.*
 import com.example.hoopmaster.viewmodels.ExerciseDetailAction
 import com.example.hoopmaster.viewmodels.ExerciseDetailUiState
 import com.example.hoopmaster.viewmodels.ExerciseDetailViewModel
-
-private val AthleticBackground = Color(0xFFFCF9F8)
-private val SurfaceLowest = Color(0xFFFFFFFF)
-private val Surface = Color(0xFFF0EDEC)
-private val SurfaceLow = Color(0xFFF6F3F2)
-private val SurfaceHigh = Color(0xFFEBE7E7)
-private val Primary = Color(0xFFB02F00)
-private val PrimaryContainer = Color(0xFFFF5722)
-private val Secondary = Color(0xFF1B6D24)
-private val OnSurface = Color(0xFF1C1B1B)
-private val OnSurfaceVariant = Color(0xFF5B4039)
-private val Outline = Color(0xFF907067)
-private val OutlineVariant = Color(0xFFE4BEB4)
-private val ErrorContainer = Color(0xFFFFDAD6)
-private val OnPrimaryContainer = Color(0xFF541200)
 
 @Composable
 fun ExerciseDetailScreen(
@@ -209,7 +194,7 @@ private fun DetailBackground(modifier: Modifier = Modifier) {
         )
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(Primary.copy(alpha = 0.08f), Color.Transparent),
+                colors = listOf(Primary.copy(alpha = 0.08f), Transparent),
                 center = Offset(size.width * 0.50f, size.height * 0.10f),
                 radius = size.width * 0.78f
             ),
@@ -286,13 +271,13 @@ private fun HeroCard(uiState: ExerciseDetailUiState) {
                 center = Offset(size.width * 0.54f, size.height * 0.06f)
             )
             drawLine(
-                color = Color.White.copy(alpha = 0.20f),
+                color = SurfaceLowest.copy(alpha = 0.20f),
                 start = Offset(size.width * 0.18f, size.height * 0.16f),
                 end = Offset(size.width * 0.08f, size.height * 0.50f),
                 strokeWidth = 18.dp.toPx()
             )
             drawLine(
-                color = Color.White.copy(alpha = 0.18f),
+                color = SurfaceLowest.copy(alpha = 0.18f),
                 start = Offset(size.width * 0.84f, size.height * 0.16f),
                 end = Offset(size.width * 0.92f, size.height * 0.52f),
                 strokeWidth = 18.dp.toPx()
@@ -359,7 +344,7 @@ private fun TargetMetricCard(
     value: String,
     suffix: String,
     icon: ImageVector,
-    accent: Color,
+    accent: androidx.compose.ui.graphics.Color,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -373,7 +358,7 @@ private fun TargetMetricCard(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = Color.White.copy(alpha = 0.05f),
+            tint = SurfaceLowest.copy(alpha = 0.05f),
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .size(84.dp)

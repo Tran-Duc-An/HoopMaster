@@ -29,8 +29,9 @@ class PoseAnalyzer(
             .setBaseOptions(baseOptions)
             .setRunningMode(RunningMode.LIVE_STREAM)
             .setResultListener { result, _ ->
-                // Trả kết quả về UI (Result, chiều rộng ảnh, chiều cao ảnh)
-                onPoseDetected(result, 480, 640) // Kích thước mặc định của ImageAnalysis
+                val width = lastAnalyzedWidth.takeIf { it > 0 } ?: 480
+                val height = lastAnalyzedHeight.takeIf { it > 0 } ?: 640
+                onPoseDetected(result, width, height)
             }
             .setErrorListener { error -> error.printStackTrace() }
             .build()
@@ -48,6 +49,9 @@ class PoseAnalyzer(
         }
     }
 
+    private var lastAnalyzedWidth: Int = 0
+    private var lastAnalyzedHeight: Int = 0
+
     override fun analyze(image: ImageProxy) {
         if (poseLandmarker == null) {
             image.close()
@@ -57,6 +61,8 @@ class PoseAnalyzer(
         // Xoay ảnh cho đúng chiều camera
         val matrix = Matrix().apply { postRotate(image.imageInfo.rotationDegrees.toFloat()) }
         val rotatedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        lastAnalyzedWidth = rotatedBitmap.width
+        lastAnalyzedHeight = rotatedBitmap.height
 
         val mpImage = BitmapImageBuilder(rotatedBitmap).build()
         val timestampMs = image.imageInfo.timestamp / 1000000

@@ -31,7 +31,6 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.FitnessCenter
-import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Person
@@ -55,7 +54,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
@@ -187,7 +185,6 @@ private fun HomeScreenContent(
                         defaultEnabled = uiState.defaultExercises.isNotEmpty(),
                         personalEnabled = uiState.personalExercises.isNotEmpty(),
                         onSelectExerciseTag = onSelectExerciseTag,
-                        onPersonalizePlan = onPersonalizePlan,
                         modifier = Modifier.responsiveContentWidth(windowInfo, tokens)
                     )
                 }
@@ -245,6 +242,7 @@ private fun HomeScreenContent(
 
         HomeBottomNav(
             onStartShooting = onStartShooting,
+            onPersonalizePlan = onPersonalizePlan,
             onOpenProfile = onOpenProfile,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
@@ -259,13 +257,13 @@ private fun HomeBackground(modifier: Modifier = Modifier) {
                 colors = listOf(
                     Primary.copy(alpha = 0.10f),
                     AthleticBackground,
-                    Color.Black.copy(alpha = 0.08f)
+                    InverseSurface.copy(alpha = 0.08f)
                 )
             )
         )
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(Primary.copy(alpha = 0.13f), Color.Transparent),
+                colors = listOf(Primary.copy(alpha = 0.13f), Transparent),
                 center = Offset(size.width * 0.50f, 0f),
                 radius = size.width * 0.85f
             ),
@@ -481,7 +479,7 @@ private fun MetricTile(
     value: String,
     modifier: Modifier = Modifier,
     suffix: String? = null,
-    valueColor: Color = OnSurface
+    valueColor: androidx.compose.ui.graphics.Color = OnSurface
 ) {
     Column(
         modifier = modifier
@@ -523,7 +521,6 @@ private fun PlanFilters(
     defaultEnabled: Boolean,
     personalEnabled: Boolean,
     onSelectExerciseTag: (String) -> Unit,
-    onPersonalizePlan: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     FlowRow(
@@ -542,13 +539,6 @@ private fun PlanFilters(
             selected = selectedExerciseTag == EXERCISE_TAG_PERSONAL,
             enabled = personalEnabled,
             onClick = { onSelectExerciseTag(EXERCISE_TAG_PERSONAL) }
-        )
-        SessionChip(
-            label = "Personalize",
-            selected = false,
-            enabled = true,
-            icon = Icons.Outlined.Tune,
-            onClick = onPersonalizePlan
         )
     }
 }
@@ -684,7 +674,7 @@ private fun ModuleThumbnail(
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawRect(
                 brush = Brush.radialGradient(
-                    colors = listOf(PrimaryContainer.copy(alpha = 0.34f), Color.Transparent),
+                    colors = listOf(PrimaryContainer.copy(alpha = 0.34f), Transparent),
                     center = Offset(size.width * 0.25f, size.height * 0.92f),
                     radius = size.width * 0.95f
                 )
@@ -776,6 +766,7 @@ private fun EmptyPlanCard(modifier: Modifier = Modifier) {
 @Composable
 private fun HomeBottomNav(
     onStartShooting: () -> Unit,
+    onPersonalizePlan: () -> Unit,
     onOpenProfile: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -802,11 +793,10 @@ private fun HomeBottomNav(
             onClick = onStartShooting
         )
         BottomNavItem(
-            label = "Analytics",
-            icon = Icons.Outlined.Insights,
+            label = "Personalize",
+            icon = Icons.Outlined.Tune,
             selected = false,
-            enabled = false,
-            onClick = {}
+            onClick = onPersonalizePlan
         )
         BottomNavItem(
             label = "Profile",
@@ -835,7 +825,7 @@ private fun BottomNavItem(
             .height(70.dp)
             .widthIn(min = 70.dp)
             .clip(RoundedCornerShape(14.dp))
-            .background(if (selected) PrimaryContainer else Color.Transparent)
+            .background(if (selected) PrimaryContainer else Transparent)
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

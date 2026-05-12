@@ -125,6 +125,8 @@ fun AppNavigation() {
         composable(Routes.Profile) {
             ProfileScreen(
                 onBack = { navController.popBackStack() },
+                onStartTraining = { navController.navigate(Routes.Tracking) },
+                onPersonalizePlan = { navController.navigate(Routes.Planning) },
                 onLogout = {
                     navController.navigate(Routes.Login) {
                         popUpTo(Routes.Home) { inclusive = true }

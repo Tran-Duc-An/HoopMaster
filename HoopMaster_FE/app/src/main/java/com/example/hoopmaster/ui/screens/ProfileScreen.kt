@@ -30,7 +30,6 @@ import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.outlined.Balance
-import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material.icons.outlined.ManageAccounts
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Mood
@@ -39,6 +38,7 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Psychology
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.SportsBasketball
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Watch
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -54,7 +54,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -79,6 +78,8 @@ import com.example.hoopmaster.ui.theme.*
 @Composable
 fun ProfileScreen(
     onBack: () -> Unit,
+    onStartTraining: () -> Unit,
+    onPersonalizePlan: () -> Unit,
     onLogout: () -> Unit,
     viewModel: ProfileViewModel = viewModel()
 ) {
@@ -94,6 +95,8 @@ fun ProfileScreen(
         uiState = uiState,
         onToneSelected = { tone -> viewModel.onAction(ProfileAction.ToneChanged(tone)) },
         onBack = onBack,
+        onStartTraining = onStartTraining,
+        onPersonalizePlan = onPersonalizePlan,
         onLogout = {
             viewModel.logout()
             onLogout()
@@ -108,6 +111,8 @@ private fun ProfileContent(
     uiState: ProfileUiState,
     onToneSelected: (String) -> Unit,
     onBack: () -> Unit,
+    onStartTraining: () -> Unit,
+    onPersonalizePlan: () -> Unit,
     onLogout: () -> Unit,
     windowInfo: HoopWindowInfo,
     tokens: HoopResponsiveTokens
@@ -148,6 +153,8 @@ private fun ProfileContent(
 
         ProfileBottomNav(
             onHome = onBack,
+            onStartTraining = onStartTraining,
+            onPersonalizePlan = onPersonalizePlan,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
     }
@@ -158,12 +165,16 @@ private fun ProfileBackground(modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
         drawRect(
             brush = Brush.verticalGradient(
-                colors = listOf(NavyShadow, AthleticBackground, NavyShadow.copy(alpha = 0.5f))
+                colors = listOf(
+                    Primary.copy(alpha = 0.10f),
+                    AthleticBackground,
+                    SurfaceLowest
+                )
             )
         )
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(PrimaryContainer.copy(alpha = 0.10f), Color.Transparent),
+                colors = listOf(PrimaryContainer.copy(alpha = 0.10f), Transparent),
                 center = Offset(size.width * 0.50f, size.height * 0.04f),
                 radius = size.width * 0.78f
             ),
@@ -439,7 +450,7 @@ private fun SettingsRow(
     icon: ImageVector,
     title: String,
     trailing: String? = null,
-    trailingColor: Color = Outline,
+    trailingColor: androidx.compose.ui.graphics.Color = Outline,
     showDivider: Boolean = true
 ) {
     Column {
@@ -521,7 +532,7 @@ private fun SignOutButton(onLogout: () -> Unit) {
             .heightIn(min = 64.dp),
         shape = RoundedCornerShape(14.dp),
         colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = Color.Transparent,
+            containerColor = Transparent,
             contentColor = Primary
         ),
         border = androidx.compose.foundation.BorderStroke(1.dp, Primary)
@@ -542,6 +553,8 @@ private fun SignOutButton(onLogout: () -> Unit) {
 @Composable
 private fun ProfileBottomNav(
     onHome: () -> Unit,
+    onStartTraining: () -> Unit,
+    onPersonalizePlan: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -555,8 +568,8 @@ private fun ProfileBottomNav(
         verticalAlignment = Alignment.CenterVertically
     ) {
         BottomNavItem(label = "Home", icon = Icons.Filled.Home, selected = false, onClick = onHome)
-        BottomNavItem(label = "Training", icon = Icons.Outlined.SportsBasketball, selected = false, enabled = false, onClick = {})
-        BottomNavItem(label = "Analytics", icon = Icons.Outlined.Insights, selected = false, enabled = false, onClick = {})
+        BottomNavItem(label = "Training", icon = Icons.Outlined.SportsBasketball, selected = false, onClick = onStartTraining)
+        BottomNavItem(label = "Personalize", icon = Icons.Outlined.Tune, selected = false, onClick = onPersonalizePlan)
         BottomNavItem(label = "Profile", icon = Icons.Outlined.Person, selected = true, onClick = {})
     }
 }
@@ -579,7 +592,7 @@ private fun BottomNavItem(
             .height(70.dp)
             .widthIn(min = 70.dp)
             .clip(RoundedCornerShape(14.dp))
-            .background(if (selected) PrimaryContainer else Color.Transparent)
+            .background(if (selected) PrimaryContainer else Transparent)
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
