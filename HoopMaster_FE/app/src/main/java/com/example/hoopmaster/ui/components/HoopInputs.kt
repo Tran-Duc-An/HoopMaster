@@ -12,7 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import com.example.hoopmaster.ui.theme.ActiveOrange
 import com.example.hoopmaster.ui.theme.HoopRadius
 
 @Composable
@@ -29,8 +28,8 @@ fun HoopOutlinedTextField(
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default
 ) {
-    val activeBorder = if (isLive) ActiveOrange else MaterialTheme.colorScheme.primary
-    val unfocusedBorder = if (isLive) ActiveOrange else MaterialTheme.colorScheme.outline
+    val activeBorder = MaterialTheme.colorScheme.primary
+    val unfocusedBorder = if (isLive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
 
     OutlinedTextField(
         value = value,
@@ -45,8 +44,11 @@ fun HoopOutlinedTextField(
         visualTransformation = visualTransformation,
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(HoopRadius.Md),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(HoopRadius.Sm),
         colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
             focusedBorderColor = activeBorder,
             unfocusedBorderColor = unfocusedBorder,
             focusedLabelColor = activeBorder,

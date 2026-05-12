@@ -314,8 +314,8 @@ private fun SummaryMetricCard(
         modifier = modifier
             .height(154.dp)
             .clip(RoundedCornerShape(18.dp))
-            .background(Color(0xFF1E1E1E))
-            .border(1.dp, Color.White.copy(alpha = 0.04f), RoundedCornerShape(18.dp))
+            .background(SurfaceLowest)
+            .border(1.dp, OutlineVariant.copy(alpha = 0.70f), RoundedCornerShape(18.dp))
             .padding(18.dp)
     ) {
         Column(
@@ -387,8 +387,8 @@ private fun AccuracyChartCard(
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(18.dp))
-            .background(Color(0xFF1E1E1E))
-            .border(1.dp, Color.White.copy(alpha = 0.04f), RoundedCornerShape(18.dp))
+            .background(SurfaceLowest)
+            .border(1.dp, OutlineVariant.copy(alpha = 0.70f), RoundedCornerShape(18.dp))
             .padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -476,8 +476,8 @@ private fun FormAnalysisCard(
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(18.dp))
-            .background(Color(0xFF2C2C2C))
-            .border(1.dp, OnPrimary.copy(alpha = 0.04f), RoundedCornerShape(18.dp))
+            .background(SurfaceLowest)
+            .border(1.dp, OutlineVariant.copy(alpha = 0.70f), RoundedCornerShape(18.dp))
             .padding(20.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.Top

@@ -66,19 +66,19 @@ import com.example.hoopmaster.ui.responsive.rememberHoopResponsiveTokens
 import com.example.hoopmaster.ui.responsive.rememberHoopWindowInfo
 import com.example.hoopmaster.viewmodels.AuthViewModel
 
-private val AthleticBackground = Color(0xFF1E100C)
-private val SurfaceLowest = Color(0xFF180B07)
-private val SurfaceLow = Color(0xFF271813)
-private val Surface = Color(0xFF2C1C17)
-private val SurfaceHigh = Color(0xFF372621)
-private val SurfaceBright = Color(0xFF483530)
-private val Primary = Color(0xFFFFB5A0)
+private val AthleticBackground = Color(0xFFFCF9F8)
+private val SurfaceLowest = Color(0xFFFFFFFF)
+private val SurfaceLow = Color(0xFFF6F3F2)
+private val Surface = Color(0xFFF0EDEC)
+private val SurfaceHigh = Color(0xFFEBE7E7)
+private val SurfaceBright = Color(0xFFFCF9F8)
+private val Primary = Color(0xFFB02F00)
 private val PrimaryContainer = Color(0xFFFF5722)
 private val OnPrimaryContainer = Color(0xFF541200)
-private val OnSurface = Color(0xFFFADCD4)
-private val OnSurfaceVariant = Color(0xFFE4BEB4)
-private val Outline = Color(0xFFAB8980)
-private val OutlineVariant = Color(0xFF5B4039)
+private val OnSurface = Color(0xFF1C1B1B)
+private val OnSurfaceVariant = Color(0xFF5B4039)
+private val Outline = Color(0xFF907067)
+private val OutlineVariant = Color(0xFFE4BEB4)
 
 @Composable
 fun LoginScreen(
@@ -262,9 +262,9 @@ private fun AuthBackground(modifier: Modifier = Modifier) {
         drawRect(
             brush = Brush.verticalGradient(
                 colors = listOf(
-                    Color(0xFF2B1711),
+                    SurfaceLow,
                     AthleticBackground,
-                    Color(0xFF120604)
+                    SurfaceLowest
                 )
             )
         )

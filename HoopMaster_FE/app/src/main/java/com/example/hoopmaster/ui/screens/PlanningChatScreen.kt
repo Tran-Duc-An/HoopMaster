@@ -227,7 +227,7 @@ private fun ChatBackground(modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
         drawRect(
             brush = Brush.verticalGradient(
-                colors = listOf(Color(0xFF23100B), AthleticBackground, Color(0xFF130604))
+                colors = listOf(SurfaceLow, AthleticBackground, SurfaceLowest)
             )
         )
         drawCircle(
@@ -248,8 +248,8 @@ private fun PlanningTopBar(onBack: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .background(SurfaceLowest.copy(alpha = 0.88f))
-            .statusBarsPadding()
             .border(1.dp, OutlineVariant.copy(alpha = 0.26f))
+            .statusBarsPadding()
             .padding(horizontal = 20.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically

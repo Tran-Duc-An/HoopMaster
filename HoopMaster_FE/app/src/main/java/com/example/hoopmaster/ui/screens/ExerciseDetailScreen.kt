@@ -69,19 +69,19 @@ import com.example.hoopmaster.viewmodels.ExerciseDetailAction
 import com.example.hoopmaster.viewmodels.ExerciseDetailUiState
 import com.example.hoopmaster.viewmodels.ExerciseDetailViewModel
 
-private val AthleticBackground = Color(0xFF1E100C)
-private val SurfaceLowest = Color(0xFF180B07)
-private val Surface = Color(0xFF2C1C17)
-private val SurfaceLow = Color(0xFF271813)
-private val SurfaceHigh = Color(0xFF372621)
-private val Primary = Color(0xFFFFB5A0)
+private val AthleticBackground = Color(0xFFFCF9F8)
+private val SurfaceLowest = Color(0xFFFFFFFF)
+private val Surface = Color(0xFFF0EDEC)
+private val SurfaceLow = Color(0xFFF6F3F2)
+private val SurfaceHigh = Color(0xFFEBE7E7)
+private val Primary = Color(0xFFB02F00)
 private val PrimaryContainer = Color(0xFFFF5722)
-private val Secondary = Color(0xFF78DC77)
-private val OnSurface = Color(0xFFFADCD4)
-private val OnSurfaceVariant = Color(0xFFE4BEB4)
-private val Outline = Color(0xFFAB8980)
-private val OutlineVariant = Color(0xFF5B4039)
-private val ErrorContainer = Color(0xFF93000A)
+private val Secondary = Color(0xFF1B6D24)
+private val OnSurface = Color(0xFF1C1B1B)
+private val OnSurfaceVariant = Color(0xFF5B4039)
+private val Outline = Color(0xFF907067)
+private val OutlineVariant = Color(0xFFE4BEB4)
+private val ErrorContainer = Color(0xFFFFDAD6)
 private val OnPrimaryContainer = Color(0xFF541200)
 
 @Composable
@@ -204,7 +204,7 @@ private fun DetailBackground(modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
         drawRect(
             brush = Brush.verticalGradient(
-                colors = listOf(Color(0xFF24100B), AthleticBackground, Color(0xFF130604))
+                colors = listOf(SurfaceLow, AthleticBackground, SurfaceLowest)
             )
         )
         drawCircle(
@@ -277,7 +277,7 @@ private fun HeroCard(uiState: ExerciseDetailUiState) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawRect(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color(0xFF3A1B13), Surface, AthleticBackground.copy(alpha = 0.96f))
+                    colors = listOf(SurfaceLowest, Surface, AthleticBackground.copy(alpha = 0.96f))
                 )
             )
             drawCircle(

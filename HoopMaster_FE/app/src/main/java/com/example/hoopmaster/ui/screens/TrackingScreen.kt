@@ -87,21 +87,21 @@ import com.example.hoopmaster.viewmodels.TrackingUiState
 import com.example.hoopmaster.viewmodels.TrackingViewModel
 import java.util.concurrent.Executors
 
-private val AthleticBackground = Color(0xFFFFF8F2) // nền sáng cam nhạt
-private val SurfaceLowest = Color(0xFFFFF3E0) // cam nhạt
-private val Surface = Color(0xFFFFE0B2) // cam sáng
-private val SurfaceHigh = Color(0xFFFFCC80) // cam trung bình
-private val SurfaceHighest = Color(0xFFFFB74D) // cam đậm hơn
-private val Primary = Color(0xFFFF9800) // cam chủ đạo (bóng rổ)
-private val PrimaryContainer = Color(0xFFFFA726) // cam nổi bật
-private val Secondary = Color(0xFF1976D2) // xanh dương thể thao
-private val OnSurface = Color(0xFF212121) // chữ đen
-private val OnSurfaceVariant = Color(0xFF424242) // chữ xám
-private val Outline = Color(0xFFFF9800) // viền cam
-private val OutlineVariant = Color(0xFF1976D2) // viền xanh dương
-private val ErrorContainer = Color(0xFFD32F2F) // đỏ tươi
-private val OnErrorContainer = Color(0xFFFFFFFF) // chữ trắng
-private val OnPrimaryContainer = Color(0xFFFFFFFF) // chữ trắng
+private val AthleticBackground = Color(0xFFFCF9F8)
+private val SurfaceLowest = Color(0xFFFFFFFF)
+private val Surface = Color(0xFFF0EDEC)
+private val SurfaceHigh = Color(0xFFEBE7E7)
+private val SurfaceHighest = Color(0xFFE5E2E1)
+private val Primary = Color(0xFFB02F00)
+private val PrimaryContainer = Color(0xFFFF5722)
+private val Secondary = Color(0xFF1B6D24)
+private val OnSurface = Color(0xFF1C1B1B)
+private val OnSurfaceVariant = Color(0xFF5B4039)
+private val Outline = Color(0xFF907067)
+private val OutlineVariant = Color(0xFFE4BEB4)
+private val ErrorContainer = Color(0xFFFFDAD6)
+private val OnErrorContainer = Color(0xFF93000A)
+private val OnPrimaryContainer = Color(0xFF541200)
 
 @Composable
 fun TrackingScreen(
@@ -246,15 +246,16 @@ fun TrackingScreen(
                     .navigationBarsPadding()
                     .padding(horizontal = 20.dp, vertical = 18.dp)
                     .background(
-                        color = Color(0xFF2C1C17).copy(alpha = 0.92f),
+                        color = SurfaceLowest.copy(alpha = 0.94f),
                         shape = RoundedCornerShape(16.dp)
                     )
+                    .border(1.dp, OutlineVariant.copy(alpha = 0.70f), RoundedCornerShape(16.dp))
                     .padding(18.dp)
             ) {
                 Text(
                     text = feedback,
                     style = MaterialTheme.typography.bodyLarge.copy(
-                        color = Color.White,
+                        color = OnSurface,
                         fontWeight = FontWeight.Bold
                     ),
                     modifier = Modifier.fillMaxWidth(),

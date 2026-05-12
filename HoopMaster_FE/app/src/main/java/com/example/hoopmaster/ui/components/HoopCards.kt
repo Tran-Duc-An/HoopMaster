@@ -1,6 +1,8 @@
 package com.example.hoopmaster.ui.components
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -49,7 +51,11 @@ fun HoopCard(
     if (onClick != null) {
         ElevatedCard(
             onClick = onClick,
-            modifier = modifier,
+            modifier = modifier.border(
+                1.dp,
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.70f),
+                HoopCardShape
+            ),
             enabled = enabled,
             shape = HoopCardShape,
             colors = CardDefaults.elevatedCardColors(
@@ -68,6 +74,7 @@ fun HoopCard(
                 containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.onSurface
             ),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.70f)),
             elevation = CardDefaults.cardElevation(defaultElevation = HoopElevation.Level0)
         ) {
             Column(modifier = Modifier.padding(contentPadding), content = content)

@@ -179,8 +179,8 @@ private fun ProfileTopBar() {
         modifier = Modifier
             .fillMaxWidth()
             .background(SurfaceLowest.copy(alpha = 0.90f))
-            .statusBarsPadding()
             .border(1.dp, OutlineVariant.copy(alpha = 0.28f))
+            .statusBarsPadding()
             .padding(horizontal = 20.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically

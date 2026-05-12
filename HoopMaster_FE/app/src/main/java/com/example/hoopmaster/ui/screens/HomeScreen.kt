@@ -281,8 +281,8 @@ private fun HomeTopBar(onOpenProfile: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .background(SurfaceLowest.copy(alpha = 0.88f))
-            .statusBarsPadding()
             .border(width = 1.dp, color = OutlineVariant.copy(alpha = 0.30f))
+            .statusBarsPadding()
             .padding(horizontal = 20.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically

@@ -5,13 +5,12 @@ package com.example.hoopmaster.ui.components
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.hoopmaster.ui.theme.ActiveOrange
 import com.example.hoopmaster.ui.theme.HoopRadius
-import com.example.hoopmaster.ui.theme.NavyShadow
 
 private val HoopChipShape = androidx.compose.foundation.shape.RoundedCornerShape(HoopRadius.Full)
 
@@ -31,12 +30,12 @@ fun HoopFilterChip(
         label = { Text(text = label) },
         shape = HoopChipShape,
         colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = ActiveOrange.copy(alpha = 0.16f),
-            selectedLabelColor = NavyShadow,
-            selectedLeadingIconColor = NavyShadow,
+            selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
+            selectedLabelColor = MaterialTheme.colorScheme.primary,
+            selectedLeadingIconColor = MaterialTheme.colorScheme.primary,
             containerColor = androidx.compose.ui.graphics.Color.Transparent,
-            labelColor = NavyShadow,
-            iconColor = NavyShadow
+            labelColor = MaterialTheme.colorScheme.onSurface,
+            iconColor = MaterialTheme.colorScheme.onSurface
         )
     )
 }
