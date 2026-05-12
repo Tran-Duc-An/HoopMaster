@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -299,6 +300,8 @@ private fun SessionStrip(
     onSelectSession: (String) -> Unit,
     onCreateSession: () -> Unit
 ) {
+    val activeSessionIndex = sessions.indexOfFirst { it.sessionId == activeSessionId }.coerceAtLeast(0)
+    val activeSession = sessions.getOrNull(activeSessionIndex)
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -306,7 +309,7 @@ private fun SessionStrip(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = sessionLabel(activeSessionId).uppercase(),
+                text = sessionLabel(activeSession, activeSessionIndex).uppercase(),
                 style = technicalLabel(12),
                 color = Primary
             )
@@ -334,9 +337,9 @@ private fun SessionStrip(
             }
         }
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(sessions) { session ->
+            itemsIndexed(sessions) { index, session ->
                 SessionChip(
-                    label = sessionChipLabel(session),
+                    label = sessionChipLabel(session, index),
                     selected = session.sessionId == activeSessionId,
                     enabled = !isLoading,
                     onClick = { onSelectSession(session.sessionId) }
@@ -782,15 +785,14 @@ private fun PlanningInputBar(
     }
 }
 
-private fun sessionChipLabel(session: PlanningChatSession): String {
-    val base = sessionLabel(session.sessionId)
+private fun sessionChipLabel(session: PlanningChatSession, index: Int): String {
+    val base = sessionLabel(session, index)
     return if (session.messageCount > 0) "$base (${session.messageCount})" else base
 }
 
-private fun sessionLabel(sessionId: String): String {
-    if (sessionId == "default") return "Default chat"
-    val parts = sessionId.split("-")
-    return parts.drop(1).firstOrNull()?.takeIf { it.isNotBlank() }?.let { "Chat $it" } ?: "Chat"
+private fun sessionLabel(session: PlanningChatSession?, index: Int): String {
+    if (session == null || session.sessionId == "default") return "Default chat"
+    return "Chat ${index + 1}"
 }
 
 private fun estimateDurationMinutes(exercises: List<PlanExerciseDto>): Int {
