@@ -329,9 +329,7 @@ private fun SummaryMetricCard(
                     imageVector = icon,
                     contentDescription = null,
                     tint = OutlineVariant,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .background(NavyShadow)
+                    modifier = Modifier.size(24.dp)
                 )
                 Text(
                     text = label.uppercase(),
@@ -360,9 +358,7 @@ private fun SummaryMetricCard(
                             imageVector = Icons.Filled.ArrowUpward,
                             contentDescription = null,
                             tint = Secondary,
-                            modifier = Modifier
-                                .size(16.dp)
-                                .background(NavyShadow)
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                     Text(
@@ -399,9 +395,7 @@ private fun AccuracyChartCard(
                 imageVector = Icons.AutoMirrored.Outlined.ShowChart,
                 contentDescription = null,
                 tint = OutlineVariant,
-                modifier = Modifier
-                    .size(24.dp)
-                    .background(NavyShadow.copy(alpha = 0.8f))
+                modifier = Modifier.size(24.dp)
             )
             Text(
                 text = "Session Load",
