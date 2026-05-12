@@ -159,8 +159,24 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
   if (!session) return;
   const coachTone = normalizeCoachTone(poseData?.tone || session.coachTone || 'neutral');
   const now = Date.now();
+  const previousShotPhase = session.shotState?.phase || 'not_ready';
   const shotState = updateShotState(session.shotState, landmarks, now);
   session = sessionService.updateSession(socketId, { shotState, coachTone });
+
+  // Auto-detect shot release from pose data and trigger post-shot analysis
+  // Guard: cooldown 2 giây giữa các lần đếm shoot để tránh đếm trùng
+  const SHOT_COOLDOWN_MS = 2000;
+  const lastShotCountedAt = session.lastShotCountedAt || 0;
+  if (shotState.phase === 'released' && previousShotPhase === 'set' && !session.pendingPostShotAnalysis && (now - lastShotCountedAt > SHOT_COOLDOWN_MS)) {
+    sessionService.updateSession(socketId, { pendingPostShotAnalysis: true, lastShotCountedAt: now });
+    // Fire and forget - post-shot analysis runs independently
+    handlePostShotAnalysis(socketId, emitCallback).finally(() => {
+      const s = sessionService.getSession(socketId);
+      if (s) {
+        sessionService.updateSession(socketId, { pendingPostShotAnalysis: false });
+      }
+    });
+  }
 
   // Chặn frame mới trong lúc đang tạo/gửi feedback trước đó, kể cả frame chưa vào pose.
   if (session.isProcessingRealtimeFeedback) return;
@@ -462,6 +478,8 @@ async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
 
 /**
  * POST-SHOT WORKFLOW
+ * Chỉ đếm shot và tính thống kê, KHÔNG gọi LLM
+ * LLM session summary được gọi khi session kết thúc
  */
 async function handlePostShotAnalysis(socketId, emitCallback) {
   try {
@@ -469,14 +487,17 @@ async function handlePostShotAnalysis(socketId, emitCallback) {
     const now = Date.now();
     sessionService.incrementStats(socketId, 'shotsCompleted');
     let stats = {};
-    let llmFeedback = '';
     if (session && session.frameBuffer.length > 0) {
       stats = calculateShotStatistics(session.frameBuffer);
+      // Lưu thống kê các shot để dùng cho session summary
+      const allShotStats = session.allShotStats || [];
+      allShotStats.push(stats);
       sessionService.clearFrameBuffer(socketId);
       sessionService.updateSession(socketId, {
         shotInProgress: false,
         lastFeedback: null,
         previousLandmarks: null,
+        allShotStats,
         shotState: {
           ...session.shotState,
           phase: 'not_ready',
@@ -486,22 +507,12 @@ async function handlePostShotAnalysis(socketId, emitCallback) {
           reason: 'post_shot_complete'
         }
       });
-      // Gọi LLM để lấy nhận xét tổng quan
-      try {
-        const { generatePostShotFeedback } = require('../services/llmService');
-        const llmResult = await generatePostShotFeedback(stats);
-        llmFeedback = llmResult?.feedback || '';
-      } catch (llmErr) {
-        console.error('[Controller] LLM feedback error:', llmErr.message);
-        llmFeedback = 'Không thể sinh nhận xét tổng quan.';
-      }
     }
     const updatedSession = sessionService.getSession(socketId);
     emitCallback('shot_count_update', {
       shotCount: updatedSession?.sessionStats?.shotsCompleted || 0,
       timestamp: new Date().toISOString(),
-      stats,
-      llmFeedback
+      stats
     });
   } catch (error) {
     console.error('[Controller] Post-shot error:', error.message);

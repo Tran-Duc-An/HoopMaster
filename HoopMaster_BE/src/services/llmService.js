@@ -296,8 +296,56 @@ function validateConfig() {
   };
 }
 
+/**
+ * Generate session summary feedback từ LLM
+ * Phân tích tổng thể buổi tập: các lỗi còn mắc phải, điểm tốt, cần cải thiện gì
+ */
+async function generateSessionSummary(sessionStats) {
+  const {
+    totalShots,
+    avgElbowAngle,
+    avgKneeAngle,
+    avgShoulderAngle,
+    shootingHand
+  } = sessionStats;
+
+  const prompt = `You are an elite basketball coach reviewing a player's training session.
+
+The player completed ${totalShots} shots in this session.
+
+Session statistics:
+- Average elbow angle: ${avgElbowAngle ? avgElbowAngle.toFixed(1) + '°' : 'N/A'} (ideal: 60-145°)
+- Average knee angle: ${avgKneeAngle ? avgKneeAngle.toFixed(1) + '°' : 'N/A'} (ideal: 75-155°)
+- Average shoulder angle: ${avgShoulderAngle ? avgShoulderAngle.toFixed(1) + '°' : 'N/A'} (ideal: 20-150°)
+- Shooting hand: ${shootingHand || 'right'}
+
+Write a session summary in Vietnamese. Include:
+1. **Điểm tốt**: What the player did well (1-2 sentences)
+2. **Lỗi còn mắc phải**: What needs improvement (1-2 sentences)
+3. **Cần cải thiện**: Specific advice for next session (1-2 sentences)
+
+Keep it encouraging but honest. Total 3-5 sentences, short and actionable.`;
+
+  try {
+    const feedback = await callMistralAPI(prompt);
+    return {
+      success: true,
+      feedback,
+      metadata: {
+        model: process.env.LLM_MODEL || 'mistral-small-latest',
+        timestamp: new Date().toISOString()
+      }
+    };
+  } catch (error) {
+    console.error('[LLM] Session summary API failed:', error.message);
+    // Fallback: generate từ template
+    return generateSessionFallback(sessionStats);
+  }
+}
+
 module.exports = {
   generatePostShotFeedback,
+  generateSessionSummary,
   analyzeSessionTrends,
   validateConfig,
   // Utilities

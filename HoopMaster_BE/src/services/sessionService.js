@@ -82,6 +82,7 @@ function deleteSession(socketId) {
 
 /**
  * Lấy thông tin session
+ * Khi session kết thúc, generate LLM summary từ tất cả các shot stats đã thu thập
  */
 function getSessionInfo(socketId) {
   if (!activeSessions.has(socketId)) {
@@ -89,7 +90,7 @@ function getSessionInfo(socketId) {
   }
 
   const session = activeSessions.get(socketId);
-  return {
+  const summary = {
     socketId: session.socketId,
     uptime: Date.now() - session.createdAt,
     lastActivity: session.lastActivity,
@@ -105,8 +106,56 @@ function getSessionInfo(socketId) {
       phase: session.exerciseRuntime.phase,
       active: session.exerciseRuntime.active,
       completed: session.exerciseRuntime.completed
-    } : null
+    } : null,
+    llmSessionFeedback: session.llmSessionFeedback || null
   };
+
+  // Nếu session có dữ liệu shot và chưa có LLM feedback, generate session summary
+  if (!summary.llmSessionFeedback && session.sessionStats?.shotsCompleted > 0) {
+    // Generate async, lưu kết quả vào session để lần sau không cần gọi lại
+    generateSessionLLMSummary(socketId, session);
+  }
+
+  return summary;
+}
+
+/**
+ * Gọi LLM để tạo session summary (async, không block)
+ */
+async function generateSessionLLMSummary(socketId, session) {
+  try {
+    const allShotStats = session.allShotStats || [];
+    if (allShotStats.length === 0) return;
+
+    // Tính trung bình các chỉ số trên tất cả các shot
+    const avgStats = {
+      avgElbowAngle: averageOf(allShotStats, 'avgElbowAngle'),
+      avgKneeAngle: averageOf(allShotStats, 'avgKneeAngle'),
+      avgShoulderAngle: averageOf(allShotStats, 'avgShoulderAngle'),
+      avgBackAngle: averageOf(allShotStats, 'avgBackAngle'),
+      totalShots: allShotStats.length,
+      shootingHand: allShotStats[0]?.shootingHand || 'right'
+    };
+
+    const { generateSessionSummary } = require('./llmService');
+    const result = await generateSessionSummary(avgStats);
+    
+    if (result?.feedback) {
+      const s = activeSessions.get(socketId);
+      if (s) {
+        s.llmSessionFeedback = result.feedback;
+        activeSessions.set(socketId, s);
+      }
+    }
+  } catch (error) {
+    console.error('[SessionService] LLM session summary error:', error.message);
+  }
+}
+
+function averageOf(arr, key) {
+  const values = arr.map(s => s[key]).filter(v => v != null && !isNaN(v));
+  if (values.length === 0) return null;
+  return values.reduce((a, b) => a + b, 0) / values.length;
 }
 
 /**

@@ -21,18 +21,18 @@
     "counting": {
       "mode": "rep",
       "countOnPhase": "center_after_right",
-      "secondsPerRep": 8,
+      "secondsPerRep": 10,
       "phases": [
-        { "key": "left", "cue": "Tilt left", "durationMs": 2000 },
-        { "key": "center_after_left", "cue": "Back to center", "durationMs": 1000 },
-        { "key": "right", "cue": "Tilt right", "durationMs": 2000 },
-        { "key": "center_after_right", "cue": "Back to center", "durationMs": 1000, "countRep": true }
+        { "key": "left", "cue": "Slowly tilt your head to the left", "durationMs": 3000 },
+        { "key": "center_after_left", "cue": "Gently bring it back to center", "durationMs": 2000 },
+        { "key": "right", "cue": "Now tilt your head to the right", "durationMs": 3000 },
+        { "key": "center_after_right", "cue": "And back to center", "durationMs": 2000, "countRep": true }
       ]
     },
     "voiceCues": {
       "intro": "Neck tilt. Keep your shoulders relaxed and move slowly.",
       "setup": "Stand tall. Eyes forward. We start in three, two, one.",
-      "repTemplate": "Tilt left. Center. Tilt right. Center. Rep {rep}.",
+      "repTemplate": "Rep {rep}. Take your time.",
       "setComplete": "Set complete. Relax your neck and shoulders.",
       "complete": "Neck tilt finished.",
       "warnings": [
@@ -56,28 +56,28 @@
       "Count one rep each time the shoulders return to the top.",
       "After the target reps, repeat backward if needed."
     ],
-    "count": 10,
+    "count": 8,
     "pose": "shoulder_roll",
     "target": {
       "sets": 1,
-      "reps": 10,
+      "reps": 8,
       "restSeconds": 20
     },
     "counting": {
       "mode": "rep",
       "countOnPhase": "top",
-      "secondsPerRep": 3,
+      "secondsPerRep": 5,
       "phases": [
-        { "key": "up", "cue": "Lift shoulders", "durationMs": 700 },
-        { "key": "back", "cue": "Roll back", "durationMs": 800 },
-        { "key": "down", "cue": "Drop down", "durationMs": 700 },
-        { "key": "top", "cue": "Return and count", "durationMs": 800, "countRep": true }
+        { "key": "up", "cue": "Roll your shoulders up", "durationMs": 1200 },
+        { "key": "back", "cue": "Roll them back slowly", "durationMs": 1400 },
+        { "key": "down", "cue": "Drop your shoulders down", "durationMs": 1200 },
+        { "key": "top", "cue": "Return to start, and count", "durationMs": 1200, "countRep": true }
       ]
     },
     "voiceCues": {
       "intro": "Shoulder rolls. Make smooth circles and keep your neck relaxed.",
       "setup": "Arms loose. Start rolling in three, two, one.",
-      "repTemplate": "Roll. Rep {rep}.",
+      "repTemplate": "Rep {rep}.",
       "setComplete": "Set complete. Shake your arms out.",
       "complete": "Shoulder roll finished.",
       "warnings": [
@@ -106,22 +106,22 @@
     "target": {
       "sets": 3,
       "reps": 10,
-      "restSeconds": 45
+      "restSeconds": 60
     },
     "counting": {
       "mode": "rep",
       "countOnPhase": "stand",
-      "secondsPerRep": 4,
+      "secondsPerRep": 6,
       "phases": [
-        { "key": "down", "cue": "Lower down", "durationMs": 1200 },
-        { "key": "hold", "cue": "Hold", "durationMs": 600 },
-        { "key": "stand", "cue": "Stand tall", "durationMs": 1200, "countRep": true }
+        { "key": "down", "cue": "Lower down with control", "durationMs": 2000 },
+        { "key": "hold", "cue": "Hold at the bottom", "durationMs": 1200 },
+        { "key": "stand", "cue": "Stand tall and squeeze", "durationMs": 1800, "countRep": true }
       ]
     },
     "voiceCues": {
       "intro": "Bodyweight squats. Control the movement and keep your knees tracking over your toes.",
       "setup": "Feet shoulder width. Chest up. Start in three, two, one.",
-      "repTemplate": "Down. Hold. Up. Rep {rep}.",
+      "repTemplate": "Rep {rep}.",
       "setComplete": "Set complete. Rest and breathe.",
       "complete": "Squat drill finished.",
       "warnings": [
@@ -161,17 +161,17 @@
     "counting": {
       "mode": "rep",
       "countOnPhase": "top",
-      "secondsPerRep": 4,
+      "secondsPerRep": 5,
       "phases": [
-        { "key": "down", "cue": "Lower", "durationMs": 1300 },
-        { "key": "hold", "cue": "Hold", "durationMs": 400 },
-        { "key": "top", "cue": "Push up", "durationMs": 1300, "countRep": true }
+        { "key": "down", "cue": "Lower your chest slowly", "durationMs": 1800 },
+        { "key": "hold", "cue": "Hold at the bottom", "durationMs": 800 },
+        { "key": "top", "cue": "Push all the way up", "durationMs": 1600, "countRep": true }
       ]
     },
     "voiceCues": {
       "intro": "Push ups. Keep your body straight from shoulders to ankles.",
       "setup": "Hands under shoulders. Brace your core. Start in three, two, one.",
-      "repTemplate": "Lower. Hold. Push. Rep {rep}.",
+      "repTemplate": "Rep {rep}.",
       "setComplete": "Set complete. Rest your arms.",
       "complete": "Push up drill finished.",
       "warnings": [
@@ -207,23 +207,23 @@
     "target": {
       "sets": 2,
       "reps": 8,
-      "restSeconds": 40
+      "restSeconds": 45
     },
     "counting": {
       "mode": "rep",
       "countOnPhase": "center_after_right",
-      "secondsPerRep": 6,
+      "secondsPerRep": 8,
       "phases": [
-        { "key": "left", "cue": "Shift left", "durationMs": 1400 },
-        { "key": "center_after_left", "cue": "Center", "durationMs": 700 },
-        { "key": "right", "cue": "Shift right", "durationMs": 1400 },
-        { "key": "center_after_right", "cue": "Center", "durationMs": 700, "countRep": true }
+        { "key": "left", "cue": "Step left and bend your knee", "durationMs": 2200 },
+        { "key": "center_after_left", "cue": "Push back to center", "durationMs": 1200 },
+        { "key": "right", "cue": "Step right and bend", "durationMs": 2200 },
+        { "key": "center_after_right", "cue": "Back to center", "durationMs": 1200, "countRep": true }
       ]
     },
     "voiceCues": {
       "intro": "Lateral lunges. Move side to side with control.",
       "setup": "Wide stance. Chest up. Start in three, two, one.",
-      "repTemplate": "Left. Center. Right. Center. Rep {rep}.",
+      "repTemplate": "Rep {rep}.",
       "setComplete": "Set complete. Stand tall and rest.",
       "complete": "Lateral lunge finished.",
       "warnings": [
@@ -253,27 +253,27 @@
       "Hold briefly at the top.",
       "Lower with control and count one rep."
     ],
-    "count": 12,
+    "count": 10,
     "pose": "calf_raise",
     "target": {
       "sets": 2,
-      "reps": 12,
+      "reps": 10,
       "restSeconds": 40
     },
     "counting": {
       "mode": "rep",
       "countOnPhase": "down",
-      "secondsPerRep": 3,
+      "secondsPerRep": 4,
       "phases": [
-        { "key": "up", "cue": "Rise up", "durationMs": 900 },
-        { "key": "hold", "cue": "Hold", "durationMs": 500 },
-        { "key": "down", "cue": "Lower", "durationMs": 900, "countRep": true }
+        { "key": "up", "cue": "Rise up on your toes", "durationMs": 1300 },
+        { "key": "hold", "cue": "Hold at the top", "durationMs": 800 },
+        { "key": "down", "cue": "Lower slowly with control", "durationMs": 1300, "countRep": true }
       ]
     },
     "voiceCues": {
       "intro": "Calf raises. Stay tall and control every rep.",
       "setup": "Feet hip width. Hands on hips or a wall for balance. Start in three, two, one.",
-      "repTemplate": "Rise. Hold. Lower. Rep {rep}.",
+      "repTemplate": "Rep {rep}.",
       "setComplete": "Set complete. Shake out your legs.",
       "complete": "Calf raise finished.",
       "warnings": [

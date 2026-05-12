@@ -16,6 +16,7 @@ const {
   processExerciseFrame,
   normalizeCoachTone
 } = require('../services/exerciseCounterService');
+const workoutHistoryService = require('../services/workoutHistoryService');
 
 const EXERCISE_CUE_COOLDOWN_MS = parseInt(process.env.EXERCISE_CUE_COOLDOWN_MS, 10) || 1200;
 
@@ -69,12 +70,47 @@ function setupSocketHandlers(io) {
 
           if (result.runtime?.completed) {
             sessionService.incrementStats(socket.id, 'exercisesCompleted');
+            // Đánh dấu session vừa hoàn thành exercise để tránh fallback
+            // vào shooting form analysis ở các frame tiếp theo
+            sessionService.updateSession(socket.id, { exerciseJustCompleted: true });
+            // Ghi lại lịch sử tập luyện
+            const runtime = result.runtime;
+            const exercise = runtime.exercise;
+            if (exercise) {
+              const durationMinutes = Math.ceil(
+                ((runtime.targetSets || 1) * (runtime.targetReps || 1) * (exercise.counting?.secondsPerRep || 4)) / 60
+              );
+              const userId = socket.handshake?.query?.userId || socket.id;
+              workoutHistoryService.logWorkout(userId, {
+                exerciseId: exercise.id,
+                name: exercise.name,
+                category: exercise.category,
+                sets: runtime.targetSets || 1,
+                reps: runtime.targetReps || 0,
+                durationMinutes: Math.max(1, durationMinutes)
+              }).catch(err => console.error('[Socket] Failed to log workout:', err.message));
+            }
           }
 
           if (result.runtime?.nextCue) {
             await emitExerciseAudioCue(socket, result.runtime);
           }
 
+          return;
+        }
+
+        // Khi exercise đã hoàn thành hoặc vừa hoàn thành, bỏ qua shooting form analysis
+        if (session.exerciseRuntime?.completed || session.exerciseJustCompleted) {
+          // Giữ flag trong 2 giây để tránh shooting form feedback ngay sau exercise
+          return;
+        }
+
+        // Khi chưa có exerciseRuntime nhưng exercise đang được khởi tạo (race condition),
+        // hoặc khi session còn quá mới (< 2 giây), bỏ qua shooting form analysis
+        // để tránh instruction shooting form xuất hiện trong exercise mode.
+        const sessionAge = Date.now() - (session.createdAt || Date.now());
+        const isWaitingForExercise = session.startExercisePending || sessionAge < 2000;
+        if (isWaitingForExercise) {
           return;
         }
 
@@ -105,11 +141,16 @@ function setupSocketHandlers(io) {
     // Payload: { exerciseId, sets?, reps?, restSeconds?, tone? }
     socket.on('start_exercise', async (payload = {}) => {
       try {
+        // Đặt flag startExercisePending ngay lập tức để chặn pose_data
+        // chạy shooting form analysis trong khi đang khởi tạo exercise
+        sessionService.updateSession(socket.id, { startExercisePending: true, exerciseJustCompleted: false });
+
         const runtime = createExerciseRuntime(payload.exerciseId, payload);
         sessionService.updateSession(socket.id, {
           exerciseRuntime: runtime,
           frameBuffer: [],
-          previousLandmarks: null
+          previousLandmarks: null,
+          startExercisePending: false
         });
 
         socket.emit('exercise_started', {
@@ -127,19 +168,21 @@ function setupSocketHandlers(io) {
         await emitExerciseAudioCue(socket, runtime, true);
       } catch (error) {
         console.error('[Socket] Error starting exercise:', error);
+        // Reset flag nếu có lỗi
+        sessionService.updateSession(socket.id, { startExercisePending: false });
         socket.emit('error', {
           message: error.message || 'Failed to start exercise',
           code: 'START_EXERCISE_ERROR'
         });
       }
     });
-
     // Event: stop_exercise
     socket.on('stop_exercise', () => {
       const session = sessionService.getSession(socket.id);
       const exerciseId = session.exerciseRuntime?.exerciseId;
       clearAudioQueue(socket.id, 'stop_exercise');
-      sessionService.updateSession(socket.id, { exerciseRuntime: null });
+      // Đánh dấu exercise vừa kết thúc để tránh shooting form feedback
+      sessionService.updateSession(socket.id, { exerciseRuntime: null, exerciseJustCompleted: true });
       socket.emit('exercise_stopped', {
         success: true,
         exerciseId

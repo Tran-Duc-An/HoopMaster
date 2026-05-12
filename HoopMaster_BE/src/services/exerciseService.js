@@ -75,11 +75,8 @@ function buildRepCue(exercise, rep) {
   const template = exercise.voiceCues?.repTemplate;
   if (template) return template.replace('{rep}', String(rep));
 
-  const phaseText = (exercise.counting?.phases || [])
-    .map(phase => phase.cue)
-    .filter(Boolean)
-    .join('. ');
-  return `${phaseText}. Rep ${rep}.`;
+  // Fallback: just count the rep, don't concatenate all phase cues
+  return `Rep ${rep}.`;
 }
 
 function addScriptCue(script, type, text, metadata = {}) {

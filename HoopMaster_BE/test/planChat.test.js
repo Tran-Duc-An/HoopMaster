@@ -38,7 +38,7 @@ describe('planningAgent', () => {
     });
 
     expect(result.type).toBe('question');
-    expect(result.missingFields).toContain('injuries');
+    expect(result.missingFields).toContain('weeklyAvailability');
     expect(trainingPlanService.createPlan).not.toHaveBeenCalled();
   });
 

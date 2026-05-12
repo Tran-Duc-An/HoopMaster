@@ -5,7 +5,7 @@ const exerciseService = require('./exerciseService');
 const trainingPlanService = require('./trainingPlanService');
 const { callMistralAPI } = require('./mistralService');
 
-const REQUIRED_FIELDS = ['goals', 'injuries', 'level', 'weeklyAvailability'];
+const REQUIRED_FIELDS = ['goals', 'level', 'weeklyAvailability'];
 const MIN_PERSONAL_EXERCISES = 1;
 const MAX_PERSONAL_EXERCISES = 2;
 
@@ -102,7 +102,8 @@ function extractSeverity(text) {
   if (/(severe|bad|nang|nặng|rat dau|rất đau)/i.test(text)) return 'severe';
   if (/(moderate|medium|vua|vừa)/i.test(text)) return 'moderate';
   if (/(mild|light|nhe|nhẹ)/i.test(text)) return 'mild';
-  return 'unknown';
+  // Default to mild - don't ask for details
+  return 'mild';
 }
 
 function extractAvailability(text) {
@@ -193,25 +194,16 @@ function getMissingFields(profile) {
 }
 
 function getProfileClarifications(profile) {
-  const clarifications = [];
-  const activeInjuries = (profile.injuries || []).filter(injury => injury.active !== false);
-  if (activeInjuries.length > 0) {
-    const hasUnknownSeverity = activeInjuries.some(injury => !injury.severity || injury.severity === 'unknown');
-    if (hasUnknownSeverity) clarifications.push('injury_details');
-  }
-  return clarifications;
+  // Don't ask detailed injury questions - accept simple mentions like "knee" at face value
+  return [];
 }
 
 function buildQuestion(missingFields, clarifications = []) {
-  if (clarifications.includes('injury_details')) {
-    return 'Thanks for sharing your injury. Which area hurts most (for example left/right knee), how painful is it (mild/moderate/severe), and which movements make it worse?';
-  }
   const first = missingFields[0];
   if (first === 'goals') return 'What is your main goal: shooting accuracy, strength, mobility, warm-up, or injury prevention?';
-  if (first === 'injuries') return 'Do you have any injuries or painful areas? For example: knee, ankle, shoulder, wrist, or back. If none, please say no injuries.';
   if (first === 'level') return 'What is your current level: beginner, intermediate, or advanced?';
   if (first === 'weeklyAvailability') return 'How many sessions can you train per week, and about how many minutes per session?';
-  return 'Please share your goals, injuries, level, and schedule so I can build the right plan for you.';
+  return 'Please share your goals, level, and schedule so I can build the right plan for you.';
 }
 
 function buildFollowUpPrompt(profile, missingFields, clarifications, latestUserMessage) {
@@ -223,12 +215,9 @@ Generate EXACTLY ONE concise follow-up question in English to collect missing pl
 Rules:
 1) Return only one question sentence (no markdown, no bullets).
 2) Ask for only the highest-priority missing detail.
-3) If injury is mentioned (especially knee/ankle/wrist/shoulder/back), ask a deeper injury triage question:
-   - side/location,
-   - pain severity (mild/moderate/severe),
-   - painful movements/triggers.
-4) Keep under 28 words.
-5) Tone: supportive and practical.
+3) Keep under 28 words.
+4) Tone: supportive and practical.
+5) DO NOT ask for injury details like severity, side, or painful movements. Accept simple mentions like "knee" or "ankle" as-is.
 
 Latest user message:
 ${latestUserMessage || ''}
@@ -559,8 +548,20 @@ async function planningChat(userId, { text, audioBase64, sessionId }) {
   if (audioBase64 && !text) throw new Error('Audio input is not supported yet');
 
   console.log(`[PlanningChat] Start userId=${userId} sessionId=${normalizedSessionId} textLength=${userText.length} hasAudio=${Boolean(audioBase64)}`);
-  const user = await User.findById(userId);
-  if (!user) throw new Error('User not found');
+  let user = await User.findById(userId);
+  if (!user) {
+    // Auto-create user if not exists (planning chat can work without explicit registration)
+    console.log(`[PlanningChat] User not found, creating anonymous user: ${userId}`);
+    user = await User.create({
+      _id: userId,
+      username: `user_${userId}`,
+      email: `${userId}@hoopmaster.local`,
+      password: 'auto_generated_' + userId,
+      name: `Player ${userId.slice(0, 8)}`,
+      tone: 'neutral'
+    });
+    console.log(`[PlanningChat] Anonymous user created: ${userId}`);
+  }
 
   await addMessage(userId, 'planning', 'user', userText, normalizedSessionId);
   console.log(`[PlanningChat] Saved user message userId=${userId} sessionId=${normalizedSessionId}`);

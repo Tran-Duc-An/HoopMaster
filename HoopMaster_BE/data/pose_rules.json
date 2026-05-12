@@ -9,7 +9,7 @@
     },
     "knee": {
       "min": 58,
-      "max": 167,
+      "max": 180,
       "ideal": 140,
       "landmarks": { "point1": "hip", "point2": "knee", "point3": "ankle" },
       "intent": { "tooLow": "up", "tooHigh": "down", "perfect": "focus" }
