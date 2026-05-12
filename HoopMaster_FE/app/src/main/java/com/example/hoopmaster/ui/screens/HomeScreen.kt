@@ -85,19 +85,7 @@ import com.example.hoopmaster.viewmodels.HomeViewModel
 import com.example.hoopmaster.viewmodels.HomeViewModel.Companion.EXERCISE_TAG_DEFAULT
 import com.example.hoopmaster.viewmodels.HomeViewModel.Companion.EXERCISE_TAG_PERSONAL
 
-private val AthleticBackground = Color(0xFF1E100C)
-private val SurfaceLowest = Color(0xFF180B07)
-private val Surface = Color(0xFF2C1C17)
-private val SurfaceHigh = Color(0xFF372621)
-private val SurfaceHighest = Color(0xFF43302B)
-private val Primary = Color(0xFFFFB5A0)
-private val PrimaryContainer = Color(0xFFFF5722)
-private val OnPrimaryContainer = Color(0xFF541200)
-private val Secondary = Color(0xFF78DC77)
-private val OnSurface = Color(0xFFFADCD4)
-private val OnSurfaceVariant = Color(0xFFE4BEB4)
-private val Outline = Color(0xFFAB8980)
-private val OutlineVariant = Color(0xFF5B4039)
+import com.example.hoopmaster.ui.theme.*
 
 @Composable
 fun HomeScreen(
@@ -268,12 +256,16 @@ private fun HomeBackground(modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
         drawRect(
             brush = Brush.verticalGradient(
-                colors = listOf(Color(0xFF21100C), AthleticBackground, Color(0xFF130604))
+                colors = listOf(
+                    Primary.copy(alpha = 0.10f),
+                    AthleticBackground,
+                    Color.Black.copy(alpha = 0.08f)
+                )
             )
         )
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(Primary.copy(alpha = 0.09f), Color.Transparent),
+                colors = listOf(Primary.copy(alpha = 0.13f), Color.Transparent),
                 center = Offset(size.width * 0.50f, 0f),
                 radius = size.width * 0.85f
             ),

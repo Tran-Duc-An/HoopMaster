@@ -50,8 +50,7 @@ const io = new Server(server, {
   pingInterval: 25000,
   upgradeTimeout: 30000,
   maxHttpBufferSize: 1e8,
-  transports: ['websocket', 'polling'],
-  allowEIO3: true
+  transports: ['websocket', 'polling']
 });
 
 // Setup socket handlers

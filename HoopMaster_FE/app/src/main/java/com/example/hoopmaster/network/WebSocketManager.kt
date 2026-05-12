@@ -1,5 +1,6 @@
 package com.example.hoopmaster.network
 
+import com.example.hoopmaster.core.config.AppConfig
 import android.util.Log
 import io.socket.client.IO
 import io.socket.client.Socket
@@ -11,8 +12,8 @@ class WebSocketManager(
 ) {
     private var mSocket: Socket? = null
 
-    // Đảm bảo IP này đúng với IP máy tính chạy Node.js
-    private val SOCKET_URL = "http://192.168.1.7:3000"
+    // Sử dụng cấu hình chung từ AppConfig
+    private val SOCKET_URL = AppConfig.SOCKET_URL
 
     fun connect(userId: String?) {
         if (mSocket?.connected() == true) return
@@ -20,10 +21,11 @@ class WebSocketManager(
         try {
             val options = IO.Options().apply {
                 reconnection = true
-                reconnectionAttempts = 5
-                reconnectionDelay = 2000
-                // Backend của bạn không thấy dùng userId ở handshake,
-                // nhưng cứ giữ lại nếu sau này bạn cần xác thực.
+                reconnectionAttempts = 10
+                reconnectionDelay = 1000
+                reconnectionDelayMax = 5000
+                timeout = 20000
+                transports = arrayOf("websocket") // Chỉ dùng websocket, tránh xhr poll error
                 if (userId != null) {
                     query = "userId=$userId"
                 }
@@ -41,17 +43,14 @@ class WebSocketManager(
                 }
             }
 
-            // --- 2. Lắng nghe Feedback (Welcome, Instruction, và Live Feedback) ---
-            // Backend của bạn emit duy nhất sự kiện 'audio_feedback'
+            // --- 2. Lắng nghe Feedback ---
             mSocket?.on("audio_feedback") { args ->
                 try {
                     if (args.isNotEmpty()) {
                         val data = args[0] as JSONObject
                         Log.d("SocketIO_IN", "⬇️ Nhận Feedback: $data")
-
                         val text = data.optString("text", "")
                         val audio = data.optString("audioBase64", "")
-
                         onFeedbackReceived(text, audio)
                     }
                 } catch (e: Exception) {
@@ -73,22 +72,14 @@ class WebSocketManager(
         }
     }
 
-    /**
-     * Gửi dữ liệu Pose lên Backend
-     */
     fun sendPoseData(payload: JSONObject) {
         if (mSocket?.connected() == true) {
-            // ĐÃ SỬA: Dùng đúng tên 'pose_data' như trong code Node.js của bạn
             mSocket?.emit("pose_data", payload)
         } else {
-            // Nếu log này hiện ra, hãy kiểm tra lại Firewall trên máy tính
             Log.v("SocketIO_OUT", "⚠️ Chờ kết nối để gửi dữ liệu...")
         }
     }
 
-    /**
-     * Thông báo cho Backend là bóng đã được ném
-     */
     fun sendShotReleased() {
         if (mSocket?.connected() == true) {
             mSocket?.emit("shot_released")

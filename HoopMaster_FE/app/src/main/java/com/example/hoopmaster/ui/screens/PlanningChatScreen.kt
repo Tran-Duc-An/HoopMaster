@@ -78,21 +78,7 @@ import com.example.hoopmaster.viewmodels.PlanningChatEntry
 import com.example.hoopmaster.viewmodels.PlanningChatSession
 import com.example.hoopmaster.viewmodels.PlanningChatViewModel
 
-private val AthleticBackground = Color(0xFF1E100C)
-private val SurfaceLowest = Color(0xFF180B07)
-private val SurfaceLow = Color(0xFF271813)
-private val Surface = Color(0xFF2C1C17)
-private val SurfaceHigh = Color(0xFF372621)
-private val SurfaceHighest = Color(0xFF43302B)
-private val Primary = Color(0xFFFFB5A0)
-private val PrimaryContainer = Color(0xFFFF5722)
-private val Secondary = Color(0xFF78DC77)
-private val OnSurface = Color(0xFFFADCD4)
-private val OnSurfaceVariant = Color(0xFFE4BEB4)
-private val Outline = Color(0xFFAB8980)
-private val OutlineVariant = Color(0xFF5B4039)
-private val OnPrimaryContainer = Color(0xFF541200)
-private val Error = Color(0xFFFFB4AB)
+import com.example.hoopmaster.ui.theme.*
 
 @Composable
 fun PlanningChatScreen(

@@ -87,21 +87,21 @@ import com.example.hoopmaster.viewmodels.TrackingUiState
 import com.example.hoopmaster.viewmodels.TrackingViewModel
 import java.util.concurrent.Executors
 
-private val AthleticBackground = Color(0xFF1E100C)
-private val SurfaceLowest = Color(0xFF180B07)
-private val Surface = Color(0xFF2C1C17)
-private val SurfaceHigh = Color(0xFF372621)
-private val SurfaceHighest = Color(0xFF43302B)
-private val Primary = Color(0xFFFFB5A0)
-private val PrimaryContainer = Color(0xFFFF5722)
-private val Secondary = Color(0xFF78DC77)
-private val OnSurface = Color(0xFFFADCD4)
-private val OnSurfaceVariant = Color(0xFFE4BEB4)
-private val Outline = Color(0xFFAB8980)
-private val OutlineVariant = Color(0xFF5B4039)
-private val ErrorContainer = Color(0xFF93000A)
-private val OnErrorContainer = Color(0xFFFFDAD6)
-private val OnPrimaryContainer = Color(0xFF541200)
+private val AthleticBackground = Color(0xFFFFF8F2) // nền sáng cam nhạt
+private val SurfaceLowest = Color(0xFFFFF3E0) // cam nhạt
+private val Surface = Color(0xFFFFE0B2) // cam sáng
+private val SurfaceHigh = Color(0xFFFFCC80) // cam trung bình
+private val SurfaceHighest = Color(0xFFFFB74D) // cam đậm hơn
+private val Primary = Color(0xFFFF9800) // cam chủ đạo (bóng rổ)
+private val PrimaryContainer = Color(0xFFFFA726) // cam nổi bật
+private val Secondary = Color(0xFF1976D2) // xanh dương thể thao
+private val OnSurface = Color(0xFF212121) // chữ đen
+private val OnSurfaceVariant = Color(0xFF424242) // chữ xám
+private val Outline = Color(0xFFFF9800) // viền cam
+private val OutlineVariant = Color(0xFF1976D2) // viền xanh dương
+private val ErrorContainer = Color(0xFFD32F2F) // đỏ tươi
+private val OnErrorContainer = Color(0xFFFFFFFF) // chữ trắng
+private val OnPrimaryContainer = Color(0xFFFFFFFF) // chữ trắng
 
 @Composable
 fun TrackingScreen(
@@ -235,13 +235,7 @@ fun TrackingScreen(
                 .padding(horizontal = 20.dp, vertical = 18.dp)
         )
 
-        TelemetryHud(
-            liveAngles = uiStateValue.liveAngles,
-            stats = uiStateValue.lastShotStats,
-            modifier = Modifier
-                .align(Alignment.Center)
-                .padding(horizontal = 20.dp)
-        )
+        // TelemetryHud đã bị ẩn theo yêu cầu FE không cần hiện elbow/knee
 
 
         // Hiển thị nhận xét tổng quan từ LLM nếu có
@@ -331,7 +325,7 @@ private fun TrackingTopHud(
             EndButton(onClick = onEnd)
             MakesPill(
                 shotCount = uiState.shotCount,
-                target = uiState.sessionInfo?.exercise?.targetReps ?: 30
+                target = uiState.sessionInfo?.exercise?.targetReps
             )
             HudCircleButton(
                 icon = Icons.Filled.FlipCameraAndroid,
@@ -384,7 +378,7 @@ private fun EndButton(onClick: () -> Unit) {
 @Composable
 private fun MakesPill(
     shotCount: Int,
-    target: Int
+    target: Int?
 ) {
     Column(
         modifier = Modifier
@@ -405,12 +399,14 @@ private fun MakesPill(
                 style = athleticHeadline(48, italic = true).copy(lineHeight = 48.sp),
                 color = OnSurface
             )
-            Text(
-                text = "/$target",
-                modifier = Modifier.padding(bottom = 7.dp),
-                style = athleticHeadline(24, italic = true),
-                color = OnSurfaceVariant
-            )
+            if (target != null && target > 0) {
+                Text(
+                    text = "/$target",
+                    modifier = Modifier.padding(bottom = 7.dp),
+                    style = athleticHeadline(24, italic = true),
+                    color = OnSurfaceVariant
+                )
+            }
         }
     }
 }
@@ -839,7 +835,7 @@ private fun HudErrorBanner(
         modifier = modifier
             .clip(RoundedCornerShape(10.dp))
             .background(ErrorContainer.copy(alpha = 0.84f))
-            .border(1.dp, Color(0xFFFFB4AB).copy(alpha = 0.38f), RoundedCornerShape(10.dp))
+            .border(1.dp, Outline.copy(alpha = 0.38f), RoundedCornerShape(10.dp))
             .padding(horizontal = 14.dp, vertical = 10.dp),
         style = MaterialTheme.typography.labelMedium,
         color = OnErrorContainer,
@@ -920,9 +916,9 @@ private fun resolveAnalysisMessage(uiState: TrackingUiState): String {
 private fun formatLiveAngles(liveAngles: LiveAnglesDto?): String? {
     if (liveAngles == null) return null
     val parts = listOfNotNull(
-        liveAngles.elbowAngle.toAnglePart("Elbow"),
+        // liveAngles.elbowAngle.toAnglePart("Elbow"),
         liveAngles.shoulderAngle.toAnglePart("Shoulder"),
-        liveAngles.kneeAngle.toAnglePart("Knee"),
+        // liveAngles.kneeAngle.toAnglePart("Knee"),
         liveAngles.backAngle.toAnglePart("Back")
     )
     return parts.takeIf { it.isNotEmpty() }?.joinToString(" • ")
@@ -931,9 +927,9 @@ private fun formatLiveAngles(liveAngles: LiveAnglesDto?): String? {
 private fun formatShotStats(stats: ShotStatsDto?): String? {
     if (stats == null) return null
     val parts = listOfNotNull(
-        stats.avgElbowAngle.toAnglePart("Elbow avg"),
+        // stats.avgElbowAngle.toAnglePart("Elbow avg"),
         stats.avgShoulderAngle.toAnglePart("Shoulder avg"),
-        stats.avgKneeAngle.toAnglePart("Knee avg"),
+        // stats.avgKneeAngle.toAnglePart("Knee avg"),
         stats.avgBackAngle.toAnglePart("Back avg"),
         stats.frameCount.toFramesPart("Frames")
     )

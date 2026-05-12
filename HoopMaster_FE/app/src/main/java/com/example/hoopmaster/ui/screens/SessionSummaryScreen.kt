@@ -6,7 +6,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -49,8 +48,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -70,22 +67,7 @@ import com.example.hoopmaster.ui.responsive.responsiveContentWidth
 import com.example.hoopmaster.viewmodels.SessionSummaryAction
 import com.example.hoopmaster.viewmodels.SessionSummaryUiState
 import com.example.hoopmaster.viewmodels.SessionSummaryViewModel
-
-private val AthleticBackground = Color(0xFF1E100C)
-private val SurfaceLowest = Color(0xFF180B07)
-private val Surface = Color(0xFF2C1C17)
-private val SurfaceHigh = Color(0xFF372621)
-private val SurfaceHighest = Color(0xFF43302B)
-private val Primary = Color(0xFFFFB5A0)
-private val PrimaryContainer = Color(0xFFFF5722)
-private val Secondary = Color(0xFF78DC77)
-private val Tertiary = Color(0xFF86CFFF)
-private val OnSurface = Color(0xFFFADCD4)
-private val OnSurfaceVariant = Color(0xFFE4BEB4)
-private val Outline = Color(0xFFAB8980)
-private val OutlineVariant = Color(0xFF5B4039)
-private val OnPrimaryContainer = Color(0xFF541200)
-private val Error = Color(0xFFFFB4AB)
+import com.example.hoopmaster.ui.theme.*
 
 @Composable
 fun SessionSummaryScreen(
@@ -128,7 +110,7 @@ private fun SessionSummaryContent(
             .fillMaxSize()
             .background(AthleticBackground)
     ) {
-        SummaryBackground(modifier = Modifier.matchParentSize())
+        // Đã loại bỏ background tối, dùng AthleticBackground theme sáng
 
         Column(
             modifier = Modifier
@@ -230,26 +212,6 @@ private fun SessionSummaryContent(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun SummaryBackground(modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier) {
-        drawRect(
-            brush = Brush.verticalGradient(
-                colors = listOf(Color(0xFF25100B), AthleticBackground, Color(0xFF130604))
-            )
-        )
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(PrimaryContainer.copy(alpha = 0.12f), Color.Transparent),
-                center = Offset(size.width * 0.50f, size.height * 0.04f),
-                radius = size.width * 0.82f
-            ),
-            radius = size.width * 0.82f,
-            center = Offset(size.width * 0.50f, size.height * 0.04f)
-        )
     }
 }
 
@@ -356,12 +318,6 @@ private fun SummaryMetricCard(
             .border(1.dp, Color.White.copy(alpha = 0.04f), RoundedCornerShape(18.dp))
             .padding(18.dp)
     ) {
-//        MetricRingAccent(
-//            accent = accent,
-//            modifier = Modifier
-//                .align(Alignment.BottomEnd)
-//                .size(112.dp)
-//        )
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.SpaceBetween
@@ -374,7 +330,9 @@ private fun SummaryMetricCard(
                     imageVector = icon,
                     contentDescription = null,
                     tint = OutlineVariant,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier
+                        .size(24.dp)
+                        .background(NavyShadow)
                 )
                 Text(
                     text = label.uppercase(),
@@ -403,7 +361,9 @@ private fun SummaryMetricCard(
                             imageVector = Icons.Filled.ArrowUpward,
                             contentDescription = null,
                             tint = Secondary,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier
+                                .size(16.dp)
+                                .background(NavyShadow)
                         )
                     }
                     Text(
@@ -418,34 +378,6 @@ private fun SummaryMetricCard(
         }
     }
 }
-
-//@Composable
-//private fun MetricRingAccent(
-//    accent: Color,
-//    modifier: Modifier = Modifier
-//) {
-//    Canvas(modifier = modifier) {
-//        val stroke = 9.dp.toPx()
-//        drawArc(
-//            color = SurfaceHigh.copy(alpha = 0.36f),
-//            startAngle = 0f,
-//            sweepAngle = 360f,
-//            useCenter = false,
-//            topLeft = Offset(stroke / 2f, stroke / 2f),
-//            size = Size(size.width - stroke, size.height - stroke),
-//            style = Stroke(stroke, cap = StrokeCap.Round)
-//        )
-//        drawArc(
-//            color = accent.copy(alpha = 0.86f),
-//            startAngle = -86f,
-//            sweepAngle = 82f,
-//            useCenter = false,
-//            topLeft = Offset(stroke / 2f, stroke / 2f),
-//            size = Size(size.width - stroke, size.height - stroke),
-//            style = Stroke(stroke, cap = StrokeCap.Round)
-//        )
-//    }
-//}
 
 @Composable
 private fun AccuracyChartCard(
@@ -468,7 +400,9 @@ private fun AccuracyChartCard(
                 imageVector = Icons.AutoMirrored.Outlined.ShowChart,
                 contentDescription = null,
                 tint = OutlineVariant,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier
+                    .size(24.dp)
+                    .background(NavyShadow.copy(alpha = 0.8f))
             )
             Text(
                 text = "Session Load",
@@ -520,13 +454,16 @@ private fun AccuracyChartCard(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            listOf("Start", "Mid", "End").forEach { label ->
-                Text(
-                    text = label,
-                    style = technicalLabel(10),
-                    color = Outline
-                )
-            }
+            Text(
+                text = "START",
+                style = technicalLabel(10),
+                color = Outline
+            )
+            Text(
+                text = "END",
+                style = technicalLabel(10),
+                color = Outline
+            )
         }
     }
 }
@@ -540,7 +477,7 @@ private fun FormAnalysisCard(
         modifier = modifier
             .clip(RoundedCornerShape(18.dp))
             .background(Color(0xFF2C2C2C))
-            .border(1.dp, OutlineVariant.copy(alpha = 0.42f), RoundedCornerShape(18.dp))
+            .border(1.dp, OnPrimary.copy(alpha = 0.04f), RoundedCornerShape(18.dp))
             .padding(20.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.Top
@@ -585,7 +522,7 @@ private fun SessionStateCard(
 ) {
     val message = when {
         uiState.isLoading -> "Loading final session telemetry..."
-        uiState.errorMessage != null -> uiState.errorMessage.orEmpty()
+        uiState.errorMessage != null -> uiState.errorMessage // Fixed redundant call here
         uiState.isMissing -> "No session summary was found for this session."
         uiState.summary == null -> "No session summary is available."
         else -> "Summary loaded for socket ${uiState.socketId ?: "unknown"}."
