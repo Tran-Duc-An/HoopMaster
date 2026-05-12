@@ -85,6 +85,8 @@ class CoachSocketClient(
             reconnectionDelay = 2000
             timeout = 20000
             transports = arrayOf("websocket")
+            upgrade = false
+            forceNew = true
             if (userId != null) {
                 query = "userId=$userId"
             }
@@ -170,7 +172,16 @@ class CoachSocketClient(
         }
 
         socket.on(Socket.EVENT_CONNECT_ERROR) { args ->
-            Log.e("CoachSocketClient", "connect error: ${args.firstOrNull()}")
+            val raw = args.firstOrNull()
+            val detail = when (raw) {
+                is Exception -> {
+                    val cause = raw.cause?.let { "\n  Cause: ${it::class.simpleName}: ${it.message}" }.orEmpty()
+                    "${raw::class.simpleName}: ${raw.message}$cause"
+                }
+                else -> raw?.toString() ?: "Unknown"
+            }
+            Log.e("CoachSocketClient", "❌ Connect error detail:\n  $detail")
+
             val payload = firstJsonObject(args)
             emitEvent(
                 SocketErrorEvent(
@@ -186,7 +197,8 @@ class CoachSocketClient(
         }
 
         socket.on(Socket.EVENT_DISCONNECT) { args ->
-            Log.d("CoachSocketClient", "disconnect: ${args.firstOrNull()}")
+            val reason = args.firstOrNull()?.toString() ?: "unknown"
+            Log.w("CoachSocketClient", "⚠️ Disconnected. Reason: $reason")
         }
     }
 

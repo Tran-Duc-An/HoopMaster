@@ -59,11 +59,33 @@ class WebSocketManager(
             }
 
             mSocket?.on(Socket.EVENT_CONNECT_ERROR) { args ->
-                Log.e("SocketIO", "❌ Lỗi kết nối Socket: ${args.getOrNull(0)}")
+                val error = args.getOrNull(0)
+                val errorMsg = when {
+                    error is Exception -> "${error::class.simpleName}: ${error.message}"
+                    error != null -> error.toString()
+                    else -> "Unknown error"
+                }
+                Log.e("SocketIO", "❌ Lỗi kết nối Socket: $errorMsg")
             }
 
-            mSocket?.on(Socket.EVENT_DISCONNECT) {
-                Log.w("SocketIO", "⚠️ Đã ngắt kết nối")
+            // Bắt lỗi transport cụ thể (vd: WebSocket upgrade thất bại)
+            mSocket?.on("transport_error") { args ->
+                val error = args.getOrNull(0)
+                Log.e("SocketIO_TRANSPORT", "🚌 Lỗi Transport: ${error ?: "Unknown"}")
+            }
+
+            // Bắt lỗi WebSocket raw (nếu có)
+            mSocket?.on("connect_timeout") {
+                Log.e("SocketIO_TIMEOUT", "⏰ Quá thời gian chờ kết nối!")
+            }
+
+            mSocket?.on(io.socket.client.Socket.EVENT_CONNECT_ERROR) { args ->
+                Log.e("SocketIO", "❌ Lỗi kết nối Socket (raw): ${args.getOrNull(0)}")
+            }
+
+            mSocket?.on(Socket.EVENT_DISCONNECT) { args ->
+                val reason = args.getOrNull(0)?.toString() ?: "unknown"
+                Log.w("SocketIO", "⚠️ Đã ngắt kết nối. Reason: $reason")
             }
 
             mSocket?.connect()
