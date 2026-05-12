@@ -83,6 +83,8 @@ class CoachSocketClient(
             reconnection = true
             reconnectionAttempts = 5
             reconnectionDelay = 2000
+            timeout = 20000
+            transports = arrayOf("websocket")
             if (userId != null) {
                 query = "userId=$userId"
             }
@@ -168,6 +170,7 @@ class CoachSocketClient(
         }
 
         socket.on(Socket.EVENT_CONNECT_ERROR) { args ->
+            Log.e("CoachSocketClient", "connect error: ${args.firstOrNull()}")
             val payload = firstJsonObject(args)
             emitEvent(
                 SocketErrorEvent(
