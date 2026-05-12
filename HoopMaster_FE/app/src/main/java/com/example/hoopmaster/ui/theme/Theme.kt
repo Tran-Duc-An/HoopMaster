@@ -14,6 +14,7 @@ fun HoopMasterTheme(
         darkTheme -> HoopMasterDarkColorScheme
         else -> HoopMasterLightColorScheme
     }
+    applyHoopThemeTokens(darkTheme)
 
     MaterialTheme(
         colorScheme = colorScheme,
