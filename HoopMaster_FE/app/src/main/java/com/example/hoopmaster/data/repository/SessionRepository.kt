@@ -2,12 +2,18 @@ package com.example.hoopmaster.data.repository
 
 import com.example.hoopmaster.data.api.HoopMasterApi
 import com.example.hoopmaster.data.model.SessionInfoDto
+import com.example.hoopmaster.data.model.WorkoutHistoryWeeklyResponseDto
 
 class SessionRepository(private val api: HoopMasterApi) : SessionDataSource {
     override suspend fun getSessionInfo(socketId: String): Result<SessionInfoDto> = runCatching {
         val response = api.getSessionInfo(socketId)
         response.bodyOrThrow("load session info")
     }.mapError("load session info")
+
+    override suspend fun getWeeklyWorkoutHistory(userId: String): Result<WorkoutHistoryWeeklyResponseDto> = runCatching {
+        val response = api.getWeeklyWorkoutHistory(userId)
+        response.bodyOrThrow("load weekly workout history")
+    }.mapError("load weekly workout history")
 
     private fun <T> retrofit2.Response<T>.bodyOrThrow(action: String): T {
         if (!isSuccessful) {

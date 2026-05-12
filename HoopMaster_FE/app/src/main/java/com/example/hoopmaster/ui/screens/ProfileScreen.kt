@@ -25,6 +25,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.outlined.ShowChart
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Person
@@ -52,8 +53,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -70,8 +74,11 @@ import com.example.hoopmaster.ui.responsive.rememberHoopResponsiveTokens
 import com.example.hoopmaster.ui.responsive.rememberHoopWindowInfo
 import com.example.hoopmaster.ui.responsive.responsiveContentWidth
 import com.example.hoopmaster.viewmodels.ProfileAction
+import com.example.hoopmaster.viewmodels.ProfileTrainingChartData
+import com.example.hoopmaster.viewmodels.ProfileTrainingChartDay
 import com.example.hoopmaster.viewmodels.ProfileUiState
 import com.example.hoopmaster.viewmodels.ProfileViewModel
+import com.example.hoopmaster.viewmodels.buildWeeklyTrainingChartData
 
 import com.example.hoopmaster.ui.theme.*
 
@@ -138,6 +145,10 @@ private fun ProfileContent(
                 verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
                 IdentityCard(uiState = uiState)
+                TrainingHoursChartCard(
+                    uiState = uiState,
+                    modifier = Modifier.fillMaxWidth()
+                )
                 CoachPersonaCard(
                     selectedTone = uiState.tone,
                     saving = uiState.toneSaving,
@@ -311,6 +322,160 @@ private fun LargeAvatar() {
             tint = Primary,
             modifier = Modifier.size(46.dp)
         )
+    }
+}
+
+@Composable
+private fun TrainingHoursChartCard(
+    uiState: ProfileUiState,
+    modifier: Modifier = Modifier
+) {
+    val chartData = buildWeeklyTrainingChartData(uiState.weeklyTrainingDays)
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(18.dp))
+            .background(SurfaceLowest)
+            .border(1.dp, OutlineVariant.copy(alpha = 0.70f), RoundedCornerShape(18.dp))
+            .padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(9.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ShowChart,
+                    contentDescription = null,
+                    tint = OutlineVariant,
+                    modifier = Modifier.size(24.dp)
+                )
+                Text(
+                    text = "Training Hours",
+                    style = technicalLabel(13),
+                    color = OnSurfaceVariant
+                )
+            }
+            Text(
+                text = if (uiState.weeklyTrainingLoading) "Loading..." else chartData.totalLabel,
+                style = technicalLabel(11),
+                color = if (uiState.weeklyTrainingLoading) Outline else Secondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        TrainingHoursChart(
+            chartData = chartData,
+            loading = uiState.weeklyTrainingLoading,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(160.dp)
+        )
+
+        if (chartData.days.isNotEmpty()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                chartData.days.forEach { day ->
+                    Text(
+                        text = day.label.uppercase(),
+                        modifier = Modifier.weight(1f),
+                        style = technicalLabel(9),
+                        color = Outline,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "LAST 7 DAYS",
+                    style = technicalLabel(10),
+                    color = Outline
+                )
+                Text(
+                    text = "0H",
+                    style = technicalLabel(10),
+                    color = Outline
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TrainingHoursChart(
+    chartData: ProfileTrainingChartData,
+    loading: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val bars = if (loading && chartData.days.isEmpty()) {
+        List(7) { index ->
+            ProfileTrainingChartDay(
+                label = "",
+                hours = if (index % 2 == 0) 0.35f else 0.55f
+            )
+        }
+    } else {
+        chartData.days
+    }
+    Canvas(modifier = modifier) {
+        val axisY = size.height - 22.dp.toPx()
+        val topGrid = 20.dp.toPx()
+        val midGrid = size.height * 0.48f
+        val gap = 8.dp.toPx()
+        val barCount = bars.size.coerceAtLeast(1)
+        val barWidth = (size.width - gap * (barCount - 1)) / barCount
+        val maxHours = if (loading && chartData.days.isEmpty()) 1f else chartData.maxHours
+
+        listOf(topGrid, midGrid).forEach { y ->
+            drawLine(
+                color = OutlineVariant.copy(alpha = 0.34f),
+                start = Offset(0f, y),
+                end = Offset(size.width, y),
+                strokeWidth = 1.dp.toPx(),
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f))
+            )
+        }
+        drawLine(
+            color = OutlineVariant,
+            start = Offset(0f, axisY),
+            end = Offset(size.width, axisY),
+            strokeWidth = 1.dp.toPx()
+        )
+
+        bars.forEachIndexed { index, day ->
+            val ratio = if (day.hours > 0f) {
+                (day.hours / maxHours).coerceIn(0.12f, 1f)
+            } else {
+                0.08f
+            }
+            val height = (axisY - topGrid) * ratio
+            val left = index * (barWidth + gap)
+            val color = when {
+                loading -> OutlineVariant.copy(alpha = 0.38f)
+                day.hours <= 0f -> PrimaryContainer.copy(alpha = 0.18f)
+                ratio >= 0.68f -> Secondary
+                else -> PrimaryContainer.copy(alpha = 0.30f)
+            }
+            drawRoundRect(
+                color = color,
+                topLeft = Offset(left, axisY - height),
+                size = Size(barWidth, height),
+                cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+            )
+        }
     }
 }
 
