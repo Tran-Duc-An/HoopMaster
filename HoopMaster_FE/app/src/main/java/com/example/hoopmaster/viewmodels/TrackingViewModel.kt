@@ -7,6 +7,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.hoopmaster.core.di.AppContainer
 import com.example.hoopmaster.data.model.AnglesUpdateEvent
+import com.example.hoopmaster.data.model.ExerciseProgressDto
 import com.example.hoopmaster.data.model.AudioFeedbackEvent
 import com.example.hoopmaster.data.model.ConnectedEvent
 import com.example.hoopmaster.data.model.ExerciseProgressEvent
@@ -40,7 +41,9 @@ data class TrackingUiState(
     val sessionInfo: SessionInfoDto? = null,
     val lastShotReleasedAt: Long? = null,
     val errorMessage: String? = null,
-    val llmFeedback: String? = null
+    val llmFeedback: String? = null,
+    // Exercise tracking progress
+    val exerciseProgress: ExerciseProgressDto? = null
 )
 
 sealed interface TrackingAction {
@@ -224,6 +227,10 @@ class TrackingViewModel(application: Application) : AndroidViewModel(application
                             syncState { it.copy(isExerciseActive = active) }
                         }
                         event.raw?.optString("message")?.takeIf { it.isNotBlank() }?.let { setFeedback(it) }
+                        val progressDto = event.raw?.toExerciseProgressDto()
+                        if (progressDto != null) {
+                            syncState { it.copy(exerciseProgress = progressDto) }
+                        }
                     }
 
                     is PostShotFeedbackEvent -> {
@@ -284,6 +291,38 @@ class TrackingViewModel(application: Application) : AndroidViewModel(application
             shootingHand = optString("shootingHand").takeIf { it.isNotBlank() },
             tone = optString("tone").takeIf { it.isNotBlank() }
         )
+    }
+
+    private fun JSONObject.toExerciseProgressDto(): ExerciseProgressDto {
+        return ExerciseProgressDto(
+            exerciseId = optIntOrNull("exerciseId"),
+            tone = optString("tone").takeIf { it.isNotBlank() },
+            name = optString("name").takeIf { it.isNotBlank() },
+            category = optString("category").takeIf { it.isNotBlank() },
+            set = optIntOrNull("set"),
+            targetSets = optIntOrNull("targetSets"),
+            reps = optIntOrNull("reps"),
+            targetReps = optIntOrNull("targetReps"),
+            phase = optString("phase").takeIf { it.isNotBlank() },
+            phaseIndex = optIntOrNull("phaseIndex"),
+            totalPhases = optIntOrNull("totalPhases"),
+            currentPhaseCue = optString("currentPhaseCue").takeIf { it.isNotBlank() },
+            completed = optBooleanOrNull("completed") ?: false,
+            angle = optNullableDouble("angle"),
+            restRemainingMs = if (has("restRemainingMs") && !isNull("restRemainingMs")) optLong("restRemainingMs") else null,
+            restSeconds = optIntOrNull("restSeconds"),
+            timestamp = if (has("timestamp") && !isNull("timestamp")) optLong("timestamp") else null
+        )
+    }
+
+    private fun JSONObject.optIntOrNull(key: String): Int? {
+        if (!has(key) || isNull(key)) return null
+        return optInt(key)
+    }
+
+    private fun JSONObject.optBooleanOrNull(key: String): Boolean? {
+        if (!has(key) || isNull(key)) return null
+        return optBoolean(key)
     }
 
     private fun JSONObject.optNullableDouble(key: String): Double? {

@@ -230,7 +230,8 @@ class CoachSocketClient(
             lastActivity = optLongOrNull("lastActivity"),
             stats = statsJson?.toSessionStatsDto(),
             bufferSize = optIntOrNull("bufferSize"),
-            exercise = exerciseJson?.toActiveExerciseSessionDto()
+            exercise = exerciseJson?.toActiveExerciseSessionDto(),
+            llmSessionFeedback = optStringOrNull("llmSessionFeedback")
         )
     }
 

@@ -25,5 +25,6 @@ data class SessionInfoDto(
     val lastActivity: Long? = null,
     val stats: SessionStatsDto? = null,
     val bufferSize: Int? = null,
-    val exercise: ActiveExerciseSessionDto? = null
+    val exercise: ActiveExerciseSessionDto? = null,
+    val llmSessionFeedback: String? = null
 )

@@ -25,8 +25,25 @@ import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
 import retrofit2.http.PUT
-
+import com.example.hoopmaster.data.model.*
 interface HoopMasterApi {
+        // Workout History
+        @GET("api/users/{id}/workout-history/weekly")
+        suspend fun getWeeklyWorkoutHistory(
+            @Path("id") id: String
+        ): Response<WorkoutHistoryWeeklyResponseDto>
+
+        @POST("api/users/{id}/workout-history/log")
+        suspend fun logWorkoutHistory(
+            @Path("id") id: String,
+            @Body request: LogWorkoutRequestDto
+        ): Response<WorkoutHistoryLogResponseDto>
+
+        @GET("api/users/{id}/workout-history")
+        suspend fun getAllWorkoutHistory(
+            @Path("id") id: String,
+            @Query("limit") limit: Int? = 30
+        ): Response<WorkoutHistoryListResponseDto>
     @POST("api/users/login")
     suspend fun login(@Body request: LoginRequest): Response<AuthResponseDto>
 

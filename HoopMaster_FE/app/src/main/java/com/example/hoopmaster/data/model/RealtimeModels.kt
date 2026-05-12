@@ -36,6 +36,26 @@ data class ExerciseProgressEvent(
     val raw: JSONObject? = null
 ) : CoachSocketEvent
 
+data class ExerciseProgressDto(
+    val exerciseId: Int? = null,
+    val tone: String? = null,
+    val name: String? = null,
+    val category: String? = null,
+    val set: Int? = null,
+    val targetSets: Int? = null,
+    val reps: Int? = null,
+    val targetReps: Int? = null,
+    val phase: String? = null,
+    val phaseIndex: Int? = null,
+    val totalPhases: Int? = null,
+    val currentPhaseCue: String? = null,
+    val completed: Boolean? = null,
+    val angle: Double? = null,
+    val restRemainingMs: Long? = null,
+    val restSeconds: Int? = null,
+    val timestamp: Long? = null
+)
+
 data class ShotStatsDto(
     val avgElbowAngle: Double? = null,
     val avgKneeAngle: Double? = null,
