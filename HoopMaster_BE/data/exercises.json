@@ -1,6 +1,6 @@
 [
   {
-    "id": 1,
+    "id": 5,
     "name": "Neck Tilt Count",
     "category": "warmup",
     "description": "A guided neck mobility drill with slow left-right counting.",
@@ -191,7 +191,7 @@
     }
   },
   {
-    "id": 5,
+    "id": 1,
     "name": "Lateral Lunge Count",
     "category": "mobility",
     "description": "A side-to-side mobility drill for hips, knees, and defensive basketball stance.",
@@ -212,7 +212,7 @@
     "counting": {
       "mode": "rep",
       "countOnPhase": "center_after_right",
-      "secondsPerRep": 8,
+      "secondsPerRep": 3,
       "phases": [
         { "key": "left", "cue": "Step left and bend your knee", "durationMs": 2200 },
         { "key": "center_after_left", "cue": "Push back to center", "durationMs": 1200 },

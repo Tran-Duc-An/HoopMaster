@@ -154,18 +154,28 @@ function getFormReadyFeedback(tone = 'neutral') {
  * REAL-TIME WORKFLOW
  */
 async function handleRealtimePoseAnalysis(socketId, poseData, emitCallback) {
+
   const { landmarks } = poseData || {};
   let session = sessionService.getSession(socketId);
   if (!session) return;
   const coachTone = normalizeCoachTone(poseData?.tone || session.coachTone || 'neutral');
   const now = Date.now();
   const previousShotPhase = session.shotState?.phase || 'not_ready';
-  const shotState = updateShotState(session.shotState, landmarks, now);
+
+  // Thêm ngưỡng kiểm tra góc và cooldown vào options
+  const shotOptions = {
+    angleThresholds: {
+      elbow: { min: 40, max: 170 }, // Có thể điều chỉnh theo thực tế
+      shoulder: { min: 30, max: 120 }
+    },
+    releaseRecentMs: 2500 // Tăng cooldown giữa các lần shoot
+  };
+
+  const shotState = updateShotState(session.shotState, landmarks, now, shotOptions);
   session = sessionService.updateSession(socketId, { shotState, coachTone });
 
-  // Auto-detect shot release from pose data and trigger post-shot analysis
-  // Guard: cooldown 2 giây giữa các lần đếm shoot để tránh đếm trùng
-  const SHOT_COOLDOWN_MS = 2000;
+  // Auto-detect shot release from pose data và trigger post-shot analysis
+  const SHOT_COOLDOWN_MS = 2500; // Đồng bộ với releaseRecentMs
   const lastShotCountedAt = session.lastShotCountedAt || 0;
   if (shotState.phase === 'released' && previousShotPhase === 'set' && !session.pendingPostShotAnalysis && (now - lastShotCountedAt > SHOT_COOLDOWN_MS)) {
     sessionService.updateSession(socketId, { pendingPostShotAnalysis: true, lastShotCountedAt: now });

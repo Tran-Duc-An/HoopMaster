@@ -255,6 +255,52 @@ function getDefaultExerciseIds() {
   return new Set((defaultPlan?.exercises || []).map(ex => Number(ex.exerciseId)).filter(Number.isFinite));
 }
 
+function isExerciseSafeForInjuries(exercise, injuries) {
+  if (!injuries || injuries.length === 0) return true;
+  
+  const exerciseName = exercise.name.toLowerCase();
+  const exerciseCategory = exercise.category.toLowerCase();
+  const pose = (exercise.pose || '').toLowerCase();
+
+  // Knee/ankle injuries - avoid high-impact lower body stress
+  const hasKneeOrAnkle = injuries.some(area => ['knee', 'ankle'].includes(area));
+  if (hasKneeOrAnkle) {
+    // Avoid exercises with deep knee flexion or jump landing
+    if (exerciseName.includes('squat') || exerciseName.includes('lunge') || exerciseName.includes('jump')) {
+      return false;
+    }
+    if (pose.includes('squat') || pose.includes('lunge')) {
+      return false;
+    }
+  }
+
+  // Wrist/shoulder injuries - avoid upper body load bearing
+  const hasWristOrShoulder = injuries.some(area => ['wrist', 'shoulder'].includes(area));
+  if (hasWristOrShoulder) {
+    // Avoid push-ups, planks, overhead movements
+    if (exerciseName.includes('push') || exerciseName.includes('plank') || exerciseName.includes('press')) {
+      return false;
+    }
+    if (pose.includes('push_up') || pose.includes('plank')) {
+      return false;
+    }
+    // Avoid all strength category for upper body injuries
+    if (exerciseCategory === 'strength') {
+      return false;
+    }
+  }
+
+  // Back/hip injuries - avoid exercises with spinal load or deep hip flexion
+  const hasBackOrHip = injuries.some(area => ['back', 'hip'].includes(area));
+  if (hasBackOrHip) {
+    if (exerciseName.includes('deadlift') || exerciseName.includes('row') || exerciseName.includes('twist')) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 function selectExercises(profile, options = {}) {
   const catalog = exerciseService.getAllExercises();
   const excludeExerciseIds = options.excludeExerciseIds || new Set();
@@ -262,28 +308,45 @@ function selectExercises(profile, options = {}) {
   const goals = profile.goals || [];
 
   const categoryPriority = [];
-  if (goals.includes('warmup') || activeInjuries.length > 0) categoryPriority.push('warmup', 'stretching');
-  if (goals.includes('mobility')) categoryPriority.push('mobility', 'stretching', 'warmup');
-  if (goals.includes('strength') || goals.includes('conditioning')) categoryPriority.push('strength');
-  if (goals.includes('shooting_accuracy')) categoryPriority.push('warmup', 'strength', 'stretching');
-  if (categoryPriority.length === 0) categoryPriority.push('warmup', 'strength', 'mobility', 'stretching');
+  // If injuries present, prioritize safe warmup and stretching
+  if (activeInjuries.length > 0) {
+    categoryPriority.push('warmup', 'stretching', 'mobility');
+  } else {
+    if (goals.includes('warmup') || activeInjuries.length > 0) categoryPriority.push('warmup', 'stretching');
+    if (goals.includes('mobility')) categoryPriority.push('mobility', 'stretching', 'warmup');
+    if (goals.includes('strength') || goals.includes('conditioning')) categoryPriority.push('strength');
+    if (goals.includes('shooting_accuracy')) categoryPriority.push('warmup', 'strength', 'stretching');
+    if (categoryPriority.length === 0) categoryPriority.push('warmup', 'strength', 'mobility', 'stretching');
+  }
 
-  const avoidStrength = activeInjuries.some(area => ['wrist', 'shoulder'].includes(area));
   const ordered = catalog
     .filter(exercise => !excludeExerciseIds.has(Number(exercise.id)))
-    .filter(exercise => !(avoidStrength && exercise.category === 'strength'))
+    .filter(exercise => isExerciseSafeForInjuries(exercise, activeInjuries)) // ✅ Filter by injury safety
     .sort((a, b) => {
       const aIndex = categoryPriority.indexOf(a.category);
       const bIndex = categoryPriority.indexOf(b.category);
       return (aIndex === -1 ? 99 : aIndex) - (bIndex === -1 ? 99 : bIndex);
     });
 
+  // If no exercises pass the safety filter, log warning and use warmup/stretching only
+  if (ordered.length === 0) {
+    console.warn('[PlanningChat] No exercises passed injury safety filter. Falling back to safe stretching.');
+    const safeExercises = catalog.filter(ex => ['warmup', 'stretching'].includes(ex.category));
+    return safeExercises.slice(0, MAX_PERSONAL_EXERCISES).map((exercise, index) => ({
+      ...exercise,
+      exerciseId: exercise.id,
+      sets: 1,
+      reps: exercise.duration ? undefined : exercise.count,
+      duration: exercise.duration || '20s each side',
+      reason: 'Gentle movement to support recovery while respecting your injury constraints.',
+      safetyNotes: buildSafetyNote(exercise, activeInjuries),
+      order: index + 1
+    }));
+  }
+
   return ordered.slice(0, MAX_PERSONAL_EXERCISES).map((exercise, index) => ({
+    ...exercise, // ✅ Preserve ALL fields from catalog: steps, count, target, counting, voiceCues, tracking
     exerciseId: exercise.id,
-    name: exercise.name,
-    category: exercise.category,
-    pose: exercise.pose,
-    description: exercise.description,
     sets: exercise.category === 'strength' ? 3 : 2,
     reps: exercise.duration ? undefined : exercise.count,
     duration: exercise.duration || (exercise.category === 'stretching' ? '20s each side' : undefined),
@@ -306,13 +369,76 @@ function buildExerciseReason(exercise, profile) {
 
 function buildSafetyNote(exercise, injuries) {
   if (!injuries.length) return 'Stop immediately if you feel unusual pain.';
-  if (exercise.category === 'strength' && injuries.some(area => ['wrist', 'shoulder'].includes(area))) {
-    return 'Reduce range of motion or skip this exercise if wrist or shoulder pain appears.';
+
+  const exerciseName = exercise.name.toLowerCase();
+  const category = exercise.category.toLowerCase();
+  const specificNotes = [];
+
+  // Knee-specific safety
+  if (injuries.includes('knee')) {
+    if (exerciseName.includes('squat') || exerciseName.includes('lunge')) {
+      specificNotes.push('Reduce depth by 50% and keep knees tracking over toes');
+    } else if (category === 'strength' || category === 'mobility') {
+      specificNotes.push('Keep knee movements controlled and avoid deep flexion');
+    } else {
+      specificNotes.push('Monitor knee alignment throughout movement');
+    }
   }
-  if (injuries.includes('knee') && exercise.category !== 'stretching') {
-    return 'Keep knees aligned with toes and avoid deep ranges if pain increases.';
+
+  // Ankle-specific safety
+  if (injuries.includes('ankle')) {
+    if (exerciseName.includes('calf') || exerciseName.includes('jump')) {
+      specificNotes.push('Perform on flat surface with support nearby');
+    } else {
+      specificNotes.push('Maintain stable ankle position and avoid sudden pivots');
+    }
   }
-  return `Adjust intensity carefully due to your injury history: ${injuries.join(', ')}.`;
+
+  // Shoulder-specific safety
+  if (injuries.includes('shoulder')) {
+    if (exerciseName.includes('push') || exerciseName.includes('press') || category === 'strength') {
+      specificNotes.push('Limit range of motion to pain-free zone, consider skipping if shoulder pain appears');
+    } else if (exerciseName.includes('roll') || exerciseName.includes('shoulder')) {
+      specificNotes.push('Move slowly and gently, stop at first sign of discomfort');
+    } else {
+      specificNotes.push('Keep shoulder movements minimal and controlled');
+    }
+  }
+
+  // Wrist-specific safety
+  if (injuries.includes('wrist')) {
+    if (exerciseName.includes('push') || exerciseName.includes('plank')) {
+      specificNotes.push('Perform on fists or skip entirely if wrist pain occurs');
+    } else {
+      specificNotes.push('Avoid bearing weight on hands, use alternative grip if needed');
+    }
+  }
+
+  // Back-specific safety
+  if (injuries.includes('back')) {
+    if (category === 'strength') {
+      specificNotes.push('Keep spine neutral and core engaged throughout, reduce load by 50%');
+    } else {
+      specificNotes.push('Maintain neutral spine position and avoid twisting movements');
+    }
+  }
+
+  // Hip-specific safety
+  if (injuries.includes('hip')) {
+    if (exerciseName.includes('lunge') || exerciseName.includes('squat')) {
+      specificNotes.push('Limit hip flexion depth to comfortable range only');
+    } else {
+      specificNotes.push('Move hips slowly and stay within pain-free range of motion');
+    }
+  }
+
+  // Combine all specific notes
+  if (specificNotes.length > 0) {
+    return specificNotes.join('. ') + '. Stop immediately if pain increases.';
+  }
+
+  // Generic fallback with injury list
+  return `Adjust intensity carefully due to your ${injuries.join(', ')} injury. Stop immediately if you feel sharp or increasing pain.`;
 }
 
 function toTitleCase(text) {
@@ -393,13 +519,41 @@ function coercePositiveInteger(value, fallback) {
 
 function buildPlanningPrompt(profile, catalog, defaultExerciseIds) {
   const catalogSummary = buildExerciseCatalogSummary(catalog);
-  return `You are an expert basketball strength and skill coach.
+  const injuries = (profile.injuries || []).filter(injury => injury.active !== false).map(injury => injury.area);
+  const hasInjuries = injuries.length > 0;
+  
+  const injuryGuidelines = hasInjuries ? `
+
+CRITICAL INJURY SAFETY GUIDELINES:
+User has active injuries: ${injuries.join(', ')}
+
+MANDATORY INJURY-SPECIFIC RESTRICTIONS:
+${injuries.includes('knee') ? '- KNEE: Avoid squats, lunges, jumps. No deep knee flexion exercises. Prioritize upper body warmup and gentle stretching.' : ''}
+${injuries.includes('ankle') ? '- ANKLE: Avoid calf raises, jumps, lateral movements. No weight-bearing ankle stress. Focus on seated or supported exercises.' : ''}
+${injuries.includes('shoulder') ? '- SHOULDER: Avoid push-ups, overhead movements, planks. NO strength category exercises. Use neck and lower body warmup only.' : ''}
+${injuries.includes('wrist') ? '- WRIST: Avoid push-ups, planks, any weight-bearing on hands. NO exercises requiring hand support.' : ''}
+${injuries.includes('back') ? '- BACK: Avoid twisting, bending, loaded movements. Keep spine neutral. Prioritize gentle mobility.' : ''}
+${injuries.includes('hip') ? '- HIP: Avoid deep lunges, squats, wide-stance movements. Limit hip flexion range.' : ''}
+
+EXERCISE SELECTION PRIORITY FOR INJURIES:
+1. Warmup and stretching exercises that do NOT stress injured areas
+2. Mobility work for non-injured body parts
+3. NEVER select strength exercises if user has wrist, shoulder, knee, or back injuries
+4. When in doubt, choose the SAFER, GENTLER option
+
+SAFETY NOTES REQUIREMENTS:
+- Must include specific modifications for the user's injuries
+- Must warn about movement restrictions
+- Must provide alternative if exercise causes pain` : '';
+
+  return `You are an expert basketball strength and skill coach with specialization in injury-safe training.
 
 Task:
 Generate ONE personalized basketball training plan in ENGLISH and return STRICT JSON ONLY.
 
 User profile:
 ${JSON.stringify(profile, null, 2)}
+${injuryGuidelines}
 
 Exercise catalog (you must only use these exercises):
 ${JSON.stringify(catalogSummary, null, 2)}
@@ -408,8 +562,8 @@ Rules:
 1) Output JSON only (no markdown, no extra text).
 2) Use ONLY 1 or 2 exercises from the catalog.
 3) Never use exercises with IDs in this default set: ${JSON.stringify([...defaultExerciseIds])}.
-4) You MUST prioritize user injury safety in both selection and safetyNotes. If injuries include knee/ankle, avoid deep knee-flexion stress; if wrist/shoulder, avoid high-load upper-body pushing.
-3) Keep structure exactly:
+4) ${hasInjuries ? 'PRIORITIZE INJURY SAFETY ABOVE ALL ELSE. Follow injury guidelines strictly.' : 'Select exercises that match user goals and level.'}
+5) Keep structure exactly:
 {
   "title": "string",
   "description": "string",
@@ -421,14 +575,15 @@ Rules:
       "reps": number|null,
       "duration": "string|null",
       "reason": "string",
-      "safetyNotes": "string"
+      "safetyNotes": "string (MUST address user's specific injuries if present)"
     }
   ]
 }
-5) Title must be specific (not generic), include level + primary goal + frequency.
-6) All text must be English.
-7) Respect injury constraints in safetyNotes and selection.
-8) goal should be one of: shooting_accuracy, strength, mobility, warmup, conditioning, general_training.`;
+6) Title must be specific (not generic), include level + primary goal + frequency.
+7) All text must be English.
+8) ${hasInjuries ? 'safetyNotes MUST include detailed injury-specific precautions and modifications.' : 'Include appropriate safety guidance in safetyNotes.'}
+9) goal should be one of: shooting_accuracy, strength, mobility, warmup, conditioning, general_training.
+10) ${hasInjuries ? 'If no exercises in catalog are safe for the injuries, return exercises with very low intensity warmup/stretching and clear warnings.' : ''}`;
 }
 
 function normalizeLlmPlan(userId, profile, llmPlan, catalog) {
@@ -455,11 +610,8 @@ function normalizeLlmPlan(userId, profile, llmPlan, catalog) {
       const resolvedReps = item.reps === null ? null : coercePositiveInteger(item.reps, defaultReps);
 
       return {
+        ...exercise, // ✅ Preserve ALL fields from catalog: steps, count, target, counting, voiceCues, tracking
         exerciseId: exercise.id,
-        name: exercise.name,
-        category: exercise.category,
-        pose: exercise.pose,
-        description: exercise.description,
         sets: coercePositiveInteger(item.sets, defaultSets),
         reps: exercise.duration ? undefined : resolvedReps,
         duration: typeof item.duration === 'string' && item.duration.trim()

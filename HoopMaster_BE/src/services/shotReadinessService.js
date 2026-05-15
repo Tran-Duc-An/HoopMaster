@@ -108,6 +108,12 @@ function detectReleaseMotion(previousLandmarks, currentLandmarks, options = {}) 
     return { released: false, reason: 'missing_previous_frame', metrics: {} };
   }
 
+  // Thêm kiểm tra góc khuỷu tay và vai nếu có
+  const angleThresholds = config.angleThresholds || {
+    elbow: { min: 40, max: 170 }, // độ mở khuỷu tay hợp lý khi release
+    shoulder: { min: 30, max: 120 }
+  };
+
   const sides = ['right', 'left'].map((side) => {
     const previous = getArmGeometry(previousLandmarks, side, config);
     const current = getArmGeometry(currentLandmarks, side, config);
@@ -117,18 +123,44 @@ function detectReleaseMotion(previousLandmarks, currentLandmarks, options = {}) 
 
     const wristVelocityY = previous.wrist.y - current.wrist.y;
     const armExtensionDelta = current.armLength - previous.armLength;
-    const released = wristVelocityY >= config.releaseWristVelocityY
-      || armExtensionDelta >= config.releaseExtensionDelta;
+
+    // Tính góc khuỷu tay và vai nếu có đủ điểm
+    let elbowAngle = null, shoulderAngle = null;
+    if (current.shoulder && current.elbow && current.wrist) {
+      elbowAngle = calculateAngle(current.shoulder, current.elbow, current.wrist);
+    }
+    if (current.hip && current.shoulder && current.elbow) {
+      shoulderAngle = calculateAngle(current.hip, current.shoulder, current.elbow);
+    }
+
+    // Điều kiện release: vận tốc cổ tay, độ duỗi tay, và góc hợp lý
+    const elbowOk = elbowAngle === null || (elbowAngle >= angleThresholds.elbow.min && elbowAngle <= angleThresholds.elbow.max);
+    const shoulderOk = shoulderAngle === null || (shoulderAngle >= angleThresholds.shoulder.min && shoulderAngle <= angleThresholds.shoulder.max);
+    const released = (wristVelocityY >= config.releaseWristVelocityY
+      || armExtensionDelta >= config.releaseExtensionDelta)
+      && elbowOk && shoulderOk;
 
     return {
       side,
       released,
       reason: released ? 'release_motion_detected' : 'no_release_motion',
-      metrics: { wristVelocityY, armExtensionDelta }
+      metrics: { wristVelocityY, armExtensionDelta, elbowAngle, shoulderAngle }
     };
   });
 
   return sides.find((side) => side.released) || sides[0];
+}
+// Hàm tính góc giữa 3 điểm (trả về độ)
+function calculateAngle(a, b, c) {
+  if (!a || !b || !c) return null;
+  const ab = { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z };
+  const cb = { x: c.x - b.x, y: c.y - b.y, z: c.z - b.z };
+  const dot = ab.x * cb.x + ab.y * cb.y + ab.z * cb.z;
+  const magAB = Math.sqrt(ab.x ** 2 + ab.y ** 2 + ab.z ** 2);
+  const magCB = Math.sqrt(cb.x ** 2 + cb.y ** 2 + cb.z ** 2);
+  if (magAB === 0 || magCB === 0) return null;
+  let angleRad = Math.acos(dot / (magAB * magCB));
+  return angleRad * 180 / Math.PI;
 }
 
 function shouldAllowPositiveRealtimeFeedback(shotState, evalResult, timestamp = Date.now(), options = {}) {
